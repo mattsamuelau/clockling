@@ -1,0 +1,57 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Preview: start local server",
+            "type": "shell",
+            "command": "node server.js",
+            "options": { "cwd": "${workspaceFolder}" },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Preview: open in browser",
+            "type": "shell",
+            "command": "start http://127.0.0.1:8080/preview.html",
+            "problemMatcher": []
+        },
+        {
+            "label": "Tizen: list devices",
+            "type": "shell",
+            "command": "& 'D:\\tizen-studio\\tools\\sdb.exe' devices",
+            "problemMatcher": []
+        },
+        {
+            "label": "Tizen: build package (.wgt)",
+            "type": "shell",
+            "command": "& 'D:\\tizen-studio\\tools\\ide\\bin\\tizen.bat' build-web -- app; if ($LASTEXITCODE -eq 0) { & 'D:\\tizen-studio\\tools\\ide\\bin\\tizen.bat' package -t wgt -s ${input:certProfile} -- app; Get-ChildItem -Path app -Recurse -Filter *.wgt | Select-Object -ExpandProperty FullName }",
+            "problemMatcher": []
+        },
+        {
+            "label": "Tizen: install on watch",
+            "type": "shell",
+            "command": "& 'D:\\tizen-studio\\tools\\ide\\bin\\tizen.bat' install -n ${input:wgtFile} -t ${input:deviceId}",
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "certProfile",
+            "type": "promptString",
+            "description": "Tizen certificate profile name (created in Tizen Studio Certificate Manager)",
+            "default": "gearfit"
+        },
+        {
+            "id": "wgtFile",
+            "type": "promptString",
+            "description": "Path to the built .wgt file (the build task prints it)",
+            "default": "app/ZergDesk.wgt"
+        },
+        {
+            "id": "deviceId",
+            "type": "promptString",
+            "description": "Watch id from 'sdb devices' (e.g. a long serial number)",
+            "default": ""
+        }
+    ]
+}
