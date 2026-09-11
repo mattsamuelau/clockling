@@ -1,0 +1,20 @@
+# dependencies / build output
+node_modules/
+dist/
+build/
+out/
+
+# platform build artifacts
+*.wgt
+*.apk
+*.aab
+*.exe
+*.msi
+
+# OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# local (non-committed) settings state
+.settings.local.json
