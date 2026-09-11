@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Zerg Desk - watch face preview</title>
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding-left: 232px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            background: radial-gradient(1200px 700px at 50% 20%, #191233 0%, #0a0714 70%);
+            color: #e8e2ff;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+        h1 { font-size: 15px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: #8f84bd; margin: 0; }
+        #stage { transform: scale(1.3); transform-origin: center top; }
+        #bezel {
+            width: 248px; height: 470px; padding: 10px;
+            border-radius: 58px;
+            background: linear-gradient(160deg, #2b2b36, #15151d 60%, #0d0d12);
+            box-shadow: 0 18px 60px rgba(0, 0, 0, .6), inset 0 2px 4px rgba(255, 255, 255, .14);
+        }
+        #screen { width: 216px; height: 432px; border-radius: 46px; overflow: hidden; background: #0b0618; }
+        iframe { width: 216px; height: 432px; border: 0; display: block; }
+        #strap {
+            width: 172px; height: 58px; margin: 0 auto;
+            border-radius: 0 0 24px 24px;
+            background: linear-gradient(180deg, #1c1c24, #0e0e13);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, .5);
+        }
+        #controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        button {
+            background: #221a3d; color: #cfc4ff;
+            border: 1px solid #4b3f7a; border-radius: 8px;
+            padding: 7px 14px; font-size: 13px; cursor: pointer;
+        }
+        button:hover { background: #2d2350; border-color: #b6ff5e; color: #b6ff5e; }
+        #controls label.ctl { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #cfc4ff; }
+        #controls select { background: #221a3d; color: #cfc4ff; border: 1px solid #4b3f7a; border-radius: 8px; padding: 5px 8px; font-size: 13px; }
+        .hint { font-size: 12px; color: #6d6392; margin: 0; text-align: center; }
+        code { color: #b6ff5e; }
+        #tuner {
+            position: fixed; left: 12px; top: 12px; width: 210px;
+            max-height: calc(100vh - 40px); overflow-y: auto;
+            background: rgba(10, 7, 20, .72); border: 1px solid #4b3f7a;
+            border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 6px;
+            font-size: 12px; color: #cfc4ff;
+        }
+        #tuner h3 { margin: 0 0 4px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #b6ff5e; }
+        #tuner label { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        #tuner input {
+            width: 70px; background: #221a3d; color: #fff; border: 1px solid #4b3f7a;
+            border-radius: 4px; padding: 3px 5px; font-size: 12px;
+        }
+        #tuner h4 {
+            margin: 10px 0 2px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+            color: #8f84bd; border-top: 1px solid #2d2350; padding-top: 8px;
+        }
+        #tuner select { width: 100%; background: #221a3d; color: #cfc4ff; border: 1px solid #4b3f7a; border-radius: 4px; padding: 3px 5px; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Zerg Desk &middot; watch face preview</h1>
+    <div id="tuner">
+        <h3>Tune (live)</h3>
+        <label>Settings file
+            <select id="presetSel">
+                <option value="preview">preview</option>
+                <option value="fit2">fit2</option>
+                <option value="2x2res">2x2res</option>
+                <option value="2x2copy">2x2copy</option>
+                <option value="preview2">preview2</option>
+            </select>
+        </label>
+        <button id="saveBtn">Save settings</button>
+        <span id="saveStatus"></span>
+
+        <h4>Max values</h4>
+        <label>maxLings <input type="number" data-tun="maxLings" value="8" step="1"></label>
+        <label>maxBanes <input type="number" data-tun="maxBanes" value="2" step="1"></label>
+        <label>maxMarines <input type="number" data-tun="maxMarines" value="4" step="1"></label>
+
+        <h4>Terran</h4>
+        <label>marineSpawnRateMult <input type="number" data-tun="marineSpawnRateMult" value="1" step="0.1"></label>
+        <label title="How long after all marines die until the next wave">marineWaveLo <input type="number" data-tun="marineWaveLo" value="9" step="1"></label>
+        <label title="How long after all marines die until the next wave">marineWaveHi <input type="number" data-tun="marineWaveHi" value="11" step="1"></label>
+        <label title="How often marines spawn while marines are alive">marineRespawnLo <input type="number" data-tun="marineRespawnLo" value="19" step="1"></label>
+        <label title="How often marines spawn while marines are alive">marineRespawnHi <input type="number" data-tun="marineRespawnHi" value="21" step="1"></label>
+        <label>marineSpawnGap <input type="number" data-tun="marineSpawnGap" value="0.5" step="0.1"></label>
+        <label>marineSpawnInset <input type="number" data-tun="marineSpawnInset" value="6" step="1"></label>
+        <label title="Min marines per wave (no marines alive)">marineWaveSizeLo <input type="number" data-tun="marineWaveSizeLo" value="2" step="1"></label>
+        <label title="Max marines per wave (no marines alive)">marineWaveSizeHi <input type="number" data-tun="marineWaveSizeHi" value="3" step="1"></label>
+        <label title="Min marines per respawn cycle (while alive)">marineRespawnSizeLo <input type="number" data-tun="marineRespawnSizeLo" value="1" step="1"></label>
+        <label title="Max marines per respawn cycle (while alive)">marineRespawnSizeHi <input type="number" data-tun="marineRespawnSizeHi" value="2" step="1"></label>
+        <label>marineHp <input type="number" data-tun="marineHp" value="100" step="5"></label>
+        <label>marineShootDamage <input type="number" data-tun="marineShootDamage" value="25" step="5"></label>
+        <label>marineShootInterval <input type="number" data-tun="marineShootInterval" value="0.5" step="0.1"></label>
+        <label>marineRangeMult <input type="number" data-tun="marineRangeMult" value="3" step="0.5"></label>
+        <label>marineFleeHpPct <input type="number" data-tun="marineFleeHpPct" value="0.9" step="0.05"></label>
+        <label>marineFleeRangeMult <input type="number" data-tun="marineFleeRangeMult" value="1.5" step="0.1"></label>
+        <label>marineGroupWeight <input type="number" data-tun="marineGroupWeight" value="0.5" step="0.1"></label>
+        <label>marineAwayWeight <input type="number" data-tun="marineAwayWeight" value="1" step="0.1"></label>
+        <label>marineTurnRate <input type="number" data-tun="marineTurnRate" value="0.25" step="0.05"></label>
+        <label>marineSplatScale <input type="number" data-tun="marineSplatScale" value="1.4" step="0.1"></label>
+
+        <h4>Zerg</h4>
+        <label>respawnInterval <input type="number" data-tun="respawnInterval" value="2.4" step="0.1"></label>
+        <label>respawnBatch <input type="number" data-tun="respawnBatch" value="2" step="1"></label>
+        <label>eggTime <input type="number" data-tun="eggTime" value="3" step="0.5"></label>
+        <label>eggHatchMult <input type="number" data-tun="eggHatchMult" value="2" step="0.5"></label>
+        <label>lingHp <input type="number" data-tun="lingHp" value="100" step="5"></label>
+        <label>baneHp <input type="number" data-tun="baneHp" value="150" step="10"></label>
+        <label>lingBiteDamage <input type="number" data-tun="lingBiteDamage" value="10" step="1"></label>
+        <label>lingBiteInterval <input type="number" data-tun="lingBiteInterval" value="0.2" step="0.05"></label>
+        <label>baneSplashDamage <input type="number" data-tun="baneSplashDamage" value="90" step="5"></label>
+        <label>baneSplashR <input type="number" data-tun="baneSplashR" value="75" step="5"></label>
+        <label>baneSplatScale <input type="number" data-tun="baneSplatScale" value="2" step="0.1"></label>
+        <label>lingAllyRadius <input type="number" data-tun="lingAllyRadius" value="40" step="5"></label>
+        <label>lingAllyMin <input type="number" data-tun="lingAllyMin" value="2" step="1"></label>
+        <label>lingFleeRadius <input type="number" data-tun="lingFleeRadius" value="140" step="5"></label>
+        <label>lingFleeMarineMin <input type="number" data-tun="lingFleeMarineMin" value="2" step="1"></label>
+        <label>morphAge <input type="number" data-tun="morphAge" value="15" step="1"></label>
+        <label>morphCooldown <input type="number" data-tun="morphCooldown" value="5" step="1"></label>
+        <label>morphChancePerSec <input type="number" data-tun="morphChancePerSec" value="0.5" step="0.1"></label>
+        <label>lingBerserkBanes <input type="number" data-tun="lingBerserkBanes" value="2" step="1"></label>
+        <label>lingBerserkMult <input type="number" data-tun="lingBerserkMult" value="1.5" step="0.1"></label>
+        <label>lingSeekCooldown <input type="number" data-tun="lingSeekCooldown" value="3" step="0.5"></label>
+        <label>lingSeekPairCooldown <input type="number" data-tun="lingSeekPairCooldown" value="5" step="0.5"></label>
+
+        <h4>Visuals</h4>
+        <label>retargetInterval <input type="number" data-tun="retargetInterval" value="0.5" step="0.1"></label>
+        <label>aimInterval <input type="number" data-tun="aimInterval" value="0.3" step="0.1"></label>
+        <label>splatLife <input type="number" data-tun="splatLife" value="1.21" step="0.1"></label>
+        <label>splatBase <input type="number" data-tun="splatBase" value="7" step="1"></label>
+        <label>splatFadeStart <input type="number" data-tun="splatFadeStart" value="0.6" step="0.05"></label>
+        <label>corpseLife <input type="number" data-tun="corpseLife" value="2.2" step="0.1"></label>
+        <label>lingW <input type="number" data-tun="lingW" value="30" step="1"></label>
+        <label>baneW <input type="number" data-tun="baneW" value="39" step="1"></label>
+        <label>marineW <input type="number" data-tun="marineW" value="42" step="1"></label>
+        <label>eggW <input type="number" data-tun="eggW" value="21" step="1"></label>
+        <label>lingBump <input type="number" data-tun="lingBump" value="10" step="1"></label>
+        <label>baneBump <input type="number" data-tun="baneBump" value="12" step="1"></label>
+        <label>marineBump <input type="number" data-tun="marineBump" value="12" step="1"></label>
+    </div>
+    <div id="stage">
+        <div id="bezel">
+            <div id="screen"><iframe id="watch" src="app/index.html"></iframe></div>
+        </div>
+        <div id="strap"></div>
+    </div>
+    <div id="controls">
+        <button data-k="critters" data-d="-2">Fewer critters</button>
+        <button data-k="critters" data-d="2">More critters</button>
+        <button data-k="speed" data-s="1">Speed &times;1</button>
+        <button data-k="speed" data-s="2">Speed &times;2</button>
+        <button data-k="sec" data-t="toggle">Seconds on/off</button>
+        <button data-k="hour24" data-t="toggle">12h / 24h</button>
+        <label class="ctl"><input type="checkbox" id="showFrame"> Watch frame</label>
+        <label class="ctl">Zoom
+            <select id="zoomSel">
+                <option value="1">1x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2x</option>
+                <option value="3">3x</option>
+                <option value="4">4x</option>
+                <option value="5">5x</option>
+                <option value="10">10x</option>
+            </select>
+        </label>
+        <label class="ctl">Res
+            <select id="resSel">
+                <option value="216x432">216x432</option>
+                <option value="432x432" selected>432x432</option>
+                <option value="432x864">432x864</option>
+            </select>
+        </label>
+    </div>
+    <p class="hint">
+        If the screen above is blank, serve the folder instead:<br>
+        run <code>python -m http.server</code> (or <code>node server.js</code>) in the project root,
+        then open <code>http://localhost:8000/preview.html</code>
+    </p>
+    <script>
+        var state = { critters: 10, speed: 1, sec: 1, hour24: 1 };
+        var resSel = document.getElementById("resSel");
+        var presetSel = document.getElementById("presetSel");
+        var PRESETS_KEY = "zergPresets";
+        var ACTIVE_KEY = "zergActivePreset";
+
+        function apply() {
+            var q = "app/index.html?critters=" + state.critters + "&speed=" + state.speed +
+                "&sec=" + state.sec + "&hour24=" + state.hour24;
+            var ins = document.querySelectorAll("#tuner input[data-tun]");
+            for (var i = 0; i < ins.length; i++) {
+                q += "&tun_" + ins[i].getAttribute("data-tun") + "=" + ins[i].value;
+            }
+            var parts = resSel.value.split("x");
+            q += "&tun_mapW=" + parts[0] + "&tun_mapH=" + parts[1];
+            document.getElementById("watch").src = q;
+        }
+        function collectTuning() {
+            var o = {};
+            var ins = document.querySelectorAll("#tuner input[data-tun]");
+            for (var i = 0; i < ins.length; i++) o[ins[i].getAttribute("data-tun")] = ins[i].value;
+            return o;
+        }
+        function setInputs(obj) {
+            var ins = document.querySelectorAll("#tuner input[data-tun]");
+            for (var i = 0; i < ins.length; i++) {
+                var key = ins[i].getAttribute("data-tun");
+                if (obj[key] !== undefined) ins[i].value = obj[key];
+            }
+        }
+        function getPresets() {
+            try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || "{}"); } catch (e) { return {}; }
+        }
+        function seedPresets() {
+            var p = getPresets();
+            var d = collectTuning();
+            if (!p.preview) p.preview = d;
+            if (!p.fit2) p.fit2 = d;
+            if (!p["2x2res"]) p["2x2res"] = d;
+            if (!p["2x2copy"]) p["2x2copy"] = p["2x2res"] || d;
+            if (!p.preview2) p.preview2 = p.preview || d;
+            localStorage.setItem(PRESETS_KEY, JSON.stringify(p));
+            return p;
+        }
+
+        var saveStatus = document.getElementById("saveStatus");
+        document.getElementById("saveBtn").addEventListener("click", function () {
+            try {
+                var p = getPresets();
+                p[presetSel.value] = collectTuning();
+                localStorage.setItem(PRESETS_KEY, JSON.stringify(p));
+                saveStatus.textContent = "saved \u2713";
+                setTimeout(function () { saveStatus.textContent = ""; }, 1500);
+            } catch (e) { saveStatus.textContent = "save failed"; }
+        });
+        presetSel.addEventListener("change", function () {
+            localStorage.setItem(ACTIVE_KEY, presetSel.value);
+            var p = getPresets();
+            var v = p[presetSel.value];
+            if (v) { setInputs(v); apply(); }
+        });
+
+        /* first load: seed presets, load active preset */
+        var presets = seedPresets();
+        var active = localStorage.getItem(ACTIVE_KEY) || "preview";
+        presetSel.value = active;
+        var av = presets[active];
+        if (av) setInputs(av);
+
+        var btns = document.querySelectorAll("button[data-k]");
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].addEventListener("click", function () {
+                var k = this.getAttribute("data-k");
+                if (this.getAttribute("data-t") === "toggle") {
+                    state[k] = state[k] ? 0 : 1;
+                } else if (this.getAttribute("data-d")) {
+                    state[k] = Math.max(1, state[k] + parseInt(this.getAttribute("data-d"), 10));
+                } else if (this.getAttribute("data-s")) {
+                    state[k] = parseFloat(this.getAttribute("data-s"));
+                }
+                apply();
+            });
+        }
+        var tins = document.querySelectorAll("#tuner input[data-tun]");
+        for (var j = 0; j < tins.length; j++) {
+            tins[j].addEventListener("input", apply);
+        }
+
+        /* watch frame toggle + zoom + resolution */
+        var showFrameCb = document.getElementById("showFrame");
+        var zoomSel = document.getElementById("zoomSel");
+        function applyFrame() {
+            var watchRes = resSel.value === "216x432";
+            var show = showFrameCb.checked && watchRes;
+            document.getElementById("bezel").style.background = show ? "" : "none";
+            document.getElementById("bezel").style.padding = show ? "" : "0";
+            document.getElementById("bezel").style.borderRadius = show ? "" : "0";
+            document.getElementById("bezel").style.boxShadow = show ? "" : "none";
+            document.getElementById("strap").style.display = show ? "" : "none";
+            document.getElementById("screen").style.borderRadius = show ? "" : "0";
+            document.getElementById("screen").style.outline = show ? "" : "1px solid #4b3f7a";
+        }
+        function applySize() {
+            var parts = resSel.value.split("x");
+            var w = parseInt(parts[0], 10), h = parseInt(parts[1], 10);
+            document.getElementById("watch").style.width = w + "px";
+            document.getElementById("watch").style.height = h + "px";
+            document.getElementById("screen").style.width = w + "px";
+            document.getElementById("screen").style.height = h + "px";
+            applyFrame();
+        }
+        function applyZoom() {
+            document.getElementById("stage").style.transform = "scale(" + zoomSel.value + ")";
+        }
+        resSel.addEventListener("change", function () { applySize(); apply(); });
+        showFrameCb.addEventListener("change", applyFrame);
+        zoomSel.addEventListener("change", applyZoom);
+        applySize();
+        applyZoom();
+        apply();
+    </script>
+</body>
+</html>
