@@ -13,6 +13,32 @@ values baked into `swarm.js`.
 > Revert = restore this key to the baked default. Save = persist to local storage
 > (`localStorage` in web; platform storage on Android/Windows).
 
+## Parameter tiers
+
+Settings are grouped into three tiers:
+
+- **Core** — the unit ruleset and population caps. Changing these changes *what units
+  do*, not just how strong they are:
+  `maxLings`, `maxBanes`, `maxMarines`, `attackGroupSize`, `berserkBanes`,
+  `berserkUntilDeath`, `maxEngageMarines`, `allyRadius`, `marineScanRadius`,
+  `marineGroupRadius`, `berserkCatchRadius`,
+  `eggTimeMin`, `eggTimeMax`, `marineTactics`.
+- **Normal** — the usual balance knobs (health, damage, speeds, spawn pace):
+  `lingHp`, `baneHp`, `marineHp`, `lingBiteDamage`, `lingBiteInterval`,
+  `baneSplashDamage`, `baneSplashR`, `marineShootDamage`, `marineShootInterval`,
+  `marineRangeMult`, `zergSpeed`, `terranSpeed`, `berserkSpeedMult`,
+  `respawnInterval`, `respawnBatch`, `morphAge`, `morphCooldown`,
+  `morphChancePerSec`, `marineSpawnRateMult`, `marineWaveLo`, `marineWaveHi`,
+  `marineWaveSizeLo`, `marineWaveSizeHi`, `marineFleeHpPct`, `hour24`,
+  `showSeconds`, `showClock`, `unitSpeed`.
+- **Advanced** — visuals, collisions, and fine timing; rarely needed:
+  `eggHatchMult`, `marineRespawnLo`, `marineRespawnHi`, `marineRespawnSizeLo`,
+  `marineRespawnSizeHi`, `marineSpawnGap`, `marineSpawnInset`, `marineGroupWeight`,
+  `marineAwayWeight`, `marineTurnRate`, `marineHealPct`, `marineHealInterval`,
+  `lingW`, `baneW`, `marineW`, `eggW`, `lingBump`, `baneBump`, `marineBump`,
+  `splatLife`, `splatBase`, `splatFadeStart`, `corpseLife`, `marineSplatScale`,
+  `baneSplatScale`, `retargetInterval`, `aimInterval`, `unitCount`, `mapW`, `mapH`.
+
 ## Map & resolution
 
 | Key | Default | Meaning | Class |
@@ -25,17 +51,25 @@ values baked into `swarm.js`.
 | Key | Default | Meaning | Class |
 |---|---|---|---|
 | `maxLings` | 8 | Max zerglings on screen at once. | Visible |
-| `maxBanes` | 1 | Max banelings on screen at once. | Visible |
+| `maxBanes` | 3 | Max banelings on screen at once. | Visible |
 | `maxMarines` | 3 | Max marines on screen at once. | Visible |
+
+## Movement
+
+| Key | Default | Meaning | Class |
+|---|---|---|---|
+| `zergSpeed` | 1 | Zerg base speed multiplier. | Visible |
+| `terranSpeed` | 1.5 | Terran (marine) base speed multiplier. | Visible |
 
 ## Zerg (zerglings, banelings, eggs)
 
 | Key | Default | Meaning | Class |
 |---|---|---|---|
 | `respawnInterval` | 2 | Seconds between ling-egg refill batches. | Visible |
-| `respawnBatch` | 2 | Eggs spawned per refill batch. | Visible |
-| `eggTime` | 8.5 | Seconds until an egg hatches. | Visible |
-| `eggHatchMult` | 1.25 | When an egg hatches, one other egg speeds up by this much. | Advanced |
+| `respawnBatch` | 4 | Eggs spawned per refill batch. | Visible |
+| `eggTimeMin` | 8 | Min seconds until an egg hatches. | Visible |
+| `eggTimeMax` | 10 | Max seconds until an egg hatches. | Visible |
+| `eggHatchMult` | 1 | When an egg hatches, one other egg speeds up by this much. | Advanced |
 | `morphAge` | 4 | A ling must live this long before it can morph into a baneling egg. | Visible |
 | `morphCooldown` | 2 | Seconds between successful morphs. | Visible |
 | `morphChancePerSec` | 1 | Chance per second an eligible ling starts morphing. | Visible |
@@ -45,15 +79,15 @@ values baked into `swarm.js`.
 | `lingBiteInterval` | 0.2 | Seconds between bites. | Visible |
 | `baneSplashDamage` | 90 | Damage a baneling deals to every marine in blast radius. | Visible |
 | `baneSplashR` | 75 | Baneling blast radius (px). | Visible |
-| `lingAllyRadius` | 40 | Distance that counts as "next to" another ling. | Advanced |
-| `lingAllyMin` | 18 | Lings need at least this many nearby allies to charge (unless a baneling is out). | Visible |
-| `lingBaneAllyMin` | 1 | *(currently unused in code)* intended: banes needed when marines are maxed. | Advanced |
-| `lingFleeRadius` | 140 | Radius of the "few marines nearby" check. | Advanced |
-| `lingFleeMarineMin` | 3 | Below this many nearby marines, lings attack even alone. | Advanced |
-| `lingBerserkMult` | 1.5 | Speed multiplier while a ling is berserk. | Visible |
-| `lingBerserkBanes` | 2 | Lings need at least this many banes alive before going berserk. | Visible |
-| `lingSeekCooldown` | 3 | Seconds before a ling may seek (bunch toward) another ling again. | Advanced |
-| `lingSeekPairCooldown` | 5 | Seconds a sought ling won't seek its seeker back. | Advanced |
+| `attackGroupSize` | 8 | Allies needed before lings attack. | Visible |
+| `berserkBanes` | 2 | Banelings alive needed to trigger bane berserk. | Visible |
+| `berserkUntilDeath` | false | On: berserk never retreats; off: cancels when outnumbered. | Visible |
+| `maxEngageMarines` | 4 | Max marine group size a ling group will engage. | Visible |
+| `allyRadius` | 40 | Radius used to count nearby zerglings. | Visible |
+| `marineScanRadius` | 140 | Radius lings use to avoid marines. | Visible |
+| `marineGroupRadius` | 60 | Radius around a marine used to count its group. | Visible |
+| `berserkCatchRadius` | 80 | Lings catch berserk from a berserk bane within this radius. | Visible |
+| `berserkSpeedMult` | 1.5 | Speed multiplier while berserk. | Visible |
 
 ## Terran (marines)
 
@@ -74,12 +108,12 @@ values baked into `swarm.js`.
 | `marineShootDamage` | 25 | Damage per marine shot. | Visible |
 | `marineShootInterval` | 0.4 | Seconds between shots. | Visible |
 | `marineRangeMult` | 3 | Weapon range = `marineRangeMult` × `marineW`. | Visible |
-| `marineFleeHpPct` | 0.9 | Marines only flee lings below this HP fraction. | Advanced |
-| `marineFleeRangeMult` | 1.5 | Lings flee only inside this × marine range. | Advanced |
+| `marineFleeHpPct` | 0.9 | Marines flee below this HP fraction. | Advanced |
 | `marineGroupWeight` | 0.5 | Pull toward other marines. | Advanced |
 | `marineAwayWeight` | 1 | Push away from zerg. | Advanced |
 | `marineTurnRate` | 0.25 | How fast marines steer. | Advanced |
-| `marineHealPct` | 0.10 | Marines heal this fraction of max HP per tick. | Advanced |
+| `marineTactics` | true | New marine AI: kite, regroup, or advance. | Visible |
+| `marineHealPct` | 0.10 | All units heal this fraction of max HP per tick. | Advanced |
 | `marineHealInterval` | 0.5 | Seconds between heal ticks. | Advanced |
 
 ## Visuals & timing
@@ -106,15 +140,22 @@ values baked into `swarm.js`.
 
 | Key | Default | Meaning |
 |---|---|---|
-| `lat` | 51.5074 | Latitude for weather (Open-Meteo). |
-| `lon` | -0.1278 | Longitude for weather. |
-| `city` | "London" | City label under the clock. |
 | `hour24` | true | 24h vs 12h clock. |
 | `showSeconds` | true | Show seconds. |
-| `critterCount` | 10 | Legacy initial-spawn count (kept for the preview). |
-| `critterSpeed` | 1.0 | Global zerg movement speed multiplier. |
+| `showClock` | true | Show the clock block. |
+| `unitCount` | 10 | Initial unit count on first load. |
+| `unitSpeed` | 1.0 | Global unit movement speed multiplier. |
 
-## New settings to add (see BRIEF.md)
+## Widget size presets
 
-- `showWeather` / `showClock` — hide the weather block / clock block.
-- Settings persistence + "revert to default" (per key or per group).
+The preview exposes three named sizes that set `mapW`/`mapH` (and, in the future, default
+unit counts per size):
+
+| Preset | `mapW` × `mapH` |
+|---|---|
+| Small | 432 × 432 |
+| Medium | 864 × 864 |
+| Large | 1296 × 1296 |
+
+> Per-size unit defaults (more units on bigger maps) are a deferred feature — see the
+> "Resolution presets" note at the bottom of `BRIEF.md`.

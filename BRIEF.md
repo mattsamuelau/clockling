@@ -12,10 +12,9 @@ Everything here is **local-first** — no pushing to remotes unless explicitly a
 ## 1. What's already here (working)
 
 - `node server.js` → `http://127.0.0.1:8080/preview.html` — live battle sim
-  (zerglings/banelings vs marines) + clock + weather + a live tuning panel.
+  (zerglings/banelings vs marines) + clock + a live tuning panel.
 - Battle sim: `app/js/swarm.js` (all logic + `TUNING` defaults).
-- Clock/battery/tap glue: `app/js/main.js` — **still has watch-era code to strip**.
-- Weather + internet clock: `app/js/weather.js` (Open-Meteo, no API key).
+- Clock/tap glue: `app/js/main.js`.
 - Base settings: `app/js/settings.js`.
 - Sprites: `app/images/` (lings, banes, eggs, marines incl. `marine_walk*` + `marine_new*`).
 - `bake_tuning.py` — regex-bakes tuned values back into `swarm.js` defaults.
@@ -48,7 +47,6 @@ Everything here is **local-first** — no pushing to remotes unless explicitly a
     web preview; the widget settings UI must not require it (it reads/writes persisted
     settings directly).
 - **New settings:**
-  - `showWeather` (bool) — hide the weather block.
   - `showClock` (bool) — hide the clock block (battle only).
 - The current `preview.html` tuning panel (settings-file dropdown + localStorage presets)
   is a prototype of this; the widget needs a real settings UI, not the dev panel.
@@ -62,7 +60,7 @@ core/            # pure ES modules / no DOM
   ├─ sim.js      # battle sim (from swarm.js)
   ├─ tuning.js   # TUNING defaults + overrides + save/revert
   ├─ settings.js # SETTINGS + persistence interface
-  └─ clock.js    # clock + weather (from main.js/weather.js, de-Tizen-ified)
+  └─ clock.js    # clock (from main.js)
 targets/
   ├─ web/        # preview.html (dev + tuning)
   ├─ android/    # widget
@@ -119,11 +117,49 @@ Keep the sim drawing to a canvas; each target gives it a `<canvas>` (web), a `Bi
 
 ## Hand-off checklist (next agent)
 
-- [ ] Rename Zerg Desk → Clockling everywhere.
-- [ ] Remove "docked" + Tizen code from `main.js`.
-- [ ] Build settings UI: Visible + Advanced sections, save, per-key revert, reset all.
-- [ ] Add `showWeather` / `showClock` settings.
+- [x] Rename Zerg Desk → Clockling everywhere.
+- [x] Remove "docked" + Tizen code from `main.js`.
+- [x] Build settings UI: Visible + Advanced sections, save, per-key revert, reset all.
+- [x] Add `showClock` setting.
 - [ ] Extract `core/` (sim/tuning/settings/clock) from `app/`.
 - [ ] Android widget (Glance + Bitmap renderer, ~1 fps).
 - [ ] Windows widget (Tauri, frameless always-on-bottom).
 - [ ] Document + script deployment for both platforms.
+
+---
+
+## 9. Widget size presets (deferred)
+
+The preview exposes three named sizes (Small / Medium / Large) that currently set only
+`mapW`/`mapH`:
+
+| Preset | `mapW` × `mapH` |
+|---|---|
+| Small | 432 × 432 |
+| Medium | 864 × 864 |
+| Large | 1296 × 1296 |
+
+**For later:** give each size its own default tuning (more units on bigger maps). Concretely,
+a size preset should apply a full default `TUNING` sub-profile (e.g. `maxLings`/`maxBanes`/
+`maxMarines`, spawn rates, sprite scales) in addition to the canvas dimensions, so a bigger
+widget is a busier battlefield without the user hand-tuning every knob.
+
+---
+
+## 10. Tooling & architecture notes (open question)
+
+Why the core is JavaScript: the same sim/clock core must run in three hosts — the
+web preview, an Android widget (WebView/Glance), and a Windows widget (Tauri WebView or
+Rainmeter WebView). JS on a canvas is the only runtime all three share, so keeping the core
+in JS is the right call. What should change is the *engineering around it*:
+
+- Migrate the core to **TypeScript** compiled to ES modules (`core/` in §4), so the shared
+  logic is typed and testable before any host wraps it.
+- Add a **bundler + lint/format** (Vite/tsc, ESLint + Prettier) and **Vitest** unit tests for
+  `sim`/`tuning`/`settings`.
+- Give the preview the same toolchain (it's the primary dev surface) and treat
+  `app/js/*.js` as build output, not hand-written source.
+- Persistence should go through a small **adapter interface** (localStorage →
+  SharedPreferences/DataStore → JSON file) instead of direct `localStorage` calls.
+
+Defer until the `core/` split (§4), since the web preview must stay green throughout.
