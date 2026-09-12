@@ -1,7 +1,8 @@
 import re
 
 vals = {
-    "maxLings": 8, "maxBanes": 1, "maxMarines": 3,
+    "maxLings": 8, "maxBanes": 3, "maxMarines": 3,
+    "zergSpeed": 1, "terranSpeed": 1.5,
     "marineSpawnRateMult": 1.5,
     "marineWaveLo": 30, "marineWaveHi": 32,
     "marineRespawnLo": 10, "marineRespawnHi": 14,
@@ -9,16 +10,18 @@ vals = {
     "marineWaveSizeLo": 6, "marineWaveSizeHi": 8,
     "marineRespawnSizeLo": 2, "marineRespawnSizeHi": 4,
     "marineHp": 100, "marineShootDamage": 25, "marineShootInterval": 0.4,
-    "marineRangeMult": 3, "marineFleeHpPct": 0.9, "marineFleeRangeMult": 1.5,
+    "marineRangeMult": 3, "marineFleeHpPct": 0.9,
     "marineGroupWeight": 0.5, "marineAwayWeight": 1, "marineTurnRate": 0.25,
+    "marineHealPct": 0.10, "marineHealInterval": 0.5,
     "marineSplatScale": 1.4,
-    "respawnInterval": 2, "respawnBatch": 2,
-    "eggTime": 8.5, "eggHatchMult": 1.25,
+    "respawnInterval": 2, "respawnBatch": 4,
+    "eggTimeMin": 8, "eggTimeMax": 10, "eggHatchMult": 1,
     "lingHp": 100, "baneHp": 140,
     "lingBiteDamage": 10, "lingBiteInterval": 0.2,
     "baneSplashDamage": 90, "baneSplashR": 75, "baneSplatScale": 2.5,
-    "lingAllyRadius": 40, "lingAllyMin": 18,
-    "lingFleeRadius": 140, "lingFleeMarineMin": 3,
+    "attackGroupSize": 8, "berserkBanes": 2, "maxEngageMarines": 4,
+    "allyRadius": 40, "marineScanRadius": 140, "marineGroupRadius": 60,
+    "berserkCatchRadius": 80, "berserkSpeedMult": 1.5,
     "morphAge": 4, "morphCooldown": 2, "morphChancePerSec": 1,
     "retargetInterval": 0.5, "aimInterval": 0.3,
     "splatLife": 1.21, "splatBase": 7, "splatFadeStart": 0.6,
@@ -27,7 +30,7 @@ vals = {
     "lingBump": 10, "baneBump": 12, "marineBump": 12,
 }
 
-path = r'd:\git\gearfit\app\js\swarm.js'
+path = r'd:\git\clockling\app\js\swarm.js'
 src = open(path, encoding='utf-8').read()
 
 def fmt(v):

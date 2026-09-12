@@ -3,34 +3,28 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-    <meta name="description" content="Zerg Desk - Gear Fit 2 watch face"/>
-    <title>Zerg Desk</title>
+    <meta name="description" content="Clockling - battle sim widget"/>
+    <title>Clockling</title>
     <link rel="stylesheet" type="text/css" href="css/style.css"/>
 </head>
 <body>
-    <canvas id="swarm" width="216" height="432"></canvas>
+    <canvas id="swarm"></canvas>
     <div id="face">
-        <div id="weather">
-            <canvas id="w-icon" width="34" height="34"></canvas>
-            <div id="w-text">
-                <span id="w-temp">--&#176;</span>
-                <span id="w-label">...</span>
-            </div>
-        </div>
         <div id="clock">
             <div id="time">--:--</div>
             <div id="sec"></div>
             <div id="date">---</div>
         </div>
-        <div id="footer">
-            <span id="city"></span>
-            <span id="battery"></span>
-        </div>
     </div>
     <div id="pause" style="display:none;">&#10073;&#10073;</div>
     <script src="js/settings.js"></script>
+    <script src="js/tuning-meta.js"></script>
     <script src="js/swarm.js"></script>
-    <script src="js/weather.js"></script>
+    <script>
+        /* Make TUNING available to the settings controller. */
+        var TUNING = Swarm.TUNING;
+    </script>
+    <script src="js/settings-ui.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

@@ -2,258 +2,424 @@
 <html>
 <head>
     <meta charset="utf-8"/>
-    <title>Zerg Desk - watch face preview</title>
+    <title>Clockling - live tuning preview</title>
     <style>
+        * { box-sizing: border-box; }
         body {
             margin: 0;
             min-height: 100vh;
-            padding-left: 232px;
+            padding: 12px;
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 18px;
+            gap: 20px;
             background: radial-gradient(1200px 700px at 50% 20%, #191233 0%, #0a0714 70%);
             color: #e8e2ff;
             font-family: "Segoe UI", Arial, sans-serif;
         }
-        h1 { font-size: 15px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: #8f84bd; margin: 0; }
-        #stage { transform: scale(1.3); transform-origin: center top; }
-        #bezel {
-            width: 248px; height: 470px; padding: 10px;
-            border-radius: 58px;
-            background: linear-gradient(160deg, #2b2b36, #15151d 60%, #0d0d12);
-            box-shadow: 0 18px 60px rgba(0, 0, 0, .6), inset 0 2px 4px rgba(255, 255, 255, .14);
+
+        /* Left panel: Settings */
+        #settingsPanel {
+            width: 260px;
+            max-height: 100vh;
+            overflow-y: auto;
+            background: rgba(10, 7, 20, .85);
+            border: 1px solid #4b3f7a;
+            border-radius: 10px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 12px;
         }
-        #screen { width: 216px; height: 432px; border-radius: 46px; overflow: hidden; background: #0b0618; }
-        iframe { width: 216px; height: 432px; border: 0; display: block; }
-        #strap {
-            width: 172px; height: 58px; margin: 0 auto;
-            border-radius: 0 0 24px 24px;
-            background: linear-gradient(180deg, #1c1c24, #0e0e13);
-            box-shadow: 0 10px 24px rgba(0, 0, 0, .5);
+
+        #settingsPanel h2 { margin: 0 0 8px; font-size: 14px; letter-spacing: 2px; color: #b6ff5e; text-transform: uppercase; }
+        
+        .settings-group {
+            border-top: 1px solid #2d2350;
+            padding-top: 8px;
+            margin-top: 4px;
         }
-        #controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-        button {
-            background: #221a3d; color: #cfc4ff;
-            border: 1px solid #4b3f7a; border-radius: 8px;
-            padding: 7px 14px; font-size: 13px; cursor: pointer;
+        .settings-group:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+        .settings-group h3 { margin: 0 0 6px; font-size: 11px; letter-spacing: 1px; color: #8f84bd; text-transform: uppercase; }
+
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
         }
+        .settings-row label { flex: 1; display: flex; align-items: center; gap: 4px; color: #cfc4ff; }
+        .settings-row input[type="number"] {
+            width: 60px;
+            background: #221a3d;
+            color: #fff;
+            border: 1px solid #4b3f7a;
+            border-radius: 4px;
+            padding: 3px 5px;
+            font-size: 11px;
+        }
+        .settings-row input[type="checkbox"] {
+            cursor: pointer;
+        }
+        .settings-row button {
+            width: 28px;
+            height: 24px;
+            padding: 0;
+            background: #2d2350;
+            color: #8f84bd;
+            border: 1px solid #4b3f7a;
+            border-radius: 3px;
+            font-size: 10px;
+            cursor: pointer;
+        }
+        .settings-row button:hover {
+            background: #3d3450;
+            color: #b6ff5e;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #2d2350;
+        }
+        button.action {
+            flex: 1;
+            background: #221a3d;
+            color: #cfc4ff;
+            border: 1px solid #4b3f7a;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        button.action:hover { background: #2d2350; border-color: #b6ff5e; color: #b6ff5e; }
+
+        .collapsible {
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .collapsible::before {
+            content: "▶";
+            width: 12px;
+            text-align: center;
+            color: #8f84bd;
+        }
+        .collapsible.expanded::before { content: "▼"; }
+        .collapsible-content { display: none; }
+        .collapsible.expanded + .collapsible-content { display: block; }
+
+        /* Center: Sim display */
+        #displayArea {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex: 1;
+        }
+
+        h1 { font-size: 15px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: #8f84bd; margin: 0 0 12px; }
+
+        #stage { min-width: 300px; min-height: 500px; }
+        #screen { width: 864px; height: 864px; overflow: hidden; background: #0b0618; border: 1px solid #4b3f7a; }
+        iframe { width: 864px; height: 864px; border: 0; display: block; }
+
+        #controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button { background: #221a3d; color: #cfc4ff; border: 1px solid #4b3f7a; border-radius: 8px; padding: 7px 14px; font-size: 13px; cursor: pointer; }
         button:hover { background: #2d2350; border-color: #b6ff5e; color: #b6ff5e; }
         #controls label.ctl { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #cfc4ff; }
         #controls select { background: #221a3d; color: #cfc4ff; border: 1px solid #4b3f7a; border-radius: 8px; padding: 5px 8px; font-size: 13px; }
-        .hint { font-size: 12px; color: #6d6392; margin: 0; text-align: center; }
-        code { color: #b6ff5e; }
-        #tuner {
-            position: fixed; left: 12px; top: 12px; width: 210px;
-            max-height: calc(100vh - 40px); overflow-y: auto;
-            background: rgba(10, 7, 20, .72); border: 1px solid #4b3f7a;
-            border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 6px;
-            font-size: 12px; color: #cfc4ff;
-        }
-        #tuner h3 { margin: 0 0 4px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #b6ff5e; }
-        #tuner label { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-        #tuner input {
-            width: 70px; background: #221a3d; color: #fff; border: 1px solid #4b3f7a;
-            border-radius: 4px; padding: 3px 5px; font-size: 12px;
-        }
-        #tuner h4 {
-            margin: 10px 0 2px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
-            color: #8f84bd; border-top: 1px solid #2d2350; padding-top: 8px;
-        }
-        #tuner select { width: 100%; background: #221a3d; color: #cfc4ff; border: 1px solid #4b3f7a; border-radius: 4px; padding: 3px 5px; font-size: 12px; }
+
+        .hint { font-size: 12px; color: #6d6392; margin-top: 10px; text-align: center; }
+
+        #settingsPanel::-webkit-scrollbar { width: 8px; }
+        #settingsPanel::-webkit-scrollbar-track { background: transparent; }
+        #settingsPanel::-webkit-scrollbar-thumb { background: #4b3f7a; border-radius: 4px; }
+        #settingsPanel::-webkit-scrollbar-thumb:hover { background: #6b5f9a; }
     </style>
 </head>
 <body>
-    <h1>Zerg Desk &middot; watch face preview</h1>
-    <div id="tuner">
-        <h3>Tune (live)</h3>
-        <label>Settings file
-            <select id="presetSel">
-                <option value="preview">preview</option>
-                <option value="fit2">fit2</option>
-                <option value="2x2res">2x2res</option>
-                <option value="2x2copy">2x2copy</option>
-                <option value="preview2">preview2</option>
-            </select>
-        </label>
-        <button id="saveBtn">Save settings</button>
-        <span id="saveStatus"></span>
-
-        <h4>Max values</h4>
-        <label>maxLings <input type="number" data-tun="maxLings" value="8" step="1"></label>
-        <label>maxBanes <input type="number" data-tun="maxBanes" value="2" step="1"></label>
-        <label>maxMarines <input type="number" data-tun="maxMarines" value="4" step="1"></label>
-
-        <h4>Terran</h4>
-        <label>marineSpawnRateMult <input type="number" data-tun="marineSpawnRateMult" value="1" step="0.1"></label>
-        <label title="How long after all marines die until the next wave">marineWaveLo <input type="number" data-tun="marineWaveLo" value="9" step="1"></label>
-        <label title="How long after all marines die until the next wave">marineWaveHi <input type="number" data-tun="marineWaveHi" value="11" step="1"></label>
-        <label title="How often marines spawn while marines are alive">marineRespawnLo <input type="number" data-tun="marineRespawnLo" value="19" step="1"></label>
-        <label title="How often marines spawn while marines are alive">marineRespawnHi <input type="number" data-tun="marineRespawnHi" value="21" step="1"></label>
-        <label>marineSpawnGap <input type="number" data-tun="marineSpawnGap" value="0.5" step="0.1"></label>
-        <label>marineSpawnInset <input type="number" data-tun="marineSpawnInset" value="6" step="1"></label>
-        <label title="Min marines per wave (no marines alive)">marineWaveSizeLo <input type="number" data-tun="marineWaveSizeLo" value="2" step="1"></label>
-        <label title="Max marines per wave (no marines alive)">marineWaveSizeHi <input type="number" data-tun="marineWaveSizeHi" value="3" step="1"></label>
-        <label title="Min marines per respawn cycle (while alive)">marineRespawnSizeLo <input type="number" data-tun="marineRespawnSizeLo" value="1" step="1"></label>
-        <label title="Max marines per respawn cycle (while alive)">marineRespawnSizeHi <input type="number" data-tun="marineRespawnSizeHi" value="2" step="1"></label>
-        <label>marineHp <input type="number" data-tun="marineHp" value="100" step="5"></label>
-        <label>marineShootDamage <input type="number" data-tun="marineShootDamage" value="25" step="5"></label>
-        <label>marineShootInterval <input type="number" data-tun="marineShootInterval" value="0.5" step="0.1"></label>
-        <label>marineRangeMult <input type="number" data-tun="marineRangeMult" value="3" step="0.5"></label>
-        <label>marineFleeHpPct <input type="number" data-tun="marineFleeHpPct" value="0.9" step="0.05"></label>
-        <label>marineFleeRangeMult <input type="number" data-tun="marineFleeRangeMult" value="1.5" step="0.1"></label>
-        <label>marineGroupWeight <input type="number" data-tun="marineGroupWeight" value="0.5" step="0.1"></label>
-        <label>marineAwayWeight <input type="number" data-tun="marineAwayWeight" value="1" step="0.1"></label>
-        <label>marineTurnRate <input type="number" data-tun="marineTurnRate" value="0.25" step="0.05"></label>
-        <label>marineSplatScale <input type="number" data-tun="marineSplatScale" value="1.4" step="0.1"></label>
-
-        <h4>Zerg</h4>
-        <label>respawnInterval <input type="number" data-tun="respawnInterval" value="2.4" step="0.1"></label>
-        <label>respawnBatch <input type="number" data-tun="respawnBatch" value="2" step="1"></label>
-        <label>eggTime <input type="number" data-tun="eggTime" value="3" step="0.5"></label>
-        <label>eggHatchMult <input type="number" data-tun="eggHatchMult" value="2" step="0.5"></label>
-        <label>lingHp <input type="number" data-tun="lingHp" value="100" step="5"></label>
-        <label>baneHp <input type="number" data-tun="baneHp" value="150" step="10"></label>
-        <label>lingBiteDamage <input type="number" data-tun="lingBiteDamage" value="10" step="1"></label>
-        <label>lingBiteInterval <input type="number" data-tun="lingBiteInterval" value="0.2" step="0.05"></label>
-        <label>baneSplashDamage <input type="number" data-tun="baneSplashDamage" value="90" step="5"></label>
-        <label>baneSplashR <input type="number" data-tun="baneSplashR" value="75" step="5"></label>
-        <label>baneSplatScale <input type="number" data-tun="baneSplatScale" value="2" step="0.1"></label>
-        <label>lingAllyRadius <input type="number" data-tun="lingAllyRadius" value="40" step="5"></label>
-        <label>lingAllyMin <input type="number" data-tun="lingAllyMin" value="2" step="1"></label>
-        <label>lingFleeRadius <input type="number" data-tun="lingFleeRadius" value="140" step="5"></label>
-        <label>lingFleeMarineMin <input type="number" data-tun="lingFleeMarineMin" value="2" step="1"></label>
-        <label>morphAge <input type="number" data-tun="morphAge" value="15" step="1"></label>
-        <label>morphCooldown <input type="number" data-tun="morphCooldown" value="5" step="1"></label>
-        <label>morphChancePerSec <input type="number" data-tun="morphChancePerSec" value="0.5" step="0.1"></label>
-        <label>lingBerserkBanes <input type="number" data-tun="lingBerserkBanes" value="2" step="1"></label>
-        <label>lingBerserkMult <input type="number" data-tun="lingBerserkMult" value="1.5" step="0.1"></label>
-        <label>lingSeekCooldown <input type="number" data-tun="lingSeekCooldown" value="3" step="0.5"></label>
-        <label>lingSeekPairCooldown <input type="number" data-tun="lingSeekPairCooldown" value="5" step="0.5"></label>
-
-        <h4>Visuals</h4>
-        <label>retargetInterval <input type="number" data-tun="retargetInterval" value="0.5" step="0.1"></label>
-        <label>aimInterval <input type="number" data-tun="aimInterval" value="0.3" step="0.1"></label>
-        <label>splatLife <input type="number" data-tun="splatLife" value="1.21" step="0.1"></label>
-        <label>splatBase <input type="number" data-tun="splatBase" value="7" step="1"></label>
-        <label>splatFadeStart <input type="number" data-tun="splatFadeStart" value="0.6" step="0.05"></label>
-        <label>corpseLife <input type="number" data-tun="corpseLife" value="2.2" step="0.1"></label>
-        <label>lingW <input type="number" data-tun="lingW" value="30" step="1"></label>
-        <label>baneW <input type="number" data-tun="baneW" value="39" step="1"></label>
-        <label>marineW <input type="number" data-tun="marineW" value="42" step="1"></label>
-        <label>eggW <input type="number" data-tun="eggW" value="21" step="1"></label>
-        <label>lingBump <input type="number" data-tun="lingBump" value="10" step="1"></label>
-        <label>baneBump <input type="number" data-tun="baneBump" value="12" step="1"></label>
-        <label>marineBump <input type="number" data-tun="marineBump" value="12" step="1"></label>
-    </div>
-    <div id="stage">
-        <div id="bezel">
-            <div id="screen"><iframe id="watch" src="app/index.html"></iframe></div>
+    <div id="settingsPanel">
+        <h2>Settings</h2>
+        <div id="settingsContent"></div>
+        <div class="action-buttons">
+            <button class="action" id="saveBtn">Save All</button>
+            <button class="action" id="resetBtn">Reset</button>
         </div>
-        <div id="strap"></div>
     </div>
-    <div id="controls">
-        <button data-k="critters" data-d="-2">Fewer critters</button>
-        <button data-k="critters" data-d="2">More critters</button>
-        <button data-k="speed" data-s="1">Speed &times;1</button>
-        <button data-k="speed" data-s="2">Speed &times;2</button>
-        <button data-k="sec" data-t="toggle">Seconds on/off</button>
-        <button data-k="hour24" data-t="toggle">12h / 24h</button>
-        <label class="ctl"><input type="checkbox" id="showFrame"> Watch frame</label>
-        <label class="ctl">Zoom
-            <select id="zoomSel">
-                <option value="1">1x</option>
-                <option value="1.5">1.5x</option>
-                <option value="2">2x</option>
-                <option value="3">3x</option>
-                <option value="4">4x</option>
-                <option value="5">5x</option>
-                <option value="10">10x</option>
-            </select>
-        </label>
-        <label class="ctl">Res
-            <select id="resSel">
-                <option value="216x432">216x432</option>
-                <option value="432x432" selected>432x432</option>
-                <option value="432x864">432x864</option>
-            </select>
-        </label>
+
+    <div id="displayArea">
+        <h1>Clockling &middot; live tuning</h1>
+        <div id="stage">
+            <div id="screen"><iframe id="simFrame"></iframe></div>
+        </div>
+        <div id="controls">
+            <button data-k="sec" data-t="toggle">Seconds on/off</button>
+            <button data-k="hour24" data-t="toggle">12h / 24h</button>
+            <label class="ctl">Size <select id="resSel"><option value="small">Small</option><option value="medium" selected>Medium</option><option value="large">Large</option></select></label>
+            <label class="ctl">Time <select id="speedSel"><option value="1">1x</option><option value="2" selected>2x</option><option value="5">5x</option><option value="10">10x</option></select></label>
+            <label class="ctl">Units <select id="scaleSel"><option value="1">1x</option><option value="2" selected>2x</option><option value="5">5x</option><option value="10">10x</option></select></label>
+        </div>
+        <p class="hint">Run <code>node server.js</code> from project root</p>
     </div>
-    <p class="hint">
-        If the screen above is blank, serve the folder instead:<br>
-        run <code>python -m http.server</code> (or <code>node server.js</code>) in the project root,
-        then open <code>http://localhost:8000/preview.html</code>
-    </p>
+
+    <script src="app/js/settings.js"></script>
+    <script src="app/js/tuning-meta.js"></script>
+    <script src="app/js/swarm.js"></script>
     <script>
-        var state = { critters: 10, speed: 1, sec: 1, hour24: 1 };
-        var resSel = document.getElementById("resSel");
-        var presetSel = document.getElementById("presetSel");
-        var PRESETS_KEY = "zergPresets";
-        var ACTIVE_KEY = "zergActivePreset";
+        /* Make TUNING globally available from Swarm module */
+        var TUNING = Swarm.TUNING;
+    </script>
+    <script src="app/js/settings-ui.js"></script>
+    <script>
+        var state = { sec: 1, hour24: 1, speed: 2, scale: 2 };
+        var currentSettings, currentTuning;
+
+        function loadCurrent() {
+            currentSettings = SettingsUI.loadSettings();
+            currentTuning = SettingsUI.loadTuning();
+        }
+
+        function buildUI() {
+            loadCurrent();
+            var container = document.getElementById("settingsContent");
+            container.innerHTML = "";
+
+            var visibleSettings = [], advancedSettings = [];
+            var visibleTuning = [], advancedTuning = [];
+
+            for (var key in TUNING_META.settings) {
+                if (TUNING_META.settings[key].class === "Visible") visibleSettings.push(key);
+                else advancedSettings.push(key);
+            }
+            for (var key in TUNING_META.tuning) {
+                if (TUNING_META.tuning[key].class === "Visible") visibleTuning.push(key);
+                else advancedTuning.push(key);
+            }
+
+            /* Visible Settings */
+            if (visibleSettings.length) {
+                var grp = document.createElement("div");
+                grp.className = "settings-group";
+                var h = document.createElement("h3");
+                h.textContent = "Display";
+                grp.appendChild(h);
+                for (var i = 0; i < visibleSettings.length; i++) {
+                    addRow(grp, visibleSettings[i], "setting", false);
+                }
+                container.appendChild(grp);
+            }
+
+            /* Visible Tuning */
+            if (visibleTuning.length) {
+                var grp = document.createElement("div");
+                grp.className = "settings-group";
+                var h = document.createElement("h3");
+                h.textContent = "Battle";
+                grp.appendChild(h);
+                for (var i = 0; i < visibleTuning.length; i++) {
+                    addRow(grp, visibleTuning[i], "tuning", false);
+                }
+                container.appendChild(grp);
+            }
+
+            /* Advanced collapsible */
+            if (advancedSettings.length || advancedTuning.length) {
+                var coll = document.createElement("div");
+                coll.className = "collapsible settings-group";
+                coll.textContent = "Advanced";
+                coll.addEventListener("click", function () { this.classList.toggle("expanded"); });
+                container.appendChild(coll);
+
+                var cont = document.createElement("div");
+                cont.className = "collapsible-content";
+
+                if (advancedSettings.length) {
+                    var grp = document.createElement("div");
+                    grp.className = "settings-group";
+                    var h = document.createElement("h3");
+                    h.textContent = "Settings";
+                    grp.appendChild(h);
+                    for (var i = 0; i < advancedSettings.length; i++) {
+                        addRow(grp, advancedSettings[i], "setting", false);
+                    }
+                    cont.appendChild(grp);
+                }
+
+                if (advancedTuning.length) {
+                    var grp = document.createElement("div");
+                    grp.className = "settings-group";
+                    var h = document.createElement("h3");
+                    h.textContent = "Tuning";
+                    grp.appendChild(h);
+                    for (var i = 0; i < advancedTuning.length; i++) {
+                        addRow(grp, advancedTuning[i], "tuning", false);
+                    }
+                    cont.appendChild(grp);
+                }
+
+                container.appendChild(cont);
+            }
+        }
+
+        function addRow(parent, key, type, show) {
+            var meta = type === "setting" ? TUNING_META.settings[key] : TUNING_META.tuning[key];
+            var val = type === "setting" ? currentSettings[key] : currentTuning[key];
+
+            if (key === "mapW" || key === "mapH") return;
+
+            var row = document.createElement("div");
+            row.className = "settings-row";
+
+            if (typeof meta.default === "boolean") {
+                var label = document.createElement("label");
+                label.title = meta.meaning;
+                var cb = document.createElement("input");
+                cb.type = "checkbox";
+                cb.checked = val;
+                cb.title = meta.meaning;
+                cb.setAttribute("data-key", key);
+                cb.setAttribute("data-type", type);
+                label.appendChild(cb);
+                label.appendChild(document.createTextNode(" " + niceName(key)));
+                row.appendChild(label);
+            } else {
+                var label = document.createElement("label");
+                label.textContent = niceName(key);
+                label.title = meta.meaning;
+                row.appendChild(label);
+                var inp = document.createElement("input");
+                inp.type = "number";
+                inp.value = val;
+                inp.step = "0.1";
+                inp.title = meta.meaning;
+                inp.setAttribute("data-key", key);
+                inp.setAttribute("data-type", type);
+                row.appendChild(inp);
+            }
+
+            var btn = document.createElement("button");
+            btn.textContent = "↺";
+            btn.title = "Revert to default";
+            btn.setAttribute("data-key", key);
+            btn.setAttribute("data-type", type);
+            btn.addEventListener("click", function (e) {
+                e.preventDefault();
+                var k = this.getAttribute("data-key");
+                var t = this.getAttribute("data-type");
+                if (t === "setting") currentSettings[k] = TUNING_META.settings[k].default;
+                else currentTuning[k] = TUNING_META.tuning[k].default;
+                buildUI();
+                apply();
+            });
+            row.appendChild(btn);
+            parent.appendChild(row);
+        }
+
+        function niceName(key) {
+            var names = {
+                maxLings: "Maximum zerglings", maxBanes: "Maximum banelings", maxMarines: "Maximum marines",
+                lingHp: "Zergling health", baneHp: "Baneling health", marineHp: "Marine health",
+                attackGroupSize: "Zerglings to attack", berserkBanes: "Banelings to berserk",
+                berserkUntilDeath: "Berserk until death",
+                maxEngageMarines: "Max marines to engage", allyRadius: "Ally scan radius",
+                marineScanRadius: "Marine scan radius", marineGroupRadius: "Marine group radius",
+                berserkCatchRadius: "Berserk catch radius", berserkSpeedMult: "Berserk speed boost",
+                zergSpeed: "Zerg base speed", terranSpeed: "Terran base speed",
+                marineTactics: "Marine tactics",
+                showSeconds: "Show seconds", showClock: "Show clock",
+                hour24: "24-hour clock", respawnInterval: "Egg refill interval", respawnBatch: "Eggs per refill",
+                eggTimeMin: "Egg hatch min (s)", eggTimeMax: "Egg hatch max (s)"
+            };
+            if (names[key]) return names[key];
+            return key.replace(/([A-Z])/g, " $1").replace(/^./, function (c) { return c.toUpperCase(); });
+        }
 
         function apply() {
-            var q = "app/index.html?critters=" + state.critters + "&speed=" + state.speed +
-                "&sec=" + state.sec + "&hour24=" + state.hour24;
-            var ins = document.querySelectorAll("#tuner input[data-tun]");
-            for (var i = 0; i < ins.length; i++) {
-                q += "&tun_" + ins[i].getAttribute("data-tun") + "=" + ins[i].value;
+            var q = "app/index.html?sec=" + state.sec + "&hour24=" + state.hour24 + "&speed=" + state.speed + "&scale=" + state.scale;
+            for (var key in currentTuning) {
+                q += "&tun_" + encodeURIComponent(key) + "=" + encodeURIComponent(currentTuning[key]);
             }
-            var parts = resSel.value.split("x");
-            q += "&tun_mapW=" + parts[0] + "&tun_mapH=" + parts[1];
-            document.getElementById("watch").src = q;
-        }
-        function collectTuning() {
-            var o = {};
-            var ins = document.querySelectorAll("#tuner input[data-tun]");
-            for (var i = 0; i < ins.length; i++) o[ins[i].getAttribute("data-tun")] = ins[i].value;
-            return o;
-        }
-        function setInputs(obj) {
-            var ins = document.querySelectorAll("#tuner input[data-tun]");
-            for (var i = 0; i < ins.length; i++) {
-                var key = ins[i].getAttribute("data-tun");
-                if (obj[key] !== undefined) ins[i].value = obj[key];
-            }
-        }
-        function getPresets() {
-            try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || "{}"); } catch (e) { return {}; }
-        }
-        function seedPresets() {
-            var p = getPresets();
-            var d = collectTuning();
-            if (!p.preview) p.preview = d;
-            if (!p.fit2) p.fit2 = d;
-            if (!p["2x2res"]) p["2x2res"] = d;
-            if (!p["2x2copy"]) p["2x2copy"] = p["2x2res"] || d;
-            if (!p.preview2) p.preview2 = p.preview || d;
-            localStorage.setItem(PRESETS_KEY, JSON.stringify(p));
-            return p;
+            document.getElementById("simFrame").src = q;
         }
 
-        var saveStatus = document.getElementById("saveStatus");
         document.getElementById("saveBtn").addEventListener("click", function () {
-            try {
-                var p = getPresets();
-                p[presetSel.value] = collectTuning();
-                localStorage.setItem(PRESETS_KEY, JSON.stringify(p));
-                saveStatus.textContent = "saved \u2713";
-                setTimeout(function () { saveStatus.textContent = ""; }, 1500);
-            } catch (e) { saveStatus.textContent = "save failed"; }
-        });
-        presetSel.addEventListener("change", function () {
-            localStorage.setItem(ACTIVE_KEY, presetSel.value);
-            var p = getPresets();
-            var v = p[presetSel.value];
-            if (v) { setInputs(v); apply(); }
+            var inputs = document.querySelectorAll("#settingsPanel input");
+            for (var i = 0; i < inputs.length; i++) {
+                var inp = inputs[i];
+                var key = inp.getAttribute("data-key");
+                var type = inp.getAttribute("data-type");
+                if (key && type) {
+                    var val = inp.type === "checkbox" ? inp.checked : parseFloat(inp.value);
+                    if (type === "setting") currentSettings[key] = val;
+                    else currentTuning[key] = val;
+                }
+            }
+            SettingsUI.saveSettings(currentSettings);
+            SettingsUI.saveTuning(currentTuning);
+            this.textContent = "✓ Saved";
+            var self = this;
+            setTimeout(function () { self.textContent = "Save All"; }, 1500);
+            apply();
         });
 
-        /* first load: seed presets, load active preset */
-        var presets = seedPresets();
-        var active = localStorage.getItem(ACTIVE_KEY) || "preview";
-        presetSel.value = active;
-        var av = presets[active];
-        if (av) setInputs(av);
+        document.getElementById("resetBtn").addEventListener("click", function () {
+            if (confirm("Reset all to defaults?")) {
+                SettingsUI.resetAllSettings();
+                SettingsUI.resetAllTuning();
+                buildUI();
+                applySize(); /* re-apply the size preset so mapW/mapH stay correct */
+                apply();
+            }
+        });
+
+        var resSel = document.getElementById("resSel");
+        var sizes = {
+            small: { w: 432, h: 432 },
+            medium: { w: 864, h: 864 },
+            large: { w: 1296, h: 1296 }
+        };
+
+        function applySize() {
+            var size = sizes[resSel.value];
+            var w = size.w, h = size.h;
+            currentTuning.mapW = w;
+            currentTuning.mapH = h;
+            document.getElementById("simFrame").style.width = w + "px";
+            document.getElementById("simFrame").style.height = h + "px";
+            document.getElementById("screen").style.width = w + "px";
+            document.getElementById("screen").style.height = h + "px";
+        }
+
+        resSel.addEventListener("change", function () { applySize(); apply(); });
+
+        var speedSel = document.getElementById("speedSel");
+        var scaleSel = document.getElementById("scaleSel");
+        function liveSim() {
+            var f = document.getElementById("simFrame");
+            if (f && f.contentWindow && f.contentWindow.Swarm) {
+                f.contentWindow.Swarm.setGameSpeed(speedSel.value);
+                f.contentWindow.Swarm.setUnitScale(scaleSel.value);
+            }
+        }
+        speedSel.addEventListener("change", function () {
+            state.speed = this.value;
+            liveSim();
+        });
+        scaleSel.addEventListener("change", function () {
+            state.scale = this.value;
+            liveSim();
+        });
 
         var btns = document.querySelectorAll("button[data-k]");
         for (var i = 0; i < btns.length; i++) {
@@ -263,48 +429,13 @@
                     state[k] = state[k] ? 0 : 1;
                 } else if (this.getAttribute("data-d")) {
                     state[k] = Math.max(1, state[k] + parseInt(this.getAttribute("data-d"), 10));
-                } else if (this.getAttribute("data-s")) {
-                    state[k] = parseFloat(this.getAttribute("data-s"));
                 }
                 apply();
             });
         }
-        var tins = document.querySelectorAll("#tuner input[data-tun]");
-        for (var j = 0; j < tins.length; j++) {
-            tins[j].addEventListener("input", apply);
-        }
 
-        /* watch frame toggle + zoom + resolution */
-        var showFrameCb = document.getElementById("showFrame");
-        var zoomSel = document.getElementById("zoomSel");
-        function applyFrame() {
-            var watchRes = resSel.value === "216x432";
-            var show = showFrameCb.checked && watchRes;
-            document.getElementById("bezel").style.background = show ? "" : "none";
-            document.getElementById("bezel").style.padding = show ? "" : "0";
-            document.getElementById("bezel").style.borderRadius = show ? "" : "0";
-            document.getElementById("bezel").style.boxShadow = show ? "" : "none";
-            document.getElementById("strap").style.display = show ? "" : "none";
-            document.getElementById("screen").style.borderRadius = show ? "" : "0";
-            document.getElementById("screen").style.outline = show ? "" : "1px solid #4b3f7a";
-        }
-        function applySize() {
-            var parts = resSel.value.split("x");
-            var w = parseInt(parts[0], 10), h = parseInt(parts[1], 10);
-            document.getElementById("watch").style.width = w + "px";
-            document.getElementById("watch").style.height = h + "px";
-            document.getElementById("screen").style.width = w + "px";
-            document.getElementById("screen").style.height = h + "px";
-            applyFrame();
-        }
-        function applyZoom() {
-            document.getElementById("stage").style.transform = "scale(" + zoomSel.value + ")";
-        }
-        resSel.addEventListener("change", function () { applySize(); apply(); });
-        showFrameCb.addEventListener("change", applyFrame);
-        zoomSel.addEventListener("change", applyZoom);
+        buildUI();
         applySize();
-        applyZoom();
         apply();
     </script>
 </body>

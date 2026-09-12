@@ -1,15 +1,43 @@
 # ⚙️ Clockling
 
-A live **zerglings vs marines battle** with a clock and weather on top — being reborn as a
-**phone widget (Android)** and a **Windows desktop widget**, after the original Gear Fit 2
-watch-face version (repo `gearfit`) was mothballed.
+A live **zerglings vs marines battle** with a clock on top, packaged as a
+**phone widget (Android)** and a **Windows desktop widget**.
 
-Time & weather on top. Total war underneath.
+Time on top. Total war underneath.
 
 ## Status
 
-- ✅ Working web **preview** (battle sim + clock/weather + live tuning panel) — carried over from the watch repo.
+- ✅ Working web **preview** (battle sim + clock + live settings panel with save/revert).
 - 🚧 Being converted into Android + Windows widgets.
+
+## Unit rules
+
+Each unit follows a short, fixed set of rules (kept intentionally simple):
+
+**Zergling**
+1. **Guard** — avoid nearby marines and flock together around the eggs
+   (starling-murmuration style, wherever the eggs are).
+2. **Group attack** — attack when `attackGroupSize` allies are within `allyRadius`
+   **and** the target marine's cluster (marines within `marineGroupRadius`) is no
+   bigger than `maxEngageMarines`.
+3. **Berserk** — catch berserk from a berserk bane within `berserkCatchRadius`, then
+   charge at berserk speed. Cancel and retreat when outnumbered, unless
+   `berserkUntilDeath` is on.
+4. **Fall back** — alone, or facing too many marines, return to the safe quadrant.
+
+**Baneling**
+1. **Guard** — same as zerglings: avoid marines and flock around the eggs.
+2. **Berserk** — when `berserkBanes` banelings are alive (counting itself), charge and
+   explode on contact. Banelings never lose berserk once they have it.
+
+**Marine** (with `marineTactics` on)
+1. **Flee / kite** — back away if damaged or a zerg is in weapon range.
+2. **Regroup** — outnumbered, move toward the closest marine.
+3. **Advance** — otherwise push toward the nearest zerg.
+
+Each rule maps to a clearly-named parameter (`attackGroupSize`, `berserkBanes`,
+`maxEngageMarines`, …). See `TUNING.md` for the full list and every setting's
+**Core / Normal / Advanced** tier.
 
 ## Quickstart (preview)
 
@@ -18,18 +46,22 @@ node server.js
 # open http://127.0.0.1:8080/preview.html
 ```
 
+The preview toolbar has **Time** (1x/2x/5x/10x game speed) and **Units** (1x/2x/5x/10x
+population) dropdowns — both apply live without resetting the simulation.
+
 ## Repo layout
 
 ```
 clockling/
-├─ app/                 # the battle sim + clock/weather web app (platform-agnostic core)
+├─ app/                 # the battle sim + clock web app (platform-agnostic core)
 │  ├─ index.html
 │  ├─ css/style.css
 │  ├─ js/
 │  │  ├─ swarm.js       # battle sim (all game logic + TUNING defaults)
-│  │  ├─ main.js        # clock, battery/tap glue (has watch-era code to strip)
-│  │  ├─ weather.js     # Open-Meteo weather + TimeSync (internet clock)
-│  │  └─ settings.js    # base SETTINGS + URL overrides
+│  │  ├─ main.js        # clock/tap glue
+│  │  ├─ settings.js    # base SETTINGS + persisted overrides
+│  │  ├─ tuning-meta.js # TUNING/SETTINGS metadata (visibility, defaults)
+│  │  └─ settings-ui.js # load/save/revert settings to local storage
 │  └─ images/           # sprite frames (lings, banes, marines, eggs)
 ├─ preview.html         # browser sim + live tuning panel
 ├─ server.js            # zero-dep static server for the preview
@@ -40,5 +72,5 @@ clockling/
 
 ## Docs
 
-- **[BRIEF.md](BRIEF.md)** — the plan: preview → widget, settings model, remove "docked", hide weather/clock, Android + Windows widget approaches, deployment.
-- **[TUNING.md](TUNING.md)** — every `TUNING` value documented (default, meaning, visible vs advanced).
+- **[BRIEF.md](BRIEF.md)** — the plan: preview → widget, settings model, Android + Windows widget approaches, deployment.
+- **[TUNING.md](TUNING.md)** — every `TUNING` value documented, with its Core / Normal / Advanced tier.

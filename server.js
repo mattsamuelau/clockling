@@ -35,5 +35,5 @@ http.createServer(function (req, res) {
         res.end(data);
     });
 }).listen(PORT, function () {
-    console.log("Zerg Desk preview: http://127.0.0.1:" + PORT + "/preview.html");
+    console.log("Clockling preview: http://127.0.0.1:" + PORT + "/preview.html");
 });
