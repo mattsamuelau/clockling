@@ -9,6 +9,9 @@
 namespace touch {
 
 static const int RAW_ERR = 20;
+static bool s_landscape = false;
+
+void setLandscape(bool landscape) { s_landscape = landscape; }
 static const int CAL_A_MIN = 527, CAL_A_MAX = 3552;   /* 0x90 channel -> screen y */
 static const int CAL_B_MIN = 683, CAL_B_MAX = 3464;   /* 0xD0 channel -> screen x */
 
@@ -53,11 +56,17 @@ bool read(int16_t* x, int16_t* y) {
         if (abs(b - readAxis(0xD0)) > RAW_ERR) return false;
     }
     if (a <= 0 || a >= 4095 || b <= 0 || b >= 4095) return false;
-    /* calibration crosses sit 30 px in from the edges */
-    long sx = map(b, CAL_B_MIN, CAL_B_MAX, 30, 240 - 30);
-    long sy = map(a, CAL_A_MIN, CAL_A_MAX, 30, 320 - 30);
-    *x = (int16_t)constrain(240 - sx, 0L, 239L);
-    *y = (int16_t)constrain(sy, 0L, 319L);
+    /* calibration crosses sit 30 px in from the edges. Landscape is Freenove's
+     * native rotation 1; portrait is rotation 0 (xyswap + xflip). */
+    long lx = map(a, CAL_A_MIN, CAL_A_MAX, 30, 320 - 30);   /* landscape x */
+    long ly = map(b, CAL_B_MIN, CAL_B_MAX, 30, 240 - 30);   /* landscape y */
+    if (s_landscape) {
+        *x = (int16_t)constrain(lx, 0L, 319L);
+        *y = (int16_t)constrain(ly, 0L, 239L);
+    } else {
+        *x = (int16_t)constrain(240 - ly, 0L, 239L);
+        *y = (int16_t)constrain(lx, 0L, 319L);
+    }
     return true;
 }
 

@@ -1,10 +1,12 @@
 /* Clockling - settings for the clock and widget display.
  * showClock: hide the clock block (battle only).
+ * landscape: horizontal battlefield (wider than tall) instead of vertical.
  */
 var SETTINGS = {
     hour24: true,
     showSeconds: true,
     showClock: true,
+    landscape: false,
     unitCount: 10,
     unitSpeed: 1.0
 };
@@ -31,5 +33,6 @@ var SETTINGS = {
         else if (kv[0] === "speed") SETTINGS.unitSpeed = parseFloat(v) || SETTINGS.unitSpeed;
         else if (kv[0] === "hour24") SETTINGS.hour24 = v === "1" || v === "true";
         else if (kv[0] === "sec") SETTINGS.showSeconds = v !== "0";
+        else if (kv[0] === "landscape") SETTINGS.landscape = v === "1" || v === "true";
     }
 })();

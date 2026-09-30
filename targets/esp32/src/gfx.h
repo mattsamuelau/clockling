@@ -17,7 +17,7 @@ inline uint16_t rgb(uint8_t r, uint8_t g, uint8_t b) {
     return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
 }
 
-void initBackground();
+void initBackground(bool landscape);   /* (re)load the baked gradient for this orientation */
 void background(Band& b);
 void fillRect(Band& b, float x, float y, float w, float h, uint16_t col, uint8_t alpha);
 void line(Band& b, float x0, float y0, float x1, float y1, float width, uint16_t col, uint8_t alpha);

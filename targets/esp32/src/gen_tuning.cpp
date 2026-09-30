@@ -73,6 +73,7 @@ const TMeta TMETA[T_COUNT] = {
   {"hour24", 1.0f, 1, 0, 1, "24h vs 12h clock"},
   {"showSeconds", 0.0f, 1, 0, 1, "Show seconds in clock"},
   {"showClock", 1.0f, 1, 0, 1, "Show clock block"},
+  {"landscape", 0.0f, 1, 0, 1, "Horizontal screen (off = vertical)"},
   {"unitCount", 10.0f, 0, 1, 0, "Initial unit count"},
   {"unitSpeed", 1.0f, 0, 1, 0, "Global speed multiplier for all units"},
   {"gameSpeed", 1.0f, 0, 0, 0, "Game speed multiplier (preview 'Time' dropdown)"},

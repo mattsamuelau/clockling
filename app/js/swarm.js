@@ -149,6 +149,10 @@ var Swarm = (function () {
     /* map resolution (preview can override via tun_mapW / tun_mapH) */
     W = TUNING.mapW;
     H = TUNING.mapH;
+    /* orientation setting: landscape = wider than tall, portrait = taller than wide */
+    if (typeof SETTINGS !== "undefined" && (SETTINGS.landscape ? W < H : W > H)) {
+        var tmpW = W; W = H; H = tmpW;
+    }
 
     var MAX_LINGS = TUNING.maxLings;
     var MAX_BANES = TUNING.maxBanes;

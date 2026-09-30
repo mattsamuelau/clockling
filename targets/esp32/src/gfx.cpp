@@ -35,16 +35,19 @@ static inline float fastAtan2(float y, float x) {
  * The radial gradient is baked by gen_assets.py as 4-bit palette indices and
  * copied to RAM once: reading it from flash every frame thrashes the cache. */
 static uint8_t* s_bg = nullptr;
+static const uint8_t* s_bgFlash = BG_NIB_P;
 static uint16_t s_pal[16];
 
-void initBackground() {
-    memcpy(s_pal, BG_PAL, sizeof(s_pal));
-    s_bg = (uint8_t*)malloc(sizeof(BG_NIB));
-    if (s_bg) memcpy(s_bg, BG_NIB, sizeof(BG_NIB));
+void initBackground(bool landscape) {
+    static_assert(sizeof(BG_NIB_P) == sizeof(BG_NIB_L), "both orientations share one RAM buffer");
+    s_bgFlash = landscape ? BG_NIB_L : BG_NIB_P;
+    memcpy(s_pal, landscape ? BG_PAL_L : BG_PAL_P, sizeof(s_pal));
+    if (!s_bg) s_bg = (uint8_t*)malloc(sizeof(BG_NIB_P));
+    if (s_bg) memcpy(s_bg, s_bgFlash, sizeof(BG_NIB_P));
 }
 
 void background(Band& b) {
-    const uint8_t* src = (s_bg ? s_bg : BG_NIB) + (b.y0 * b.W) / 2;
+    const uint8_t* src = (s_bg ? s_bg : s_bgFlash) + (b.y0 * b.W) / 2;
     uint16_t* p = b.px;
     for (int n = b.W * b.h / 2; n > 0; n--) {
         uint8_t v = *src++;

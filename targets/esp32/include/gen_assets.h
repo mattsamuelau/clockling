@@ -75,6 +75,7 @@ enum TKey : uint8_t {
   T_hour24,
   T_showSeconds,
   T_showClock,
+  T_landscape,
   T_unitCount,
   T_unitSpeed,
   T_gameSpeed,
@@ -114,6 +115,9 @@ extern const Font FONT_SEC;
 extern const Font FONT_DATE;
 extern const Font FONT_TEXT;
 
-// ---- background (240x320, 4-bit indices into a 16-colour RGB565 palette)
-extern const uint16_t BG_PAL[16];
-extern const uint8_t BG_NIB[38400];
+// ---- background 240x320 (4-bit indices into a 16-colour RGB565 palette)
+extern const uint16_t BG_PAL_P[16];
+extern const uint8_t BG_NIB_P[38400];
+// ---- background 320x240 (4-bit indices into a 16-colour RGB565 palette)
+extern const uint16_t BG_PAL_L[16];
+extern const uint8_t BG_NIB_L[38400];
