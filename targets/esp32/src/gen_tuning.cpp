@@ -68,6 +68,8 @@ const TMeta TMETA[T_COUNT] = {
   {"zergSpeed", 1.0f, 0, 0, 8, "Zerg base speed multiplier"},
   {"terranSpeed", 1.5f, 0, 0, 8, "Terran base speed multiplier"},
   {"marineTactics", 1.0f, 1, 0, 7, "New marine AI: kite, regroup, or advance"},
+  {"marineEntrySpeed", 2.0f, 0, 0, 6, "Speed multiplier while new marines march in from off-screen"},
+  {"marineSightMult", 2.0f, 0, 0, 7, "Marines patrol when no zerg is within this x weapon range"},
   {"hour24", 1.0f, 1, 0, 1, "24h vs 12h clock"},
   {"showSeconds", 0.0f, 1, 0, 1, "Show seconds in clock"},
   {"showClock", 1.0f, 1, 0, 1, "Show clock block"},

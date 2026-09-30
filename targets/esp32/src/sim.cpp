@@ -247,6 +247,27 @@ static float wrapAngle(float d) {
 static float eggCx = 0, eggCy = 0;
 static int eggN = 0;
 static const float ZERG_TURN = 0.45f;   /* zerg steering: share of the turn closed per 1/8 s */
+static float patrolX = 0, patrolY = 0, patrolT = 0;  /* shared marine patrol waypoint */
+
+/* shared squad waypoint: a new random spot when the squad reaches it or after 8 s */
+static void patrolWaypoint() {
+    float x = 0, y = 0; int n = 0;
+    for (int i = 0; i < nUnits; i++) {
+        const Unit& m = units[i];
+        if (m.kind != K_MARINE || m.dead) continue;
+        x += m.x; y += m.y; n++;
+    }
+    bool near = false;
+    if (n) {
+        float dx = patrolX - x / n, dy = patrolY - y / n;
+        near = dx * dx + dy * dy < 25 * 25;
+    }
+    if (patrolT <= 0 || near) {
+        patrolX = frand(30, W - 30);
+        patrolY = frand(30, H - 30);
+        patrolT = 8;
+    }
+}
 
 /* guard: flock as one swarm (boids: separation + alignment + cohesion) around
  * the eggs, out of marine weapon range and out of the marine quadrant */
@@ -406,7 +427,17 @@ static void marineTacticsSteer(Unit* c) {
     }
     float range = marineRange();
 
-    if (z && (damaged || dz < range * TUN(marineKiteFrac))) {
+    if (dz > range * TUN(marineSightMult)) {
+        /* nothing in sight: close up, then patrol together until we find zerg */
+        if (sq && sqD > TUN(marineGroupRadius)) {
+            marineSteerToward(c, sqx, sqy, false);
+            c->moveMul = 1;
+        } else {
+            patrolWaypoint();
+            marineSteerToward(c, patrolX, patrolY, false);
+            c->moveMul = 0.6f;
+        }
+    } else if (z && (damaged || dz < range * TUN(marineKiteFrac))) {
         /* kite: back off from the nearest zerg, drifting toward the squad */
         float ax = (c->x - z->x) / dz * TUN(marineAwayWeight), ay = (c->y - z->y) / dz * TUN(marineAwayWeight);
         if (sq) {
@@ -508,7 +539,15 @@ static void step(Unit* c, float dt) {
         if (!c->entered && c->x >= 0 && c->x <= W && c->y >= 0 && c->y <= H) c->entered = true;
         if (c->flashT > 0) c->flashT -= dt;
         c->retarget -= dt;
-        if (c->retarget <= 0) {
+        if (c->deployT > 0) {
+            /* marching in: head straight for the deploy point at entry speed
+             * (still shooting), then switch to normal tactics */
+            c->deployT -= dt;
+            float ddx = c->deployX - c->x, ddy = c->deployY - c->y;
+            c->want = atan2f(ddy, ddx);
+            c->moveMul = TUN(marineEntrySpeed);
+            if (ddx * ddx + ddy * ddy < 64 || c->deployT <= 0) { c->deployT = 0; c->moveMul = 1; c->retarget = 0; }
+        } else if (c->retarget <= 0) {
             c->retarget = 0.3f;
             if (c->entered) {
                 if (TUNB(marineTactics)) marineTacticsSteer(c);
@@ -700,6 +739,7 @@ void update(float dt) {
 
     /* marines enter in waves, staggered, from the corner farthest from the lings */
     marineTimer -= dt;
+    if (patrolT > 0) patrolT -= dt;
     if (marineTimer <= 0) {
         bool marinesAlive = countKind(K_MARINE) > 0;
         float mInt = marinesAlive ? frand(TUN(marineRespawnLo), TUN(marineRespawnHi))
@@ -749,6 +789,11 @@ void update(float dt) {
                 waveSpawnY = mm->y;
                 mm->heading = atan2f(H / 2.0f - mm->y, W / 2.0f - mm->x) + frand(-0.3f, 0.3f);
                 mm->aim = mm->heading;
+                /* deploy point ~1/5 of the way into the arena, along the entry heading */
+                float dd = TUN(marineSpawnInset) + 0.22f * min(W, H);
+                mm->deployX = constrain(mm->x + cosf(mm->heading) * dd, 30.0f, W - 30.0f);
+                mm->deployY = constrain(mm->y + sinf(mm->heading) * dd, 30.0f, H - 30.0f);
+                mm->deployT = 3;
             }
             wavePending--;
         }

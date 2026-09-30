@@ -70,6 +70,8 @@ enum TKey : uint8_t {
   T_zergSpeed,
   T_terranSpeed,
   T_marineTactics,
+  T_marineEntrySpeed,
+  T_marineSightMult,
   T_hour24,
   T_showSeconds,
   T_showClock,
