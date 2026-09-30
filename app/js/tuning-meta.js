@@ -94,6 +94,7 @@ var TUNING_META = {
         hour24: { class: "Visible", default: true, meaning: "24h vs 12h clock" },
         showSeconds: { class: "Visible", default: true, meaning: "Show seconds in clock" },
         showClock: { class: "Visible", default: true, meaning: "Show clock block" },
+        landscape: { class: "Visible", default: false, meaning: "Horizontal screen (off = vertical)" },
         unitCount: { class: "Advanced", default: 10, meaning: "Initial unit count" },
         unitSpeed: { class: "Advanced", default: 1.0, meaning: "Global speed multiplier for all units" }
     },
@@ -109,6 +110,6 @@ var TUNING_META = {
         "Movement": ["zergSpeed", "terranSpeed"],
         "Visuals": ["lingW", "baneW", "marineW", "eggW", "lingBump", "baneBump", "marineBump", "splatLife", "splatBase", "splatFadeStart", "corpseLife", "marineSplatScale", "baneSplatScale", "retargetInterval", "aimInterval"],
         "Map": ["mapW", "mapH"],
-        "Display": ["hour24", "showSeconds", "showClock"]
+        "Display": ["hour24", "showSeconds", "showClock", "landscape"]
     }
 };

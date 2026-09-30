@@ -19,6 +19,7 @@ static bool s_wasTouched = false;
 static uint32_t s_touchStart = 0;
 static uint32_t s_bootDown = 0;
 static float s_brightness = -1;
+static bool s_landscape = false;
 static net::State s_lastNet = net::CONNECTING;
 
 static void setLine(render::Overlay& ov, int i, const char* s) {
@@ -41,6 +42,14 @@ static void buildOverlay(render::Overlay& ov) {
         setLine(ov, 1, "http://clockling.local");
         setLine(ov, 2, ("or http://" + net::ip()).c_str());
     }
+}
+
+/* rotate panel + touch and restart the battle for the new shape */
+static void applyOrientation() {
+    s_landscape = TUNB(landscape);
+    render::setLandscape(s_landscape);
+    touch::setLandscape(s_landscape);
+    sim::init(render::width(), render::height());
 }
 
 static void pollInput() {
@@ -79,7 +88,7 @@ void setup() {
     render::setBrightness(TUN(brightness));
     s_brightness = TUN(brightness);
     touch::begin();
-    sim::init(TFT_WIDTH, TFT_HEIGHT);
+    applyOrientation();
 
     render::Overlay ov;
     ov.show = true;
@@ -110,6 +119,8 @@ void loop() {
     net::State st = net::state();
     if (st == net::ONLINE && s_lastNet != net::ONLINE) s_infoUntil = millis() + 12000;
     s_lastNet = st;
+
+    if (TUNB(landscape) != s_landscape) applyOrientation();
 
     if (TUN(brightness) != s_brightness) {
         s_brightness = TUN(brightness);

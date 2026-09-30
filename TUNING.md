@@ -30,7 +30,7 @@ Settings are grouped into three tiers:
   `respawnInterval`, `respawnBatch`, `morphAge`, `morphCooldown`,
   `morphChancePerSec`, `marineSpawnRateMult`, `marineWaveLo`, `marineWaveHi`,
   `marineWaveSizeLo`, `marineWaveSizeHi`, `marineFleeHpPct`, `hour24`,
-  `showSeconds`, `showClock`, `unitSpeed`.
+  `showSeconds`, `showClock`, `landscape`, `unitSpeed`.
 - **Advanced** — visuals, collisions, and fine timing; rarely needed:
   `eggHatchMult`, `marineRespawnLo`, `marineRespawnHi`, `marineRespawnSizeLo`,
   `marineRespawnSizeHi`, `marineSpawnGap`, `marineSpawnInset`, `marineGroupWeight`,
@@ -144,6 +144,7 @@ Settings are grouped into three tiers:
 | `hour24` | true | 24h vs 12h clock. |
 | `showSeconds` | true | Show seconds. |
 | `showClock` | true | Show the clock block. |
+| `landscape` | false | Horizontal screen (on) or vertical (off). ESP32 rotates the panel live and restarts the battle; the web preview swaps `mapW`/`mapH`. |
 | `unitCount` | 10 | Initial unit count on first load. |
 | `unitSpeed` | 1.0 | Global unit movement speed multiplier. |
 

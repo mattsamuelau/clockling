@@ -21,6 +21,8 @@ pio device monitor -e fnk0114b     # fps / heap / IP log every 10 s
   Values apply live and persist in NVS.
 - **Tap** the screen to splat units; **press and hold** ~1.5 s to show the settings address.
 - **Hold BOOT** for 2 s to reopen the setup hotspot.
+- **Orientation:** the `landscape` checkbox (Display) switches between vertical 240x320 and
+  horizontal 320x240 live; the battle restarts for the new shape.
 
 ## How it's put together
 

@@ -13,8 +13,10 @@
 namespace render {
 
 static TFT_eSPI tft;
-static const int W = TFT_WIDTH, H = TFT_HEIGHT;
-static const int BAND_H = 32;
+static int W = TFT_WIDTH, H = TFT_HEIGHT;
+/* each band buffer holds BAND_PX pixels: 32 rows portrait, 24 rows landscape */
+static const int BAND_PX = 240 * 32;
+static int s_bandH = 32;
 static uint16_t* s_buf[2];
 static const int BL_CH = 7;
 
@@ -89,15 +91,26 @@ void begin() {
     tft.fillScreen(TFT_BLACK);
     tft.initDMA();
     for (int i = 0; i < 2; i++) {
-        s_buf[i] = (uint16_t*)heap_caps_malloc(W * BAND_H * 2, MALLOC_CAP_DMA);
+        s_buf[i] = (uint16_t*)heap_caps_malloc(BAND_PX * 2, MALLOC_CAP_DMA);
         if (!s_buf[i]) Serial.println("render: band buffer alloc failed");
     }
     ledcSetup(BL_CH, 5000, 8);
     ledcAttachPin(TFT_BL, BL_CH);
-    gfx::initBackground();
     spritesToRam();
     layoutClock();
 }
+
+void setLandscape(bool landscape) {
+    tft.dmaWait();
+    tft.setRotation(landscape ? 1 : 0);
+    W = tft.width();
+    H = tft.height();
+    s_bandH = BAND_PX / W;
+    gfx::initBackground(landscape);
+}
+
+int width() { return W; }
+int height() { return H; }
 
 void setBrightness(float pct) {
     pct = constrain(pct, 1.0f, 100.0f);
@@ -210,8 +223,8 @@ void frame(const Overlay& ov) {
     buildDrawList();
     tft.startWrite();
     int k = 0;
-    for (int y = 0; y < H; y += BAND_H, k ^= 1) {
-        Band b = {s_buf[k], W, y, min(BAND_H, H - y)};
+    for (int y = 0; y < H; y += s_bandH, k ^= 1) {
+        Band b = {s_buf[k], W, y, min(s_bandH, H - y)};
         drawBand(b, ov);
         /* panel expects big-endian RGB565 */
         uint32_t n = b.W * b.h;
