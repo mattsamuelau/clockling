@@ -34,10 +34,11 @@ EXTRA = {
     "fpsCap": (30, "Advanced", "Display", "Max frames per second (lower = cooler, less power)"),
 }
 # ESP32 defaults that differ from the web preview, as {key: scale}. On the 240x320
-# panel units look best at 0.75x the watch size; behaviour radii are halved so the
-# battlefield feels roomier. Speeds stay in px/s.
+# panel units look best at 0.75x the watch size. Behaviour radii use the same scale so
+# every ratio matches the web build (e.g. lings keep marineScanRadius > marine range,
+# allyRadius > flock spacing). Speeds stay in px/s.
 UNIT_SCALE = 0.75
-RADIUS_SCALE = 0.5
+RADIUS_SCALE = UNIT_SCALE
 SCALED = {k: UNIT_SCALE for k in ["lingW", "baneW", "marineW", "eggW", "lingBump", "baneBump",
                                    "marineBump", "splatBase"]}
 SCALED.update({k: RADIUS_SCALE for k in ["baneSplashR", "allyRadius", "marineScanRadius",

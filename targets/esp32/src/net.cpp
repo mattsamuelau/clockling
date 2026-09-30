@@ -36,30 +36,51 @@ static void onPortalSave() {
 }
 
 /* ------------------------------------------------------------------ settings API */
-static void sendJson(JsonDocument& doc) {
-    String out;
-    serializeJson(doc, out);
-    server.send(200, "application/json", out);
+/* JSON string escape for the few characters that can appear in meta text */
+static void appendEscaped(String& out, const char* s) {
+    out += '"';
+    for (; *s; s++) {
+        if (*s == '"' || *s == '\\') out += '\\';
+        out += *s;
+    }
+    out += '"';
 }
 
+/* Streamed in small chunks: building the ~10 KB document as one String can fail
+ * to allocate on a fragmented heap (the page then got an empty 200). */
 static void handleGetConfig() {
-    JsonDocument doc;
-    doc["tz"] = tuning::tz();
-    JsonArray groups = doc["groups"].to<JsonArray>();
-    for (int g = 0; g < TGROUP_COUNT; g++) groups.add(TGROUPS[g]);
-    JsonArray keys = doc["keys"].to<JsonArray>();
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "application/json", "");
+    String chunk;
+    chunk.reserve(512);
+    chunk = "{\"tz\":";
+    appendEscaped(chunk, tuning::tz().c_str());
+    chunk += ",\"groups\":[";
+    for (int g = 0; g < TGROUP_COUNT; g++) {
+        if (g) chunk += ',';
+        appendEscaped(chunk, TGROUPS[g]);
+    }
+    chunk += "],\"keys\":[";
+    server.sendContent(chunk);
+    char num[24];
     for (int i = 0; i < T_COUNT; i++) {
         const TMeta& m = TMETA[i];
-        JsonObject o = keys.add<JsonObject>();
-        o["k"] = m.key;
-        o["v"] = g_tun[i];
-        o["d"] = m.def;
-        o["b"] = m.isBool;
-        o["a"] = m.advanced;
-        o["g"] = m.group;
-        o["m"] = m.meaning;
+        chunk = i ? ",{\"k\":" : "{\"k\":";
+        appendEscaped(chunk, m.key);
+        snprintf(num, sizeof(num), "%g", g_tun[i]);
+        chunk += ",\"v\":"; chunk += num;
+        snprintf(num, sizeof(num), "%g", m.def);
+        chunk += ",\"d\":"; chunk += num;
+        chunk += ",\"b\":"; chunk += m.isBool;
+        chunk += ",\"a\":"; chunk += m.advanced;
+        chunk += ",\"g\":"; chunk += m.group;
+        chunk += ",\"m\":";
+        appendEscaped(chunk, m.meaning);
+        chunk += '}';
+        server.sendContent(chunk);
     }
-    sendJson(doc);
+    server.sendContent("]}");
+    server.sendContent("");   /* end of chunked response */
 }
 
 static void handlePostConfig() {

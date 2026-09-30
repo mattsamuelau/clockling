@@ -22,7 +22,7 @@ Settings are grouped into three tiers:
   `maxLings`, `maxBanes`, `maxMarines`, `attackGroupSize`, `berserkBanes`,
   `berserkUntilDeath`, `maxEngageMarines`, `allyRadius`, `marineScanRadius`,
   `marineGroupRadius`, `berserkCatchRadius`,
-  `eggTimeMin`, `eggTimeMax`, `marineTactics`.
+  `eggTimeMin`, `eggTimeMax`, `marineTactics`, `marineKiteFrac`.
 - **Normal** — the usual balance knobs (health, damage, speeds, spawn pace):
   `lingHp`, `baneHp`, `marineHp`, `lingBiteDamage`, `lingBiteInterval`,
   `baneSplashDamage`, `baneSplashR`, `marineShootDamage`, `marineShootInterval`,
@@ -79,12 +79,12 @@ Settings are grouped into three tiers:
 | `lingBiteInterval` | 0.2 | Seconds between bites. | Visible |
 | `baneSplashDamage` | 90 | Damage a baneling deals to every marine in blast radius. | Visible |
 | `baneSplashR` | 75 | Baneling blast radius (px). | Visible |
-| `attackGroupSize` | 8 | Allies needed before lings attack. | Visible |
+| `attackGroupSize` | 5 | Swarm size (lings + banes) needed to attack; capped at `maxLings`. | Visible |
 | `berserkBanes` | 2 | Banelings alive needed to trigger bane berserk. | Visible |
 | `berserkUntilDeath` | false | On: berserk never retreats; off: cancels when outnumbered. | Visible |
-| `maxEngageMarines` | 4 | Max marine group size a ling group will engage. | Visible |
-| `allyRadius` | 40 | Radius used to count nearby zerglings. | Visible |
-| `marineScanRadius` | 140 | Radius lings use to avoid marines. | Visible |
+| `maxEngageMarines` | 4 | Largest marine group a swarm will attack. | Visible |
+| `allyRadius` | 45 | Lings/banes this close to each other count as one swarm (keep above ~2x `lingBump` + 8). | Visible |
+| `marineScanRadius` | 140 | Idle lings keep this far from marines. Keep above marine range (`marineW` x `marineRangeMult`). | Visible |
 | `marineGroupRadius` | 60 | Radius around a marine used to count its group. | Visible |
 | `berserkCatchRadius` | 80 | Lings catch berserk from a berserk bane within this radius. | Visible |
 | `berserkSpeedMult` | 1.5 | Speed multiplier while berserk. | Visible |
@@ -108,11 +108,12 @@ Settings are grouped into three tiers:
 | `marineShootDamage` | 25 | Damage per marine shot. | Visible |
 | `marineShootInterval` | 0.4 | Seconds between shots. | Visible |
 | `marineRangeMult` | 3 | Weapon range = `marineRangeMult` × `marineW`. | Visible |
-| `marineFleeHpPct` | 0.9 | Marines flee below this HP fraction. | Advanced |
+| `marineFleeHpPct` | 0.5 | Marines kite away below this HP fraction. | Advanced |
+| `marineKiteFrac` | 0.6 | Marines back off from zerg closer than this fraction of their range. | Visible |
 | `marineGroupWeight` | 0.5 | Pull toward other marines. | Advanced |
 | `marineAwayWeight` | 1 | Push away from zerg. | Advanced |
-| `marineTurnRate` | 0.25 | How fast marines steer. | Advanced |
-| `marineTactics` | true | New marine AI: kite, regroup, or advance. | Visible |
+| `marineTurnRate` | 0.25 | Marine steering: share of the remaining turn closed every 1/8 s. | Advanced |
+| `marineTactics` | true | Marine AI: kite, hold and shoot, regroup, or advance (off = classic). | Visible |
 | `marineHealPct` | 0.10 | All units heal this fraction of max HP per tick. | Advanced |
 | `marineHealInterval` | 0.5 | Seconds between heal ticks. | Advanced |
 

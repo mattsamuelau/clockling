@@ -9,7 +9,7 @@ enum SplatCol : uint8_t { SC_LING, SC_BANE, SC_MARINE };
 
 struct Unit {
     Kind kind, hatchKind;
-    bool dead, berserk, entered, shooting;
+    bool dead, berserk, entered, shooting, attacking;
     int8_t face, faceDir;
     uint8_t frame;
     uint8_t splatCol;
@@ -17,6 +17,8 @@ struct Unit {
     float x, y, heading, speed, w, bumpR, frameTimer;
     float hp, age, t, hatchT, hatchMult, splatScale;
     float retarget, aim, aimT, shootCd, attackCd, healCd, flashT, hitX, hitY;
+    float want, moveMul;   /* steering target heading, marine speed factor */
+    int16_t cluster;       /* swarm id (lings/banes), -1 otherwise */
 };
 
 struct Splat { float x, y, life, max, base; uint8_t col, seed; };

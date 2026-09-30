@@ -32,6 +32,8 @@ var Swarm = (function () {
     var waveSpawnY = 0;
     var waveChainDir = 1;
     var gameSpeed = 1;
+    var eggCx = 0, eggCy = 0, eggN = 0;  /* egg centroid (lings guard it) */
+    var ZERG_TURN = 0.45;                  /* zerg steering: share of the turn closed per 1/8 s */
     var unitScale = 1;
 
     /* ALL tunable numbers live here so balance is easy to tweak. */
@@ -84,18 +86,19 @@ var Swarm = (function () {
         marineShootInterval: 0.4,
         lingBiteDamage: 10,     /* ling damage per bite */
         lingBiteInterval: 0.2,
-        marineHealPct: 0.10,    /* marines heal this fraction of max hp per tick */
+        marineHealPct: 0.1,    /* marines heal this fraction of max hp per tick */
         marineHealInterval: 0.5,
         marineGroupWeight: 0.5, /* pull toward other marines */
         marineAwayWeight: 1,  /* push away from zerg */
-        marineTurnRate: 0.25,   /* how fast marines steer */
-        marineFleeHpPct: 0.9,   /* marines flee lings below this hp fraction */
+        marineTurnRate: 0.25,   /* marine steering: share of the turn closed per 1/8 s */
+        marineFleeHpPct: 0.9,   /* marines kite below this hp fraction */
+        marineKiteFrac: 0.6,    /* marines back off from zerg closer than this x range */
         marineRangeMult: 3,      /* marine weapon range = this * marineW */
-        allyRadius: 40,          /* zerglings count allies within this radius */
-        attackGroupSize: 8,      /* allies needed before lings attack */
-        marineScanRadius: 140,   /* radius lings use to avoid nearby marines */
+        allyRadius: 40,          /* lings/banes this close to each other form one swarm */
+        attackGroupSize: 8,      /* swarm size needed to attack (capped at maxLings) */
+        marineScanRadius: 140,   /* idle lings keep this far from marines (> marine range) */
         marineGroupRadius: 60,   /* radius around a marine used to count its group */
-        maxEngageMarines: 4,     /* max marine group size a ling group will engage */
+        maxEngageMarines: 4,     /* largest marine group a swarm will attack */
         berserkSpeedMult: 1.5,   /* speed multiplier while berserk */
         berserkBanes: 2,         /* banes alive needed to trigger bane berserk */
         berserkCatchRadius: 80,  /* lings catch berserk from a berserk bane within this */
@@ -173,6 +176,7 @@ var Swarm = (function () {
     var MARINE_AWAY_W = TUNING.marineAwayWeight;
     var MARINE_TURN = TUNING.marineTurnRate;
     var MARINE_FLEE_PCT = TUNING.marineFleeHpPct;
+    var MARINE_KITE_FRAC = TUNING.marineKiteFrac;
     var MARINE_RANGE = MARINE_W * TUNING.marineRangeMult;
     var ALLY_RADIUS = TUNING.allyRadius;
     var ATTACK_GROUP_SIZE = TUNING.attackGroupSize;
@@ -264,8 +268,10 @@ var Swarm = (function () {
             heading: rand(0, Math.PI * 2), speed: 0, face: 0, faceDir: 0,
             w: 0, bumpR: 0, frame: 0, frameTimer: rand(0, 0.12),
             dead: false, hp: 100, age: 0, t: 0, splatCol: null, splatScale: 1,
-            retarget: 0, aim: 0, aimT: 0, shootCd: 0, hatchKind: hatchKind || null
+            retarget: 0, aim: 0, aimT: 0, shootCd: 0, hatchKind: hatchKind || null,
+            want: 0, moveMul: 1, attacking: false, cluster: -1
         };
+        c.want = c.heading;
         if (kind === "ling") {
             c.faceDir = -1; c.face = -1; c.w = LING_W; c.bumpR = LING_BUMP;
             c.speed = rand(26, 46); c.splatCol = LING_SPLAT;
@@ -336,7 +342,8 @@ var Swarm = (function () {
         return best;
     }
 
-    /* fall back: stay out of the marine quadrant and flock together (lings + banes) */
+    /* guard: flock as one swarm (boids: separation + alignment + cohesion) around
+     * the eggs, out of marine weapon range and out of the marine quadrant */
     function fallBack(c, lo, hi) {
         var ax = 0, ay = 0;
 
@@ -363,13 +370,14 @@ var Swarm = (function () {
                 var hx = home.qx * W / 2 + W / 4, hy = home.qy * H / 2 + H / 4;
                 var dqx = c.x - hx, dqy = c.y - hy;
                 var dq = Math.sqrt(dqx * dqx + dqy * dqy) || 1;
-                ax += (dqx / dq) * 1.6;
-                ay += (dqy / dq) * 1.6;
+                ax += (dqx / dq) * 1.0;
+                ay += (dqy / dq) * 1.0;
             }
         }
 
-        /* flock: separation + cohesion among lings and banes only (not eggs) */
-        var cx = 0, cy = 0, n = 0;
+        /* flock: separation + alignment + cohesion among lings and banes (not eggs) */
+        var flockR = ALLY_RADIUS * 2;
+        var cx = 0, cy = 0, hx = 0, hy = 0, n = 0;
         for (var i = 0; i < units.length; i++) {
             var o = units[i];
             if (o === c || o.dead) continue;
@@ -379,12 +387,13 @@ var Swarm = (function () {
             var minR = c.bumpR + o.bumpR + 8;
             if (d2 > 0.01 && d2 < minR * minR) {
                 var d = Math.sqrt(d2);
-                var w = (minR - d) / minR;
-                ax -= (dx / d) * w * 1.5;
-                ay -= (dy / d) * w * 1.5;
+                var w2 = (minR - d) / minR;
+                ax -= (dx / d) * w2 * 1.5;
+                ay -= (dy / d) * w2 * 1.5;
             }
-            if (d2 < 90 * 90) {
+            if (d2 < flockR * flockR) {
                 cx += o.x; cy += o.y; n++;
+                hx += Math.cos(o.heading); hy += Math.sin(o.heading);
             }
         }
         if (n > 0) {
@@ -393,20 +402,25 @@ var Swarm = (function () {
             var dc = Math.sqrt(dcx * dcx + dcy * dcy) || 1;
             ax += (dcx / dc) * 0.6;
             ay += (dcy / dc) * 0.6;
+            var hl = Math.sqrt(hx * hx + hy * hy);
+            if (hl > 0.01) { ax += (hx / hl) * 0.5; ay += (hy / hl) * 0.5; }
+        }
+
+        /* guard the eggs: gentle pull toward them when the swarm drifts away */
+        if (eggN > 0) {
+            var ex = eggCx - c.x, ey = eggCy - c.y;
+            var de = Math.sqrt(ex * ex + ey * ey) || 1;
+            var pull = 0.35 * Math.min(1, de / 60);
+            ax += (ex / de) * pull;
+            ay += (ey / de) * pull;
         }
 
         /* organic wander */
         ax += rand(-0.25, 0.25);
         ay += rand(-0.25, 0.25);
 
-        if (ax !== 0 || ay !== 0) {
-            var want = Math.atan2(ay, ax);
-            var diff = want - c.heading;
-            while (diff > Math.PI) diff -= 6.283;
-            while (diff < -Math.PI) diff += 6.283;
-            c.heading += diff * 0.3;
-            c.speed = rand(lo, hi);
-        }
+        c.want = Math.atan2(ay, ax);
+        c.speed = rand(lo, hi);
     }
 
     function nearestOtherMarine(self) {
@@ -419,17 +433,6 @@ var Swarm = (function () {
             if (d2 < bd) { bd = d2; best = c; }
         }
         return best;
-    }
-
-    function countNearbyLings(self, r) {
-        var n = 0;
-        for (var i = 0; i < units.length; i++) {
-            var c = units[i];
-            if (c.kind !== "ling" || c.dead || c === self) continue;
-            var dx = c.x - self.x, dy = c.y - self.y;
-            if (dx * dx + dy * dy < r * r) n++;
-        }
-        return n;
     }
 
     function countNearbyMarines(self, r) {
@@ -513,16 +516,26 @@ var Swarm = (function () {
         return n;
     }
 
-    /* turn c.heading toward (tx,ty), or away from it when `away` is true */
+    /* point c.want toward (tx,ty), or away from it when `away` is true */
     function marineSteerToward(c, tx, ty, away) {
         var dx = away ? (c.x - tx) : (tx - c.x);
         var dy = away ? (c.y - ty) : (ty - c.y);
-        var d = Math.sqrt(dx * dx + dy * dy) || 1;
-        var want = Math.atan2(dy, dx);
-        var diff = want - c.heading;
+        c.want = Math.atan2(dy, dx);
+    }
+
+    /* smooth turning: each 1/8 s, close `rate` of the gap between heading and want */
+    function turnToward(c, rate, dt) {
+        var diff = c.want - c.heading;
         while (diff > Math.PI) diff -= 6.283;
         while (diff < -Math.PI) diff += 6.283;
-        c.heading += diff * MARINE_TURN;
+        var r = Math.max(0.01, Math.min(0.99, rate));
+        c.heading += diff * (1 - Math.pow(1 - r, dt * 8));
+    }
+
+    /* head for marine m (small random spread so the swarm fans out around it) */
+    function charge(c, m, lo, hi, mult) {
+        c.want = Math.atan2(m.y - c.y, m.x - c.x) + rand(-0.15, 0.15);
+        c.speed = rand(lo, hi) * mult;
     }
 
     /* classic marine steering: group with other marines, flee lings only when hurt */
@@ -544,37 +557,123 @@ var Swarm = (function () {
             ax += (dxm / dm) * MARINE_GROUP_W;
             ay += (dym / dm) * MARINE_GROUP_W;
         }
-        if (ax !== 0 || ay !== 0) {
-            var want = Math.atan2(ay, ax);
-            var diff = want - c.heading;
-            while (diff > Math.PI) diff -= 6.283;
-            while (diff < -Math.PI) diff += 6.283;
-            c.heading += diff * MARINE_TURN;
+        if (ax !== 0 || ay !== 0) c.want = Math.atan2(ay, ax);
+        c.moveMul = 1;
+    }
+
+    /* centre of the other marines (the squad), or null when alone */
+    function squadCentre(self) {
+        var x = 0, y = 0, n = 0;
+        for (var i = 0; i < units.length; i++) {
+            var c = units[i];
+            if (c.kind !== "marine" || c.dead || c === self) continue;
+            x += c.x; y += c.y; n++;
+        }
+        return n ? { x: x / n, y: y / n } : null;
+    }
+
+    /* marine tactics: kite when zerg get close, stand and shoot at range, keep the
+     * squad together, and advance unless heavily outnumbered */
+    function marineTacticsSteer(c) {
+        var z = nearestZerg(c.x, c.y);
+        var dz = 1e9;
+        if (z) {
+            var zx = z.x - c.x, zy = z.y - c.y;
+            dz = Math.sqrt(zx * zx + zy * zy) || 1;
+        }
+        var damaged = c.hp < MARINE_HP * MARINE_FLEE_PCT;
+        /* supply: ling/bane = 0.5, marine = 1. Marines out-range the zerg, so they
+         * only count as outnumbered at 2:1 */
+        var outnumbered = (countKind("ling") + countKind("bane")) * 0.5 > 2 * countKind("marine");
+        var sq = squadCentre(c);
+        var sqD = 0;
+        if (sq) {
+            var sx = sq.x - c.x, sy = sq.y - c.y;
+            sqD = Math.sqrt(sx * sx + sy * sy) || 1;
+        }
+
+        if (z && (damaged || dz < MARINE_RANGE * MARINE_KITE_FRAC)) {
+            /* kite: back off from the nearest zerg, drifting toward the squad */
+            var ax = (c.x - z.x) / dz * MARINE_AWAY_W, ay = (c.y - z.y) / dz * MARINE_AWAY_W;
+            if (sq) {
+                ax += (sq.x - c.x) / sqD * MARINE_GROUP_W;
+                ay += (sq.y - c.y) / sqD * MARINE_GROUP_W;
+            }
+            c.want = Math.atan2(ay, ax);
+            c.moveMul = 1;
+        } else if (z && dz < MARINE_RANGE) {
+            /* in range: stand and shoot, shuffling toward the squad */
+            if (sq && sqD > MARINE_GROUP_RADIUS * 0.5) marineSteerToward(c, sq.x, sq.y, false);
+            c.moveMul = 0.2;
+        } else if (sq && sqD > MARINE_GROUP_RADIUS) {
+            /* regroup */
+            marineSteerToward(c, sq.x, sq.y, false);
+            c.moveMul = 1;
+        } else if (z && !outnumbered) {
+            /* advance on the nearest zerg */
+            marineSteerToward(c, z.x, z.y, false);
+            c.moveMul = 0.8;
+        } else {
+            /* heavily outnumbered: hold with the squad */
+            if (sq) marineSteerToward(c, sq.x, sq.y, false);
+            c.moveMul = 0.3;
         }
     }
 
-    /* new marine tactics: kite away, regroup when outnumbered, else advance */
-    function marineTacticsSteer(c) {
-        var z = nearestZerg(c.x, c.y);
-        var zergCount = countKind("ling") + countKind("bane");
-        var outnumbered = zergCount > countKind("marine");
-        var damaged = c.hp < MARINE_HP * MARINE_FLEE_PCT;
-        var zergInRange = false;
-        if (z) {
-            var dxz = z.x - c.x, dyz = z.y - c.y;
-            zergInRange = (dxz * dxz + dyz * dyz) < MARINE_RANGE * MARINE_RANGE;
+    /* Swarm decisions. Lings and banes chained within allyRadius of each other form
+     * one swarm, and the whole swarm attacks together when it is at least
+     * attackGroupSize strong (capped at maxLings, so it is always reachable) and its
+     * target marine group is no bigger than maxEngageMarines. Once committed it keeps
+     * attacking until cut to half strength, so it doesn't flicker at the threshold.
+     * A berserk baneling in the swarm always sends it in. */
+    function updateSwarm() {
+        var zs = [], i, j;
+        eggCx = 0; eggCy = 0; eggN = 0;
+        for (i = 0; i < units.length; i++) {
+            var u = units[i];
+            if (u.dead) continue;
+            if (u.kind === "ling" || u.kind === "bane") { u.cluster = -1; zs.push(u); }
+            else if (u.kind === "egg") { eggCx += u.x; eggCy += u.y; eggN++; }
+        }
+        if (eggN) { eggCx /= eggN; eggCy /= eggN; }
+
+        var r2 = ALLY_RADIUS * ALLY_RADIUS, nc = 0, stack = [];
+        for (i = 0; i < zs.length; i++) {
+            if (zs[i].cluster >= 0) continue;
+            zs[i].cluster = nc;
+            stack.push(zs[i]);
+            while (stack.length) {
+                var a = stack.pop();
+                for (j = 0; j < zs.length; j++) {
+                    var b = zs[j];
+                    if (b.cluster >= 0) continue;
+                    var dx = b.x - a.x, dy = b.y - a.y;
+                    if (dx * dx + dy * dy < r2) { b.cluster = nc; stack.push(b); }
+                }
+            }
+            nc++;
         }
 
-        if (damaged || zergInRange) {
-            /* flee/kite: back away from the nearest zerg */
-            if (z) marineSteerToward(c, z.x, z.y, true);
-        } else if (outnumbered) {
-            /* regroup: move toward the closest marine */
-            var om = nearestOtherMarine(c);
-            if (om) marineSteerToward(c, om.x, om.y, false);
-        } else if (z) {
-            /* advance on the zerg */
-            marineSteerToward(c, z.x, z.y, false);
+        var need = Math.max(1, Math.min(ATTACK_GROUP_SIZE, MAX_LINGS));
+        for (var k = 0; k < nc; k++) {
+            var size = 0, cx = 0, cy = 0, committed = false, berserkBane = false;
+            for (i = 0; i < zs.length; i++) {
+                var z = zs[i];
+                if (z.cluster !== k) continue;
+                size++; cx += z.x; cy += z.y;
+                if (z.attacking) committed = true;
+                if (z.kind === "bane" && z.berserk) berserkBane = true;
+            }
+            cx /= size; cy /= size;
+            var attack = false;
+            var m = nearestMarine(cx, cy);
+            if (m) {
+                var mg = countNearbyMarines(m, MARINE_GROUP_RADIUS);
+                attack = (size >= need && mg <= MAX_ENGAGE_MARINES) ||
+                         (committed && size >= Math.ceil(need / 2) && mg <= MAX_ENGAGE_MARINES + 1) ||
+                         berserkBane;
+            }
+            for (i = 0; i < zs.length; i++) if (zs[i].cluster === k) zs[i].attacking = attack;
         }
     }
 
@@ -587,7 +686,7 @@ var Swarm = (function () {
             if (c.flashT > 0) c.flashT -= dt;
             c.retarget -= dt;
             if (c.retarget <= 0) {
-                c.retarget = 0.5;
+                c.retarget = 0.3;
                 if (c.entered) {
                     if (MARINE_TACTICS) {
                         marineTacticsSteer(c);
@@ -596,13 +695,15 @@ var Swarm = (function () {
                     }
                 }
             }
-            c.x += Math.cos(c.heading) * c.speed * TERRAN_SPEED * SETTINGS.unitSpeed * dt;
-            c.y += Math.sin(c.heading) * c.speed * TERRAN_SPEED * SETTINGS.unitSpeed * dt;
+            turnToward(c, MARINE_TURN, dt);
+            var mv = c.speed * TERRAN_SPEED * SETTINGS.unitSpeed * c.moveMul * dt;
+            c.x += Math.cos(c.heading) * mv;
+            c.y += Math.sin(c.heading) * mv;
             /* reflect only when moving outward, so marines can walk in from off-screen */
-            if (c.x < 18 && Math.cos(c.heading) < 0) { c.x = 18; c.heading = Math.PI - c.heading; }
-            if (c.x > W - 18 && Math.cos(c.heading) > 0) { c.x = W - 18; c.heading = Math.PI - c.heading; }
-            if (c.y < 18 && Math.sin(c.heading) < 0) { c.y = 18; c.heading = -c.heading; }
-            if (c.y > H - 18 && Math.sin(c.heading) > 0) { c.y = H - 18; c.heading = -c.heading; }
+            if (c.x < 18 && Math.cos(c.heading) < 0) { c.x = 18; c.heading = c.want = Math.PI - c.heading; }
+            if (c.x > W - 18 && Math.cos(c.heading) > 0) { c.x = W - 18; c.heading = c.want = Math.PI - c.heading; }
+            if (c.y < 18 && Math.sin(c.heading) < 0) { c.y = 18; c.heading = c.want = -c.heading; }
+            if (c.y > H - 18 && Math.sin(c.heading) > 0) { c.y = H - 18; c.heading = c.want = -c.heading; }
             /* re-aim at the closest ling, but only every AIM_T (anti-jitter) */
             c.aimT -= dt;
             if (c.aimT <= 0) {
@@ -618,36 +719,26 @@ var Swarm = (function () {
                 c.retarget = RETARGET_T;
                 var m = nearestMarine(c.x, c.y);
                 if (c.kind === "ling") {
-                    var allies = countNearbyLings(c, ALLY_RADIUS);
                     if (m) {
-                        /* marine group size = marines clustered around the target marine */
-                        var marineGroup = countNearbyMarines(m, MARINE_GROUP_RADIUS);
-                        var favorable = allies >= ATTACK_GROUP_SIZE && marineGroup <= MAX_ENGAGE_MARINES;
                         var catching = berserkBaneNear(c.x, c.y, BERSERK_CATCH_RADIUS);
-
                         if (c.berserk) {
-                            /* berserk charge. Cancel and retreat only when the numbers
-                             * are against us (not enough allies / too many marines),
-                             * and no berserk bane is nearby to re-trigger it. */
-                            if (!BERSERK_UNTIL_DEATH && !favorable && !catching) {
+                            /* berserk charge. Cancel only when the swarm has called off
+                             * the attack and no berserk bane is nearby to re-trigger it. */
+                            if (!BERSERK_UNTIL_DEATH && !c.attacking && !catching) {
                                 c.berserk = false;
                                 fallBack(c, 26, 46);
                             } else {
-                                c.heading = Math.atan2(m.y - c.y, m.x - c.x) + rand(-0.1, 0.1);
-                                c.speed = rand(26, 46) * BERSERK_SPEED_MULT;
+                                charge(c, m, 26, 46, BERSERK_SPEED_MULT);
                             }
                         } else if (catching) {
                             /* catch berserk from a nearby berserk bane */
                             c.berserk = true;
-                            c.heading = Math.atan2(m.y - c.y, m.x - c.x) + rand(-0.1, 0.1);
-                            c.speed = rand(26, 46) * BERSERK_SPEED_MULT;
-                        } else if (favorable) {
-                            /* enough allies and a small marine group: attack */
-                            c.heading = Math.atan2(m.y - c.y, m.x - c.x) + rand(-0.1, 0.1);
-                            c.speed = rand(26, 46);
+                            charge(c, m, 26, 46, BERSERK_SPEED_MULT);
+                        } else if (c.attacking) {
+                            /* the swarm is attacking: go with it */
+                            charge(c, m, 26, 46, 1);
                         } else {
-                            /* alone or facing too many marines: fall back */
-                            c.berserk = false;
+                            /* guard: flock around the eggs, out of marine range */
                             fallBack(c, 26, 46);
                         }
                     } else {
@@ -655,28 +746,23 @@ var Swarm = (function () {
                         fallBack(c, 26, 46);
                     }
                 } else {
-                    /* bane: berserk when enough banes are alive (counts itself).
-                     * Banelings NEVER lose berserk once they have it. */
-                    if (m) {
-                        if (c.berserk || countKind("bane") >= BERSERK_BANES) {
-                            c.berserk = true;
-                            c.heading = Math.atan2(m.y - c.y, m.x - c.x) + rand(-0.1, 0.1);
-                            c.speed = rand(24, 40) * BERSERK_SPEED_MULT;
-                        } else {
-                            fallBack(c, 24, 40);
-                        }
+                    /* bane: charge with an attacking swarm, or once enough banes are alive
+                     * (counts itself). Banelings NEVER lose berserk once they have it. */
+                    if (m && (c.berserk || c.attacking || countKind("bane") >= BERSERK_BANES)) {
+                        c.berserk = true;
+                        charge(c, m, 24, 40, BERSERK_SPEED_MULT);
                     } else {
-                        /* no marine nearby: wander, but keep berserk forever */
                         fallBack(c, 24, 40);
                     }
                 }
             }
+            turnToward(c, ZERG_TURN, dt);
             c.x += Math.cos(c.heading) * c.speed * ZERG_SPEED * SETTINGS.unitSpeed * dt;
             c.y += Math.sin(c.heading) * c.speed * ZERG_SPEED * SETTINGS.unitSpeed * dt;
-            if (c.x < 18) { c.x = 18; c.heading = Math.PI - c.heading; }
-            if (c.x > W - 18) { c.x = W - 18; c.heading = Math.PI - c.heading; }
-            if (c.y < 18) { c.y = 18; c.heading = -c.heading; }
-            if (c.y > H - 18) { c.y = H - 18; c.heading = -c.heading; }
+            if (c.x < 18) { c.x = 18; c.heading = c.want = Math.PI - c.heading; }
+            if (c.x > W - 18) { c.x = W - 18; c.heading = c.want = Math.PI - c.heading; }
+            if (c.y < 18) { c.y = 18; c.heading = c.want = -c.heading; }
+            if (c.y > H - 18) { c.y = H - 18; c.heading = c.want = -c.heading; }
         }
 
         /* horizontal facing with hysteresis */
@@ -1013,7 +1099,8 @@ var Swarm = (function () {
             }
         }
 
-        /* move everyone */
+        /* swarm-level attack decisions, then move everyone */
+        updateSwarm();
         for (var i = 0; i < units.length; i++) step(units[i], dt);
 
         /* marines shoot the closest zerg (ling or bane) within range */
@@ -1142,13 +1229,12 @@ var Swarm = (function () {
                         if (zerg.y < 12) zerg.y = 12;
                         if (zerg.y > H - 12) zerg.y = H - 12;
                     } else {
+                        /* same side: just push apart. No heading bounce: the swarm
+                         * packs tightly and steering (flock separation) handles
+                         * spacing, so bouncing here only made units jitter. */
                         var push = overlap / 2;
                         a2.x -= nx * push; a2.y -= ny * push;
                         b2.x += nx * push; b2.y += ny * push;
-                        var va = Math.cos(a2.heading) * nx + Math.sin(a2.heading) * ny;
-                        var vb = Math.cos(b2.heading) * nx + Math.sin(b2.heading) * ny;
-                        if (va > 0) a2.heading = Math.atan2(Math.sin(a2.heading) - 2 * va * ny, Math.cos(a2.heading) - 2 * va * nx);
-                        if (vb < 0) b2.heading = Math.atan2(Math.sin(b2.heading) - 2 * vb * ny, Math.cos(b2.heading) - 2 * vb * nx);
                     }
                 }
             }
@@ -1269,5 +1355,6 @@ var Swarm = (function () {
         });
     }
 
-    return { init: init, start: start, stop: stop, setCount: setCount, killNear: killNear, setGameSpeed: setGameSpeed, setUnitScale: setUnitScale, TUNING: TUNING };
+    return { init: init, start: start, stop: stop, setCount: setCount, killNear: killNear, setGameSpeed: setGameSpeed, setUnitScale: setUnitScale, TUNING: TUNING,
+             debugUnits: function () { return units; } };
 })();

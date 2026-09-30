@@ -77,6 +77,9 @@ static Unit* make(Kind kind, Kind hatchKind = K_NONE) {
     c->hp = 100;
     c->splatScale = 1;
     c->hatchKind = hatchKind;
+    c->want = c->heading;
+    c->moveMul = 1;
+    c->cluster = -1;
     if (kind == K_LING) {
         c->faceDir = -1; c->face = -1; c->w = TUN(lingW); c->bumpR = TUN(lingBump);
         c->speed = frand(26, 46); c->splatCol = SC_LING;
@@ -150,17 +153,6 @@ static Unit* nearestOtherMarine(const Unit* self) {
         if (d2 < bd) { bd = d2; best = &c; }
     }
     return best;
-}
-
-static int countNearbyLings(const Unit* self, float r) {
-    int n = 0;
-    for (int i = 0; i < nUnits; i++) {
-        const Unit& c = units[i];
-        if (c.kind != K_LING || c.dead || &c == self) continue;
-        float dx = c.x - self->x, dy = c.y - self->y;
-        if (dx * dx + dy * dy < r * r) n++;
-    }
-    return n;
 }
 
 static int countNearbyMarines(const Unit* self, float r) {
@@ -251,7 +243,13 @@ static float wrapAngle(float d) {
     return d;
 }
 
-/* fall back: stay out of the marine quadrant and flock together (lings + banes) */
+/* egg centroid (lings guard it), refreshed by updateSwarm() */
+static float eggCx = 0, eggCy = 0;
+static int eggN = 0;
+static const float ZERG_TURN = 0.45f;   /* zerg steering: share of the turn closed per 1/8 s */
+
+/* guard: flock as one swarm (boids: separation + alignment + cohesion) around
+ * the eggs, out of marine weapon range and out of the marine quadrant */
 static void fallBack(Unit* c, float lo, float hi) {
     float ax = 0, ay = 0;
 
@@ -278,13 +276,14 @@ static void fallBack(Unit* c, float lo, float hi) {
             float hx = home.qx * W / 2.0f + W / 4.0f, hy = home.qy * H / 2.0f + H / 4.0f;
             float dqx = c->x - hx, dqy = c->y - hy;
             float dq = sqrtf(dqx * dqx + dqy * dqy); if (dq == 0) dq = 1;
-            ax += (dqx / dq) * 1.6f;
-            ay += (dqy / dq) * 1.6f;
+            ax += (dqx / dq) * 1.0f;
+            ay += (dqy / dq) * 1.0f;
         }
     }
 
-    /* flock: separation + cohesion among lings and banes only (not eggs) */
-    float cx = 0, cy = 0; int n = 0;
+    /* flock: separation + alignment + cohesion among lings and banes (not eggs) */
+    float flockR = TUN(allyRadius) * 2;
+    float cx = 0, cy = 0, hx = 0, hy = 0; int n = 0;
     for (int i = 0; i < nUnits; i++) {
         Unit& o = units[i];
         if (&o == c || o.dead) continue;
@@ -298,7 +297,10 @@ static void fallBack(Unit* c, float lo, float hi) {
             ax -= (dx / d) * w * 1.5f;
             ay -= (dy / d) * w * 1.5f;
         }
-        if (d2 < 90 * 90) { cx += o.x; cy += o.y; n++; }
+        if (d2 < flockR * flockR) {
+            cx += o.x; cy += o.y; n++;
+            hx += cosf(o.heading); hy += sinf(o.heading);
+        }
     }
     if (n > 0) {
         cx /= n; cy /= n;
@@ -306,25 +308,45 @@ static void fallBack(Unit* c, float lo, float hi) {
         float dc = sqrtf(dcx * dcx + dcy * dcy); if (dc == 0) dc = 1;
         ax += (dcx / dc) * 0.6f;
         ay += (dcy / dc) * 0.6f;
+        float hl = sqrtf(hx * hx + hy * hy);
+        if (hl > 0.01f) { ax += (hx / hl) * 0.5f; ay += (hy / hl) * 0.5f; }
+    }
+
+    /* guard the eggs: gentle pull toward them when the swarm drifts away */
+    if (eggN > 0) {
+        float ex = eggCx - c->x, ey = eggCy - c->y;
+        float de = sqrtf(ex * ex + ey * ey); if (de == 0) de = 1;
+        float pull = 0.35f * fminf(1.0f, de / 60);
+        ax += (ex / de) * pull;
+        ay += (ey / de) * pull;
     }
 
     /* organic wander */
     ax += frand(-0.25f, 0.25f);
     ay += frand(-0.25f, 0.25f);
 
-    if (ax != 0 || ay != 0) {
-        float diff = wrapAngle(atan2f(ay, ax) - c->heading);
-        c->heading += diff * 0.3f;
-        c->speed = frand(lo, hi);
-    }
+    c->want = atan2f(ay, ax);
+    c->speed = frand(lo, hi);
 }
 
-/* turn c.heading toward (tx,ty), or away from it when `away` is true */
+/* point c.want toward (tx,ty), or away from it when `away` is true */
 static void marineSteerToward(Unit* c, float tx, float ty, bool away) {
     float dx = away ? (c->x - tx) : (tx - c->x);
     float dy = away ? (c->y - ty) : (ty - c->y);
-    float diff = wrapAngle(atan2f(dy, dx) - c->heading);
-    c->heading += diff * TUN(marineTurnRate);
+    c->want = atan2f(dy, dx);
+}
+
+/* smooth turning: each 1/8 s, close `rate` of the gap between heading and want */
+static void turnToward(Unit* c, float rate, float dt) {
+    float diff = wrapAngle(c->want - c->heading);
+    float r = constrain(rate, 0.01f, 0.99f);
+    c->heading += diff * (1 - powf(1 - r, dt * 8));
+}
+
+/* head for marine m (small random spread so the swarm fans out around it) */
+static void charge(Unit* c, const Unit* m, float lo, float hi, float mult) {
+    c->want = atan2f(m->y - c->y, m->x - c->x) + frand(-0.15f, 0.15f);
+    c->speed = frand(lo, hi) * mult;
 }
 
 /* classic marine steering: group with other marines, flee lings only when hurt */
@@ -346,30 +368,134 @@ static void marineClassicSteer(Unit* c) {
         ax += (dxm / dm) * TUN(marineGroupWeight);
         ay += (dym / dm) * TUN(marineGroupWeight);
     }
-    if (ax != 0 || ay != 0) {
-        float diff = wrapAngle(atan2f(ay, ax) - c->heading);
-        c->heading += diff * TUN(marineTurnRate);
+    if (ax != 0 || ay != 0) c->want = atan2f(ay, ax);
+    c->moveMul = 1;
+}
+
+/* centre of the other marines (the squad); false when alone */
+static bool squadCentre(const Unit* self, float* sx, float* sy) {
+    float x = 0, y = 0; int n = 0;
+    for (int i = 0; i < nUnits; i++) {
+        const Unit& c = units[i];
+        if (c.kind != K_MARINE || c.dead || &c == self) continue;
+        x += c.x; y += c.y; n++;
+    }
+    if (!n) return false;
+    *sx = x / n; *sy = y / n;
+    return true;
+}
+
+/* marine tactics: kite when zerg get close, stand and shoot at range, keep the
+ * squad together, and advance unless heavily outnumbered */
+static void marineTacticsSteer(Unit* c) {
+    Unit* z = nearestZerg(c->x, c->y);
+    float dz = 1e9f;
+    if (z) {
+        float zx = z->x - c->x, zy = z->y - c->y;
+        dz = sqrtf(zx * zx + zy * zy); if (dz == 0) dz = 1;
+    }
+    bool damaged = c->hp < TUN(marineHp) * TUN(marineFleeHpPct);
+    /* supply: ling/bane = 0.5, marine = 1. Marines out-range the zerg, so they
+     * only count as outnumbered at 2:1 */
+    bool outnumbered = (countKind(K_LING) + countKind(K_BANE)) * 0.5f > 2 * countKind(K_MARINE);
+    float sqx = 0, sqy = 0, sqD = 0;
+    bool sq = squadCentre(c, &sqx, &sqy);
+    if (sq) {
+        float sx = sqx - c->x, sy = sqy - c->y;
+        sqD = sqrtf(sx * sx + sy * sy); if (sqD == 0) sqD = 1;
+    }
+    float range = marineRange();
+
+    if (z && (damaged || dz < range * TUN(marineKiteFrac))) {
+        /* kite: back off from the nearest zerg, drifting toward the squad */
+        float ax = (c->x - z->x) / dz * TUN(marineAwayWeight), ay = (c->y - z->y) / dz * TUN(marineAwayWeight);
+        if (sq) {
+            ax += (sqx - c->x) / sqD * TUN(marineGroupWeight);
+            ay += (sqy - c->y) / sqD * TUN(marineGroupWeight);
+        }
+        c->want = atan2f(ay, ax);
+        c->moveMul = 1;
+    } else if (z && dz < range) {
+        /* in range: stand and shoot, shuffling toward the squad */
+        if (sq && sqD > TUN(marineGroupRadius) * 0.5f) marineSteerToward(c, sqx, sqy, false);
+        c->moveMul = 0.2f;
+    } else if (sq && sqD > TUN(marineGroupRadius)) {
+        /* regroup */
+        marineSteerToward(c, sqx, sqy, false);
+        c->moveMul = 1;
+    } else if (z && !outnumbered) {
+        /* advance on the nearest zerg */
+        marineSteerToward(c, z->x, z->y, false);
+        c->moveMul = 0.8f;
+    } else {
+        /* heavily outnumbered: hold with the squad */
+        if (sq) marineSteerToward(c, sqx, sqy, false);
+        c->moveMul = 0.3f;
     }
 }
 
-/* new marine tactics: kite away, regroup when outnumbered, else advance */
-static void marineTacticsSteer(Unit* c) {
-    Unit* z = nearestZerg(c->x, c->y);
-    int zergCount = countKind(K_LING) + countKind(K_BANE);
-    bool outnumbered = zergCount > countKind(K_MARINE);
-    bool damaged = c->hp < TUN(marineHp) * TUN(marineFleeHpPct);
-    bool zergInRange = false;
-    if (z) {
-        float dxz = z->x - c->x, dyz = z->y - c->y, r = marineRange();
-        zergInRange = (dxz * dxz + dyz * dyz) < r * r;
+/* Swarm decisions. Lings and banes chained within allyRadius of each other form
+ * one swarm, and the whole swarm attacks together when it is at least
+ * attackGroupSize strong (capped at maxLings, so it is always reachable) and its
+ * target marine group is no bigger than maxEngageMarines. Once committed it keeps
+ * attacking until cut to half strength, so it doesn't flicker at the threshold.
+ * A berserk baneling in the swarm always sends it in. */
+static void updateSwarm() {
+    static int zs[MAX_UNITS], stack[MAX_UNITS];
+    int nz = 0;
+    float ex = 0, ey = 0; int en = 0;
+    for (int i = 0; i < nUnits; i++) {
+        Unit& u = units[i];
+        u.cluster = -1;
+        if (u.dead) continue;
+        if (u.kind == K_LING || u.kind == K_BANE) zs[nz++] = i;
+        else if (u.kind == K_EGG) { ex += u.x; ey += u.y; en++; }
     }
-    if (damaged || zergInRange) {
-        if (z) marineSteerToward(c, z->x, z->y, true);       /* flee/kite */
-    } else if (outnumbered) {
-        Unit* om = nearestOtherMarine(c);                     /* regroup */
-        if (om) marineSteerToward(c, om->x, om->y, false);
-    } else if (z) {
-        marineSteerToward(c, z->x, z->y, false);              /* advance */
+    eggN = en;
+    if (en) { eggCx = ex / en; eggCy = ey / en; }
+
+    float r2 = TUN(allyRadius) * TUN(allyRadius);
+    int nc = 0;
+    for (int i = 0; i < nz; i++) {
+        if (units[zs[i]].cluster >= 0) continue;
+        int sp = 0;
+        units[zs[i]].cluster = nc;
+        stack[sp++] = zs[i];
+        while (sp) {
+            const Unit& a = units[stack[--sp]];
+            for (int j = 0; j < nz; j++) {
+                Unit& b = units[zs[j]];
+                if (b.cluster >= 0) continue;
+                float dx = b.x - a.x, dy = b.y - a.y;
+                if (dx * dx + dy * dy < r2) { b.cluster = nc; stack[sp++] = zs[j]; }
+            }
+        }
+        nc++;
+    }
+
+    int need = max(1, min((int)TUN(attackGroupSize), MAX_LINGS));
+    for (int k = 0; k < nc; k++) {
+        int size = 0; float cx = 0, cy = 0;
+        bool committed = false, berserkBane = false;
+        for (int i = 0; i < nz; i++) {
+            const Unit& z = units[zs[i]];
+            if (z.cluster != k) continue;
+            size++; cx += z.x; cy += z.y;
+            if (z.attacking) committed = true;
+            if (z.kind == K_BANE && z.berserk) berserkBane = true;
+        }
+        cx /= size; cy /= size;
+        bool attack = false;
+        Unit* m = nearestMarine(cx, cy);
+        if (m) {
+            int mg = countNearbyMarines(m, TUN(marineGroupRadius));
+            int maxEngage = (int)TUN(maxEngageMarines);
+            attack = (size >= need && mg <= maxEngage) ||
+                     (committed && size >= (need + 1) / 2 && mg <= maxEngage + 1) ||
+                     berserkBane;
+        }
+        for (int i = 0; i < nz; i++)
+            if (units[zs[i]].cluster == k) units[zs[i]].attacking = attack;
     }
 }
 
@@ -383,20 +509,21 @@ static void step(Unit* c, float dt) {
         if (c->flashT > 0) c->flashT -= dt;
         c->retarget -= dt;
         if (c->retarget <= 0) {
-            c->retarget = 0.5f;
+            c->retarget = 0.3f;
             if (c->entered) {
                 if (TUNB(marineTactics)) marineTacticsSteer(c);
                 else marineClassicSteer(c);
             }
         }
-        float v = c->speed * TUN(terranSpeed) * unitSpeed * dt;
+        turnToward(c, TUN(marineTurnRate), dt);
+        float v = c->speed * TUN(terranSpeed) * unitSpeed * c->moveMul * dt;
         c->x += cosf(c->heading) * v;
         c->y += sinf(c->heading) * v;
         /* reflect only when moving outward, so marines can walk in from off-screen */
-        if (c->x < 18 && cosf(c->heading) < 0) { c->x = 18; c->heading = PI_F - c->heading; }
-        if (c->x > W - 18 && cosf(c->heading) > 0) { c->x = W - 18; c->heading = PI_F - c->heading; }
-        if (c->y < 18 && sinf(c->heading) < 0) { c->y = 18; c->heading = -c->heading; }
-        if (c->y > H - 18 && sinf(c->heading) > 0) { c->y = H - 18; c->heading = -c->heading; }
+        if (c->x < 18 && cosf(c->heading) < 0) { c->x = 18; c->heading = c->want = PI_F - c->heading; }
+        if (c->x > W - 18 && cosf(c->heading) > 0) { c->x = W - 18; c->heading = c->want = PI_F - c->heading; }
+        if (c->y < 18 && sinf(c->heading) < 0) { c->y = 18; c->heading = c->want = -c->heading; }
+        if (c->y > H - 18 && sinf(c->heading) > 0) { c->y = H - 18; c->heading = c->want = -c->heading; }
         /* re-aim at the closest zerg, but only every aimInterval (anti-jitter) */
         c->aimT -= dt;
         if (c->aimT <= 0) {
@@ -412,56 +539,48 @@ static void step(Unit* c, float dt) {
             c->retarget = TUN(retargetInterval);
             Unit* m = nearestMarine(c->x, c->y);
             if (c->kind == K_LING) {
-                int allies = countNearbyLings(c, TUN(allyRadius));
                 if (m) {
-                    /* marine group size = marines clustered around the target marine */
-                    int marineGroup = countNearbyMarines(m, TUN(marineGroupRadius));
-                    bool favorable = allies >= TUN(attackGroupSize) && marineGroup <= TUN(maxEngageMarines);
                     bool catching = berserkBaneNear(c->x, c->y, TUN(berserkCatchRadius));
                     if (c->berserk) {
-                        /* cancel and retreat only when the numbers are against us
-                         * and no berserk bane is nearby to re-trigger it */
-                        if (!TUNB(berserkUntilDeath) && !favorable && !catching) {
+                        /* cancel only when the swarm has called off the attack and
+                         * no berserk bane is nearby to re-trigger it */
+                        if (!TUNB(berserkUntilDeath) && !c->attacking && !catching) {
                             c->berserk = false;
                             fallBack(c, 26, 46);
                         } else {
-                            c->heading = atan2f(m->y - c->y, m->x - c->x) + frand(-0.1f, 0.1f);
-                            c->speed = frand(26, 46) * TUN(berserkSpeedMult);
+                            charge(c, m, 26, 46, TUN(berserkSpeedMult));
                         }
                     } else if (catching) {
-                        c->berserk = true;
-                        c->heading = atan2f(m->y - c->y, m->x - c->x) + frand(-0.1f, 0.1f);
-                        c->speed = frand(26, 46) * TUN(berserkSpeedMult);
-                    } else if (favorable) {
-                        c->heading = atan2f(m->y - c->y, m->x - c->x) + frand(-0.1f, 0.1f);
-                        c->speed = frand(26, 46);
+                        c->berserk = true;   /* catch berserk from a nearby berserk bane */
+                        charge(c, m, 26, 46, TUN(berserkSpeedMult));
+                    } else if (c->attacking) {
+                        charge(c, m, 26, 46, 1);   /* the swarm is attacking: go with it */
                     } else {
-                        c->berserk = false;
-                        fallBack(c, 26, 46);
+                        fallBack(c, 26, 46);       /* guard the eggs, out of marine range */
                     }
                 } else {
                     c->berserk = false;
                     fallBack(c, 26, 46);
                 }
             } else {
-                /* bane: berserk when enough banes are alive (counts itself).
-                 * Banelings NEVER lose berserk once they have it. */
-                if (m && (c->berserk || countKind(K_BANE) >= BERSERK_BANES)) {
+                /* bane: charge with an attacking swarm, or once enough banes are alive
+                 * (counts itself). Banelings NEVER lose berserk once they have it. */
+                if (m && (c->berserk || c->attacking || countKind(K_BANE) >= BERSERK_BANES)) {
                     c->berserk = true;
-                    c->heading = atan2f(m->y - c->y, m->x - c->x) + frand(-0.1f, 0.1f);
-                    c->speed = frand(24, 40) * TUN(berserkSpeedMult);
+                    charge(c, m, 24, 40, TUN(berserkSpeedMult));
                 } else {
                     fallBack(c, 24, 40);
                 }
             }
         }
+        turnToward(c, ZERG_TURN, dt);
         float v = c->speed * TUN(zergSpeed) * unitSpeed * dt;
         c->x += cosf(c->heading) * v;
         c->y += sinf(c->heading) * v;
-        if (c->x < 18) { c->x = 18; c->heading = PI_F - c->heading; }
-        if (c->x > W - 18) { c->x = W - 18; c->heading = PI_F - c->heading; }
-        if (c->y < 18) { c->y = 18; c->heading = -c->heading; }
-        if (c->y > H - 18) { c->y = H - 18; c->heading = -c->heading; }
+        if (c->x < 18) { c->x = 18; c->heading = c->want = PI_F - c->heading; }
+        if (c->x > W - 18) { c->x = W - 18; c->heading = c->want = PI_F - c->heading; }
+        if (c->y < 18) { c->y = 18; c->heading = c->want = -c->heading; }
+        if (c->y > H - 18) { c->y = H - 18; c->heading = c->want = -c->heading; }
     }
 
     /* horizontal facing with hysteresis */
@@ -701,7 +820,8 @@ void update(float dt) {
         }
     }
 
-    /* move everyone */
+    /* swarm-level attack decisions, then move everyone */
+    updateSwarm();
     for (int i = 0; i < nUnits; i++) if (!units[i].dead) step(&units[i], dt);
 
     /* marines shoot the closest zerg (ling or bane) within range */
@@ -800,13 +920,12 @@ void update(float dt) {
                 zerg->x = constrain(zerg->x, 12.0f, W - 12.0f);
                 zerg->y = constrain(zerg->y, 12.0f, H - 12.0f);
             } else {
+                /* same side: just push apart. No heading bounce: the swarm packs
+                 * tightly and steering (flock separation) handles spacing, so
+                 * bouncing here only made units jitter. */
                 float push = overlap / 2;
                 a2->x -= nx * push; a2->y -= ny * push;
                 b2->x += nx * push; b2->y += ny * push;
-                float va = cosf(a2->heading) * nx + sinf(a2->heading) * ny;
-                float vb = cosf(b2->heading) * nx + sinf(b2->heading) * ny;
-                if (va > 0) a2->heading = atan2f(sinf(a2->heading) - 2 * va * ny, cosf(a2->heading) - 2 * va * nx);
-                if (vb < 0) b2->heading = atan2f(sinf(b2->heading) - 2 * vb * ny, cosf(b2->heading) - 2 * vb * nx);
             }
         }
     }
