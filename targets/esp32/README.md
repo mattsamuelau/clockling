@@ -35,7 +35,7 @@ pio device monitor -e fnk0114b     # fps / heap / IP log every 10 s
 
 Defaults come from the web app (`swarm.js`, `settings.js`, `tuning-meta.js`). After
 changing those or the sprites, run `python targets/esp32/tools/gen_assets.py` and rebuild.
-ESP32-specific overrides (unit sizes at 0.75x, behaviour radii at 0.5x, seconds hidden) live
+ESP32-specific overrides (unit sizes and behaviour radii at 0.75x, seconds hidden) live
 at the top of `gen_assets.py`.
 
 A full-flash backup of the original NerdMiner firmware is at

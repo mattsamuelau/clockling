@@ -56,6 +56,7 @@ enum TKey : uint8_t {
   T_marineAwayWeight,
   T_marineTurnRate,
   T_marineFleeHpPct,
+  T_marineKiteFrac,
   T_marineRangeMult,
   T_allyRadius,
   T_attackGroupSize,

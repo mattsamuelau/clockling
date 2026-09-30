@@ -14,26 +14,38 @@ Time on top. Total war underneath.
 
 Each unit follows a short, fixed set of rules (kept intentionally simple):
 
+**Swarm** (lings + banes)
+- Lings and banes chained within `allyRadius` of each other form one swarm, and the
+  swarm decides as a unit.
+- It attacks when it is at least `attackGroupSize` strong (capped at `maxLings`, so the
+  threshold is always reachable) **and** the target marine group (marines within
+  `marineGroupRadius`) is no bigger than `maxEngageMarines`.
+- Once committed it keeps attacking until cut to half strength, so it doesn't flicker
+  at the threshold. A berserk baneling in the swarm always sends it in.
+
 **Zergling**
-1. **Guard** — avoid nearby marines and flock together around the eggs
-   (starling-murmuration style, wherever the eggs are).
-2. **Group attack** — attack when `attackGroupSize` allies are within `allyRadius`
-   **and** the target marine's cluster (marines within `marineGroupRadius`) is no
-   bigger than `maxEngageMarines`.
-3. **Berserk** — catch berserk from a berserk bane within `berserkCatchRadius`, then
-   charge at berserk speed. Cancel and retreat when outnumbered, unless
+1. **Guard** - flock as a boids swarm (separation, alignment, cohesion) around the eggs,
+   staying `marineScanRadius` from marines (keep this above marine range) and out of
+   the marine quadrant.
+2. **Attack** - charge the nearest marine whenever the swarm attacks.
+3. **Berserk** - catch berserk from a berserk bane within `berserkCatchRadius` and charge
+   at berserk speed. It ends when the swarm calls off the attack, unless
    `berserkUntilDeath` is on.
-4. **Fall back** — alone, or facing too many marines, return to the safe quadrant.
 
 **Baneling**
-1. **Guard** — same as zerglings: avoid marines and flock around the eggs.
-2. **Berserk** — when `berserkBanes` banelings are alive (counting itself), charge and
-   explode on contact. Banelings never lose berserk once they have it.
+1. **Guard** - same as zerglings.
+2. **Berserk** - charge with an attacking swarm, or once `berserkBanes` banelings are
+   alive (counting itself), and explode on contact. Banelings never lose berserk.
 
 **Marine** (with `marineTactics` on)
-1. **Flee / kite** — back away if damaged or a zerg is in weapon range.
-2. **Regroup** — outnumbered, move toward the closest marine.
-3. **Advance** — otherwise push toward the nearest zerg.
+1. **Kite** - back away (toward the squad) when damaged below `marineFleeHpPct` or a zerg
+   is closer than `marineKiteFrac` x weapon range.
+2. **Hold and shoot** - a zerg is in range: stand and fire.
+3. **Regroup** - further than `marineGroupRadius` from the squad: close up.
+4. **Advance** - push toward the nearest zerg, unless outnumbered 2:1 on supply
+   (ling/bane = 0.5, marine = 1); then hold with the squad.
+
+All units steer smoothly toward their chosen heading instead of snapping to it.
 
 Each rule maps to a clearly-named parameter (`attackGroupSize`, `berserkBanes`,
 `maxEngageMarines`, …). See `TUNING.md` for the full list and every setting's
