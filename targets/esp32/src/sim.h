@@ -18,6 +18,7 @@ struct Unit {
     float hp, age, t, hatchT, hatchMult, splatScale;
     float retarget, aim, aimT, shootCd, attackCd, healCd, flashT, hitX, hitY;
     float want, moveMul;   /* steering target heading, marine speed factor */
+    float deployT, deployX, deployY;  /* marine march-in: time left + target point */
     int16_t cluster;       /* swarm id (lings/banes), -1 otherwise */
 };
 

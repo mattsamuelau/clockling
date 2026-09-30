@@ -33,6 +33,7 @@ var Swarm = (function () {
     var waveChainDir = 1;
     var gameSpeed = 1;
     var eggCx = 0, eggCy = 0, eggN = 0;  /* egg centroid (lings guard it) */
+    var patrolX = 0, patrolY = 0, patrolT = 0;  /* shared marine patrol waypoint */
     var ZERG_TURN = 0.45;                  /* zerg steering: share of the turn closed per 1/8 s */
     var unitScale = 1;
 
@@ -91,11 +92,11 @@ var Swarm = (function () {
         marineGroupWeight: 0.5, /* pull toward other marines */
         marineAwayWeight: 1,  /* push away from zerg */
         marineTurnRate: 0.25,   /* marine steering: share of the turn closed per 1/8 s */
-        marineFleeHpPct: 0.9,   /* marines kite below this hp fraction */
+        marineFleeHpPct: 0.5,   /* marines kite below this hp fraction */
         marineKiteFrac: 0.6,    /* marines back off from zerg closer than this x range */
         marineRangeMult: 3,      /* marine weapon range = this * marineW */
-        allyRadius: 40,          /* lings/banes this close to each other form one swarm */
-        attackGroupSize: 8,      /* swarm size needed to attack (capped at maxLings) */
+        allyRadius: 45,          /* lings/banes this close to each other form one swarm */
+        attackGroupSize: 5,      /* swarm size needed to attack (capped at maxLings) */
         marineScanRadius: 140,   /* idle lings keep this far from marines (> marine range) */
         marineGroupRadius: 60,   /* radius around a marine used to count its group */
         maxEngageMarines: 4,     /* largest marine group a swarm will attack */
@@ -106,6 +107,8 @@ var Swarm = (function () {
         zergSpeed: 1,            /* base speed multiplier for zerg units */
         terranSpeed: 1.5,        /* base speed multiplier for terran (marine) units */
         marineTactics: true,     /* new marine AI (kite/regroup/advance); false = classic */
+        marineEntrySpeed: 2,     /* speed multiplier while marching in from off-screen */
+        marineSightMult: 2,      /* no zerg within this x weapon range: patrol */
     };
 
     /* Load saved tuning before cached simulation constants are calculated. */
@@ -177,6 +180,8 @@ var Swarm = (function () {
     var MARINE_TURN = TUNING.marineTurnRate;
     var MARINE_FLEE_PCT = TUNING.marineFleeHpPct;
     var MARINE_KITE_FRAC = TUNING.marineKiteFrac;
+    var MARINE_ENTRY_SPEED = TUNING.marineEntrySpeed;
+    var MARINE_SIGHT_MULT = TUNING.marineSightMult;
     var MARINE_RANGE = MARINE_W * TUNING.marineRangeMult;
     var ALLY_RADIUS = TUNING.allyRadius;
     var ATTACK_GROUP_SIZE = TUNING.attackGroupSize;
@@ -286,6 +291,7 @@ var Swarm = (function () {
             c.splatScale = TUNING.marineSplatScale;
             c.shootCd = SHOOT_T; c.aim = c.heading; c.healCd = 0; c.entered = false; c.shootTarget = null;
             c.flashT = 0; c.hitX = 0; c.hitY = 0; c.kills = 0;
+            c.deployT = 0; c.deployX = 0; c.deployY = 0;
         } else if (kind === "egg") {
             c.w = EGG_W; c.bumpR = 12; c.speed = 0; c.t = 0; c.hatchMult = 1;
             c.hatchT = rand(EGG_TIME_MIN, EGG_TIME_MAX);
@@ -574,6 +580,26 @@ var Swarm = (function () {
 
     /* marine tactics: kite when zerg get close, stand and shoot at range, keep the
      * squad together, and advance unless heavily outnumbered */
+    /* shared squad waypoint: a new random spot when the squad reaches it or after 8 s */
+    function patrolWaypoint() {
+        var x = 0, y = 0, n = 0;
+        for (var i = 0; i < units.length; i++) {
+            var m = units[i];
+            if (m.kind !== "marine" || m.dead) continue;
+            x += m.x; y += m.y; n++;
+        }
+        var near = false;
+        if (n) {
+            var dx = patrolX - x / n, dy = patrolY - y / n;
+            near = dx * dx + dy * dy < 25 * 25;
+        }
+        if (patrolT <= 0 || near) {
+            patrolX = rand(30, W - 30);
+            patrolY = rand(30, H - 30);
+            patrolT = 8;
+        }
+    }
+
     function marineTacticsSteer(c) {
         var z = nearestZerg(c.x, c.y);
         var dz = 1e9;
@@ -592,7 +618,17 @@ var Swarm = (function () {
             sqD = Math.sqrt(sx * sx + sy * sy) || 1;
         }
 
-        if (z && (damaged || dz < MARINE_RANGE * MARINE_KITE_FRAC)) {
+        if (dz > MARINE_RANGE * MARINE_SIGHT_MULT) {
+            /* nothing in sight: close up, then patrol together until we find zerg */
+            if (sq && sqD > MARINE_GROUP_RADIUS) {
+                marineSteerToward(c, sq.x, sq.y, false);
+                c.moveMul = 1;
+            } else {
+                patrolWaypoint();
+                marineSteerToward(c, patrolX, patrolY, false);
+                c.moveMul = 0.6;
+            }
+        } else if (z && (damaged || dz < MARINE_RANGE * MARINE_KITE_FRAC)) {
             /* kite: back off from the nearest zerg, drifting toward the squad */
             var ax = (c.x - z.x) / dz * MARINE_AWAY_W, ay = (c.y - z.y) / dz * MARINE_AWAY_W;
             if (sq) {
@@ -685,7 +721,15 @@ var Swarm = (function () {
             if (!c.entered && c.x >= 0 && c.x <= W && c.y >= 0 && c.y <= H) c.entered = true;
             if (c.flashT > 0) c.flashT -= dt;
             c.retarget -= dt;
-            if (c.retarget <= 0) {
+            if (c.deployT > 0) {
+                /* marching in: head straight for the deploy point at entry speed
+                 * (still shooting), then switch to normal tactics */
+                c.deployT -= dt;
+                var ddx = c.deployX - c.x, ddy = c.deployY - c.y;
+                c.want = Math.atan2(ddy, ddx);
+                c.moveMul = MARINE_ENTRY_SPEED;
+                if (ddx * ddx + ddy * ddy < 64 || c.deployT <= 0) { c.deployT = 0; c.moveMul = 1; c.retarget = 0; }
+            } else if (c.retarget <= 0) {
                 c.retarget = 0.3;
                 if (c.entered) {
                     if (MARINE_TACTICS) {
@@ -981,6 +1025,7 @@ var Swarm = (function () {
 
         /* marines enter in waves, staggered, from the corner farthest from the lings */
         marineTimer -= dt;
+        if (patrolT > 0) patrolT -= dt;
         if (marineTimer <= 0) {
             var marinesAlive = countKind("marine") > 0;
             var mInt = marinesAlive ? rand(MARINE_LO2, MARINE_HI2) : rand(MARINE_LO, MARINE_HI);
@@ -1031,6 +1076,11 @@ var Swarm = (function () {
                 waveSpawnY = mm.y;
                 mm.heading = Math.atan2(H / 2 - mm.y, W / 2 - mm.x) + rand(-0.3, 0.3);
                 mm.aim = mm.heading;
+                /* deploy point ~1/5 of the way into the arena, along the entry heading */
+                var dd = MARINE_INSET + 0.22 * Math.min(W, H);
+                mm.deployX = Math.max(30, Math.min(W - 30, mm.x + Math.cos(mm.heading) * dd));
+                mm.deployY = Math.max(30, Math.min(H - 30, mm.y + Math.sin(mm.heading) * dd));
+                mm.deployT = 3;
                 units.push(mm);
                 wavePending--;
             }
