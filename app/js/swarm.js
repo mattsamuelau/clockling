@@ -40,9 +40,9 @@ var Swarm = (function () {
         mapW: 216,
         mapH: 432,
         marineSpawnRateMult: 1.5, /* >1 spawns marines faster */
-        maxLings: 8,
-        maxBanes: 3,
-        maxMarines: 3,
+        maxLings: 10,
+        maxBanes: 2,
+        maxMarines: 7,
         lingW: 30,
         baneW: 39,             /* 30% larger than the ling */
         marineW: 42,
@@ -54,14 +54,14 @@ var Swarm = (function () {
         respawnBatch: 4,        /* eggs spawned per batch */
         marineWaveLo: 30,        /* how long after all marines die until the next wave */
         marineWaveHi: 32,
-        marineRespawnLo: 10,    /* how often marines spawn while marines are alive */
-        marineRespawnHi: 14,
-        marineSpawnGap: 1,    /* marines in a wave spawn this many seconds apart */
+        marineRespawnLo: 8,    /* how often marines spawn while marines are alive */
+        marineRespawnHi: 10,
+        marineSpawnGap: 0.5,    /* marines in a wave spawn this many seconds apart */
         marineSpawnInset: 6,    /* how many px off-screen marines spawn */
         marineWaveSizeLo: 6,    /* min marines per wave (no marines alive) */
-        marineWaveSizeHi: 8,    /* max marines per wave */
+        marineWaveSizeHi: 6,    /* max marines per wave */
         marineRespawnSizeLo: 2, /* min marines per respawn cycle (while alive) */
-        marineRespawnSizeHi: 4, /* max marines per respawn cycle */
+        marineRespawnSizeHi: 2, /* max marines per respawn cycle */
         retargetInterval: 0.5,  /* lings/banes retarget this often (anti-jitter) */
         aimInterval: 0.3,       /* marine re-aims this often */
         morphAge: 4,           /* ling must live this long before morphing */
@@ -73,16 +73,16 @@ var Swarm = (function () {
         splatLife: 1.21,
         splatBase: 7,           /* splat start radius (grows only 20%) */
         splatFadeStart: 0.6,    /* fraction of splat life before it starts fading */
-        baneSplashR: 75,        /* baneling blast radius (damages all marines inside) */
+        baneSplashR: 61,        /* baneling blast radius (damages all marines inside) */
         baneSplashDamage: 90,   /* damage a baneling deals to every marine in range */
         baneHp: 140,            /* baneling health (1.5x a zergling) */
         corpseLife: 2.2,        /* dead marine sprite lingers this long, fading */
         marineSplatScale: 1.4,  /* marine death splat is bigger */
         baneSplatScale: 2.5,      /* baneling splat is 2x normal */
         lingHp: 100,            /* zergling hit points */
-        marineHp: 100,          /* marine hit points */
+        marineHp: 120,          /* marine hit points */
         marineShootDamage: 25,  /* marine damage per shot */
-        marineShootInterval: 0.4,
+        marineShootInterval: 0.36,
         lingBiteDamage: 10,     /* ling damage per bite */
         lingBiteInterval: 0.2,
         marineHealPct: 0.1,    /* marines heal this fraction of max hp per tick */
@@ -90,7 +90,7 @@ var Swarm = (function () {
         marineGroupWeight: 0.5, /* pull toward other marines */
         marineAwayWeight: 1,  /* push away from zerg */
         marineTurnRate: 0.25,   /* marine steering: share of the turn closed per 1/8 s */
-        marineFleeHpPct: 0.5,   /* marines kite below this hp fraction */
+        marineFleeHpPct: 0.9,   /* marines kite below this hp fraction */
         marineKiteFrac: 0.6,    /* marines back off from zerg closer than this x range */
         marineRangeMult: 3,      /* marine weapon range = this * marineW */
         allyRadius: 45,          /* lings/banes this close to each other form one swarm */
@@ -103,11 +103,11 @@ var Swarm = (function () {
         berserkBanes: 2,         /* banes alive needed to trigger bane berserk */
         berserkCatchRadius: 80,  /* lings catch berserk from a berserk bane within this */
         berserkUntilDeath: false,/* on: berserk never retreats; off: cancels when outnumbered */
-        zergSpeed: 1,            /* base speed multiplier for zerg units */
-        terranSpeed: 1.5,        /* base speed multiplier for terran (marine) units */
+        zergSpeed: 1.2,            /* base speed multiplier for zerg units */
+        terranSpeed: 1.2,        /* base speed multiplier for terran (marine) units */
         marineTactics: true,     /* new marine AI (kite/regroup/advance); false = classic */
         marineEntrySpeed: 1.5,   /* speed multiplier while marching in from off-screen */
-        marineEntryDepth: 0.11,  /* march-in boost stops this x (shorter side) inside the edge */
+        marineEntryDepth: 0.09,  /* march-in boost stops this x (shorter side) inside the edge */
         marineSightMult: 2,      /* no zerg within this x weapon range: patrol */
     };
 

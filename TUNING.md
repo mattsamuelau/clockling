@@ -50,16 +50,16 @@ Settings are grouped into three tiers:
 
 | Key | Default | Meaning | Class |
 |---|---|---|---|
-| `maxLings` | 8 | Max zerglings on screen at once. | Visible |
-| `maxBanes` | 3 | Max banelings on screen at once. | Visible |
-| `maxMarines` | 3 | Max marines on screen at once. | Visible |
+| `maxLings` | 10 | Max zerglings on screen at once. | Visible |
+| `maxBanes` | 2 | Max banelings on screen at once. | Visible |
+| `maxMarines` | 7 | Max marines on screen at once. | Visible |
 
 ## Movement
 
 | Key | Default | Meaning | Class |
 |---|---|---|---|
-| `zergSpeed` | 1 | Zerg base speed multiplier. | Visible |
-| `terranSpeed` | 1.5 | Terran (marine) base speed multiplier. | Visible |
+| `zergSpeed` | 1.2 | Zerg base speed multiplier. | Visible |
+| `terranSpeed` | 1.2 | Terran (marine) base speed multiplier. | Visible |
 
 ## Zerg (zerglings, banelings, eggs)
 
@@ -78,7 +78,7 @@ Settings are grouped into three tiers:
 | `lingBiteDamage` | 10 | Damage per zergling bite. | Visible |
 | `lingBiteInterval` | 0.2 | Seconds between bites. | Visible |
 | `baneSplashDamage` | 90 | Damage a baneling deals to every marine in blast radius. | Visible |
-| `baneSplashR` | 75 | Baneling blast radius (px). | Visible |
+| `baneSplashR` | 61 | Baneling blast radius (px). | Visible |
 | `attackGroupSize` | 5 | Minimum swarm strength (ling 1, bane 2) to attack; capped at `maxLings`. | Visible |
 | `berserkBanes` | 2 | Banelings alive needed to trigger bane berserk. | Visible |
 | `berserkUntilDeath` | false | On: berserk never retreats; off: cancels when outnumbered. | Visible |
@@ -97,22 +97,22 @@ Settings are grouped into three tiers:
 | `marineSpawnRateMult` | 1.5 | >1 spawns marines faster. | Visible |
 | `marineWaveLo` | 30 | Seconds after all marines die until the next wave (min). | Visible |
 | `marineWaveHi` | 32 | … (max). | Visible |
-| `marineRespawnLo` | 10 | Seconds between marine respawns while marines are alive (min). | Visible |
-| `marineRespawnHi` | 14 | … (max). | Visible |
-| `marineSpawnGap` | 1 | Seconds between marines within one wave. | Visible |
+| `marineRespawnLo` | 8 | Seconds between marine respawns while marines are alive (min). | Visible |
+| `marineRespawnHi` | 10 | … (max). | Visible |
+| `marineSpawnGap` | 0.5 | Seconds between marines within one wave. | Visible |
 | `marineEntrySpeed` | 1.5 | Speed multiplier while new marines march in from off-screen. | Visible |
-| `marineEntryDepth` | 0.11 | The march-in boost stops this far inside the edge (x shorter side). | Visible |
+| `marineEntryDepth` | 0.09 | The march-in boost stops this far inside the edge (x shorter side). | Visible |
 | `marineSightMult` | 2 | Marines patrol when no zerg is within this x weapon range. | Visible |
 | `marineSpawnInset` | 6 | How many px off-screen marines spawn. | Advanced |
 | `marineWaveSizeLo` | 6 | Min marines per wave (when none alive). | Visible |
-| `marineWaveSizeHi` | 8 | Max marines per wave. | Visible |
+| `marineWaveSizeHi` | 6 | Max marines per wave. | Visible |
 | `marineRespawnSizeLo` | 2 | Min marines per respawn cycle (while alive). | Visible |
-| `marineRespawnSizeHi` | 4 | Max marines per respawn cycle. | Visible |
-| `marineHp` | 100 | Marine hit points. | Visible |
+| `marineRespawnSizeHi` | 2 | Max marines per respawn cycle. | Visible |
+| `marineHp` | 120 | Marine hit points. | Visible |
 | `marineShootDamage` | 25 | Damage per marine shot. | Visible |
-| `marineShootInterval` | 0.4 | Seconds between shots. | Visible |
+| `marineShootInterval` | 0.36 | Seconds between shots. | Visible |
 | `marineRangeMult` | 3 | Weapon range = `marineRangeMult` × `marineW`. | Visible |
-| `marineFleeHpPct` | 0.5 | Marines kite away below this HP fraction. | Advanced |
+| `marineFleeHpPct` | 0.9 | Marines kite away below this HP fraction. | Advanced |
 | `marineKiteFrac` | 0.6 | Marines back off from zerg closer than this fraction of their range. | Visible |
 | `marineGroupWeight` | 0.5 | Pull toward other marines. | Advanced |
 | `marineAwayWeight` | 1 | Push away from zerg. | Advanced |
@@ -149,7 +149,7 @@ Settings are grouped into three tiers:
 | `showSeconds` | true | Show seconds. |
 | `showClock` | true | Show the clock block. |
 | `showHealthBars` | true | Show unit health bars. |
-| `landscape` | false | Horizontal screen (on) or vertical (off). ESP32 rotates the panel live and restarts the battle; the web preview swaps `mapW`/`mapH`. |
+| `landscape` | true | Horizontal screen (on) or vertical (off). ESP32 rotates the panel live and restarts the battle; the web preview swaps `mapW`/`mapH`. |
 | `unitCount` | 10 | Initial unit count on first load. |
 | `unitSpeed` | 1.0 | Global unit movement speed multiplier. |
 
