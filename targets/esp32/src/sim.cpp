@@ -23,10 +23,8 @@ static int lastMarineCount = 0;
 static float morphCooldown = 0;
 static int wavePending = 0;
 static float waveSpawnT = 0;
-static bool waveFirst = true;
-static bool waveIsRespawn = false;
-static float waveSpawnX = 0, waveSpawnY = 0;
-static float waveChainDir = 1;
+static int waveEdge = 0;        /* 0 left, 1 right, 2 top, 3 bottom */
+static float waveAnchor = 0;    /* position along that edge */
 
 /* population knobs scaled by unitScale (applyUnitScale in swarm.js) */
 static int MAX_LINGS, MAX_BANES, MAX_MARINES, BERSERK_BANES;
@@ -241,6 +239,47 @@ static float wrapAngle(float d) {
     while (d > PI_F) d -= 6.283f;
     while (d < -PI_F) d += 6.283f;
     return d;
+}
+
+/* Choose the spawn edge for a wave: the map edge farthest from the zerg's centre
+ * of mass, at the point mirrored across from them. 0 left, 1 right, 2 top, 3 bottom. */
+static void pickSpawnEdge() {
+    float zx = 0, zy = 0; int zn = 0;
+    for (int i = 0; i < nUnits; i++) {
+        const Unit& z = units[i];
+        if ((z.kind == K_LING || z.kind == K_BANE) && !z.dead) { zx += z.x; zy += z.y; zn++; }
+    }
+    if (zn > 0) { zx /= zn; zy /= zn; } else { zx = frand(0, W); zy = frand(0, H); }
+    float d[4] = {zx, W - zx, zy, H - zy};
+    waveEdge = 0;
+    for (int e = 1; e < 4; e++) if (d[e] > d[waveEdge]) waveEdge = e;
+    float len = waveEdge < 2 ? H : W;
+    float mirror = waveEdge < 2 ? H - zy : W - zx;
+    float margin = 1.5f * TUN(marineW);
+    waveAnchor = constrain(mirror, margin, len - margin);
+}
+
+/* one marine just off-screen on waveEdge at `along`, marching straight in */
+static void spawnMarine(float along) {
+    Unit* mm = make(K_MARINE);
+    if (!mm) return;
+    static const float NX[4] = {1, -1, 0, 0}, NY[4] = {0, 0, 1, -1};  /* inward normal */
+    float nx = NX[waveEdge], ny = NY[waveEdge], inset = TUN(marineSpawnInset);
+    if (waveEdge < 2) {
+        mm->x = waveEdge == 0 ? -inset : W + inset;
+        mm->y = along;
+    } else {
+        mm->x = along;
+        mm->y = waveEdge == 2 ? -inset : H + inset;
+    }
+    mm->heading = atan2f(ny, nx) + frand(-0.08f, 0.08f);
+    mm->want = mm->heading;
+    mm->aim = mm->heading;
+    /* boosted march in, stopping marineEntryDepth x (shorter side) inside the edge */
+    float dd = inset + TUN(marineEntryDepth) * min(W, H);
+    mm->deployX = constrain(mm->x + nx * dd, 20.0f, W - 20.0f);
+    mm->deployY = constrain(mm->y + ny * dd, 20.0f, H - 20.0f);
+    mm->deployT = 3;
 }
 
 /* egg centroid (lings guard it), refreshed by updateSwarm() */
@@ -737,7 +776,7 @@ void update(float dt) {
         }
     }
 
-    /* marines enter in waves, staggered, from the corner farthest from the lings */
+    /* marines enter in pairs from the map edge farthest from the zerg */
     marineTimer -= dt;
     if (patrolT > 0) patrolT -= dt;
     if (marineTimer <= 0) {
@@ -748,54 +787,25 @@ void update(float dt) {
         int wave = marinesAlive ? jsRound(frand(RESPAWN_SZ_LO, RESPAWN_SZ_HI))
                                 : jsRound(frand(WAVE_LO, WAVE_HI));
         wavePending = max(0, min(wave, MAX_MARINES - countKind(K_MARINE)));
+        /* marines arrive two by two: round down to pairs (a lone marine only
+         * when maxMarines is 1) */
+        if (MAX_MARINES >= 2) wavePending -= wavePending % 2;
         waveSpawnT = 0;
-        waveFirst = true;
-        waveIsRespawn = marinesAlive;
+        if (wavePending > 0) pickSpawnEdge();
     }
 
-    /* release the queued wave one marine at a time, marineSpawnGap apart */
+    /* release the queued wave a pair at a time, marineSpawnGap apart */
     if (wavePending > 0) {
         waveSpawnT -= dt;
         if (waveSpawnT <= 0) {
             waveSpawnT = TUN(marineSpawnGap);
-            Unit* mm = make(K_MARINE);
-            if (mm) {
-                float off = 1.1f * TUN(marineW), inset = TUN(marineSpawnInset);
-                if (waveFirst) {
-                    if (waveIsRespawn) {
-                        /* respawn: reinforce from the edge of the marine home quadrant */
-                        Home home = marineHome();
-                        mm->x = (home.qx == 0) ? -inset : W + inset;
-                        mm->y = (home.qy == 0) ? -inset : H + inset;
-                    } else {
-                        /* wave: farthest corner (diagonally opposite the lings), just off-screen */
-                        float lx = 0, ly = 0; int ln = 0;
-                        for (int i = 0; i < nUnits; i++) {
-                            const Unit& lc = units[i];
-                            if (lc.kind == K_LING && !lc.dead) { lx += lc.x; ly += lc.y; ln++; }
-                        }
-                        if (ln > 0) { lx /= ln; ly /= ln; } else { lx = W / 2.0f; ly = H / 2.0f; }
-                        mm->x = (lx < W / 2.0f) ? W + inset : -inset;
-                        mm->y = (ly < H / 2.0f) ? H + inset : -inset;
-                    }
-                    waveChainDir = (mm->x < 0) ? 1 : -1;
-                    waveFirst = false;
-                } else {
-                    /* chain along the border, 1.1x marine width apart */
-                    mm->x = waveSpawnX + waveChainDir * off;
-                    mm->y = waveSpawnY;
-                }
-                waveSpawnX = mm->x;
-                waveSpawnY = mm->y;
-                mm->heading = atan2f(H / 2.0f - mm->y, W / 2.0f - mm->x) + frand(-0.3f, 0.3f);
-                mm->aim = mm->heading;
-                /* deploy point ~1/5 of the way into the arena, along the entry heading */
-                float dd = TUN(marineSpawnInset) + 0.22f * min(W, H);
-                mm->deployX = constrain(mm->x + cosf(mm->heading) * dd, 30.0f, W - 30.0f);
-                mm->deployY = constrain(mm->y + sinf(mm->heading) * dd, 30.0f, H - 30.0f);
-                mm->deployT = 3;
+            int pair = min(2, wavePending);
+            float along = waveAnchor + frand(-0.5f, 0.5f) * TUN(marineW);
+            for (int pi = 0; pi < pair; pi++) {
+                float slot = (pair == 2) ? (pi == 0 ? -0.7f : 0.7f) * TUN(marineW) : 0;
+                spawnMarine(along + slot);
             }
-            wavePending--;
+            wavePending -= pair;
         }
     }
 

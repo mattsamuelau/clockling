@@ -38,6 +38,8 @@ Each unit follows a short, fixed set of rules (kept intentionally simple):
    alive (counting itself), and explode on contact. Banelings never lose berserk.
 
 **Marine** (with `marineTactics` on)
+0. **Spawn** - waves arrive in pairs, side by side, from the map edge farthest from the
+   zerg, and march straight in at `marineEntrySpeed` until `marineEntryDepth` inside.
 1. **Kite** - back away (toward the squad) when damaged below `marineFleeHpPct` or a zerg
    is closer than `marineKiteFrac` x weapon range.
 2. **Hold and shoot** - a zerg is in range: stand and fire.

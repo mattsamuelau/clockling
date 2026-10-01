@@ -11,7 +11,7 @@ vals = {
     "marineRespawnSizeLo": 2, "marineRespawnSizeHi": 4,
     "marineHp": 100, "marineShootDamage": 25, "marineShootInterval": 0.4,
     "marineRangeMult": 3, "marineFleeHpPct": 0.5, "marineKiteFrac": 0.6,
-    "marineEntrySpeed": 2, "marineSightMult": 2,
+    "marineEntrySpeed": 1.5, "marineEntryDepth": 0.11, "marineSightMult": 2,
     "marineGroupWeight": 0.5, "marineAwayWeight": 1, "marineTurnRate": 0.25,
     "marineHealPct": 0.10, "marineHealInterval": 0.5,
     "marineSplatScale": 1.4,

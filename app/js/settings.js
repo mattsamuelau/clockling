@@ -7,6 +7,7 @@ var SETTINGS = {
     showSeconds: true,
     showClock: true,
     landscape: false,
+    showHealthBars: true,
     unitCount: 10,
     unitSpeed: 1.0
 };

@@ -63,7 +63,8 @@ var TUNING_META = {
         marineFleeHpPct: { class: "Advanced", default: 0.5, meaning: "Marines kite away below this HP fraction" },
         marineKiteFrac: { class: "Visible", default: 0.6, meaning: "Marines back off from zerg closer than this fraction of their range" },
         marineSightMult: { class: "Visible", default: 2, meaning: "Marines patrol when no zerg is within this x weapon range" },
-        marineEntrySpeed: { class: "Visible", default: 2, meaning: "Speed multiplier while new marines march in from off-screen" },
+        marineEntrySpeed: { class: "Visible", default: 1.5, meaning: "Speed multiplier while new marines march in from off-screen" },
+        marineEntryDepth: { class: "Visible", default: 0.11, meaning: "March-in boost stops this far inside the edge (x shorter side)" },
         marineGroupWeight: { class: "Advanced", default: 0.5, meaning: "Pull toward other marines" },
         marineAwayWeight: { class: "Advanced", default: 1, meaning: "Push away from zerg" },
         marineTurnRate: { class: "Advanced", default: 0.25, meaning: "Marine steering: share of the turn closed every 1/8 s" },
@@ -95,6 +96,7 @@ var TUNING_META = {
         showSeconds: { class: "Visible", default: true, meaning: "Show seconds in clock" },
         showClock: { class: "Visible", default: true, meaning: "Show clock block" },
         landscape: { class: "Visible", default: false, meaning: "Horizontal screen (off = vertical)" },
+        showHealthBars: { class: "Visible", default: true, meaning: "Show unit health bars" },
         unitCount: { class: "Advanced", default: 10, meaning: "Initial unit count" },
         unitSpeed: { class: "Advanced", default: 1.0, meaning: "Global speed multiplier for all units" }
     },
@@ -105,11 +107,11 @@ var TUNING_META = {
         "Zerg Units": ["maxLings", "maxBanes", "lingHp", "baneHp", "lingBiteDamage", "lingBiteInterval", "baneSplashDamage", "baneSplashR", "berserkSpeedMult"],
         "Zerg Lifecycle": ["respawnInterval", "respawnBatch", "eggTimeMin", "eggTimeMax", "eggHatchMult", "morphAge", "morphCooldown", "morphChancePerSec"],
         "Terran Units": ["maxMarines", "marineHp", "marineShootDamage", "marineShootInterval", "marineRangeMult"],
-        "Terran Spawning": ["marineEntrySpeed", "marineSpawnRateMult", "marineWaveLo", "marineWaveHi", "marineWaveSizeLo", "marineWaveSizeHi", "marineRespawnLo", "marineRespawnHi", "marineRespawnSizeLo", "marineRespawnSizeHi", "marineSpawnGap", "marineSpawnInset"],
+        "Terran Spawning": ["marineEntrySpeed", "marineEntryDepth", "marineSpawnRateMult", "marineWaveLo", "marineWaveHi", "marineWaveSizeLo", "marineWaveSizeHi", "marineRespawnLo", "marineRespawnHi", "marineRespawnSizeLo", "marineRespawnSizeHi", "marineSpawnGap", "marineSpawnInset"],
         "Terran Behavior": ["marineTactics", "marineKiteFrac", "marineSightMult", "marineFleeHpPct", "marineGroupWeight", "marineAwayWeight", "marineTurnRate", "marineHealPct", "marineHealInterval"],
         "Movement": ["zergSpeed", "terranSpeed"],
         "Visuals": ["lingW", "baneW", "marineW", "eggW", "lingBump", "baneBump", "marineBump", "splatLife", "splatBase", "splatFadeStart", "corpseLife", "marineSplatScale", "baneSplatScale", "retargetInterval", "aimInterval"],
         "Map": ["mapW", "mapH"],
-        "Display": ["hour24", "showSeconds", "showClock", "landscape"]
+        "Display": ["hour24", "showSeconds", "showClock", "landscape", "showHealthBars"]
     }
 };
