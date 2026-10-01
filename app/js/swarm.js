@@ -26,11 +26,8 @@ var Swarm = (function () {
     var morphCooldown = 0;
     var wavePending = 0;
     var waveSpawnT = 0;
-    var waveFirst = true;
-    var waveIsRespawn = false;
-    var waveSpawnX = 0;
-    var waveSpawnY = 0;
-    var waveChainDir = 1;
+    var waveEdge = 0;      /* 0 left, 1 right, 2 top, 3 bottom */
+    var waveAnchor = 0;    /* position along that edge */
     var gameSpeed = 1;
     var eggCx = 0, eggCy = 0, eggN = 0;  /* egg centroid (lings guard it) */
     var patrolX = 0, patrolY = 0, patrolT = 0;  /* shared marine patrol waypoint */
@@ -107,7 +104,8 @@ var Swarm = (function () {
         zergSpeed: 1,            /* base speed multiplier for zerg units */
         terranSpeed: 1.5,        /* base speed multiplier for terran (marine) units */
         marineTactics: true,     /* new marine AI (kite/regroup/advance); false = classic */
-        marineEntrySpeed: 2,     /* speed multiplier while marching in from off-screen */
+        marineEntrySpeed: 1.5,   /* speed multiplier while marching in from off-screen */
+        marineEntryDepth: 0.11,  /* march-in boost stops this x (shorter side) inside the edge */
         marineSightMult: 2,      /* no zerg within this x weapon range: patrol */
     };
 
@@ -185,6 +183,7 @@ var Swarm = (function () {
     var MARINE_FLEE_PCT = TUNING.marineFleeHpPct;
     var MARINE_KITE_FRAC = TUNING.marineKiteFrac;
     var MARINE_ENTRY_SPEED = TUNING.marineEntrySpeed;
+    var MARINE_ENTRY_DEPTH = TUNING.marineEntryDepth;
     var MARINE_SIGHT_MULT = TUNING.marineSightMult;
     var MARINE_RANGE = MARINE_W * TUNING.marineRangeMult;
     var ALLY_RADIUS = TUNING.allyRadius;
@@ -473,6 +472,46 @@ var Swarm = (function () {
             if (units[i].kind === kind && !units[i].dead) n++;
         }
         return n;
+    }
+
+    /* Choose the spawn edge for a wave: the map edge farthest from the zerg's centre
+     * of mass, at the point mirrored across from them. 0 left, 1 right, 2 top, 3 bottom. */
+    function pickSpawnEdge() {
+        var zx = 0, zy = 0, zn = 0;
+        for (var i = 0; i < units.length; i++) {
+            var z = units[i];
+            if ((z.kind === "ling" || z.kind === "bane") && !z.dead) { zx += z.x; zy += z.y; zn++; }
+        }
+        if (zn > 0) { zx /= zn; zy /= zn; } else { zx = rand(0, W); zy = rand(0, H); }
+        var d = [zx, W - zx, zy, H - zy];
+        waveEdge = 0;
+        for (var e = 1; e < 4; e++) if (d[e] > d[waveEdge]) waveEdge = e;
+        var len = waveEdge < 2 ? H : W;
+        var mirror = waveEdge < 2 ? H - zy : W - zx;
+        var margin = 1.5 * MARINE_W;
+        waveAnchor = Math.max(margin, Math.min(len - margin, mirror));
+    }
+
+    /* one marine just off-screen on waveEdge at `along`, marching straight in */
+    function spawnMarine(along) {
+        var mm = make("marine");
+        var nx = [1, -1, 0, 0][waveEdge], ny = [0, 0, 1, -1][waveEdge];  /* inward normal */
+        if (waveEdge < 2) {
+            mm.x = waveEdge === 0 ? -MARINE_INSET : W + MARINE_INSET;
+            mm.y = along;
+        } else {
+            mm.x = along;
+            mm.y = waveEdge === 2 ? -MARINE_INSET : H + MARINE_INSET;
+        }
+        mm.heading = Math.atan2(ny, nx) + rand(-0.08, 0.08);
+        mm.want = mm.heading;
+        mm.aim = mm.heading;
+        /* boosted march in, stopping marineEntryDepth x (shorter side) inside the edge */
+        var dd = MARINE_INSET + MARINE_ENTRY_DEPTH * Math.min(W, H);
+        mm.deployX = Math.max(20, Math.min(W - 20, mm.x + nx * dd));
+        mm.deployY = Math.max(20, Math.min(H - 20, mm.y + ny * dd));
+        mm.deployT = 3;
+        units.push(mm);
     }
 
     /* the marine quadrant with the most marines, plus the centroid inside it */
@@ -861,8 +900,8 @@ var Swarm = (function () {
         cc.drawImage(img, -c.w / 2, -hh / 2, c.w, hh);
         cc.restore();
 
-        /* debug health bar under every non-egg unit */
-        if (c.kind !== "egg") {
+        /* health bar under every non-egg unit (showHealthBars) */
+        if (c.kind !== "egg" && SETTINGS.showHealthBars !== false) {
             var hp = (typeof c.hp === "number") ? c.hp : 100;
             var bw = 30, bh = 3;   /* all health bars the same width */
             var by = c.y + hh / 2 + 4;
@@ -1027,7 +1066,7 @@ var Swarm = (function () {
             }
         }
 
-        /* marines enter in waves, staggered, from the corner farthest from the lings */
+        /* marines enter in pairs from the map edge farthest from the zerg */
         marineTimer -= dt;
         if (patrolT > 0) patrolT -= dt;
         if (marineTimer <= 0) {
@@ -1039,54 +1078,25 @@ var Swarm = (function () {
                 Math.round(rand(MARINE_RESPAWN_SIZE_LO, MARINE_RESPAWN_SIZE_HI)) :
                 Math.round(rand(MARINE_WAVE_SIZE_LO, MARINE_WAVE_SIZE_HI));
             wavePending = Math.max(0, Math.min(wave, MAX_MARINES - countKind("marine")));
+            /* marines arrive two by two: round down to pairs (a lone marine only
+             * when maxMarines is 1) */
+            if (MAX_MARINES >= 2) wavePending -= wavePending % 2;
             waveSpawnT = 0;
-            waveFirst = true;
-            waveIsRespawn = marinesAlive;
+            if (wavePending > 0) pickSpawnEdge();
         }
 
-        /* release the queued wave one marine at a time, marineSpawnGap apart */
+        /* release the queued wave a pair at a time, marineSpawnGap apart */
         if (wavePending > 0) {
             waveSpawnT -= dt;
             if (waveSpawnT <= 0) {
                 waveSpawnT = TUNING.marineSpawnGap;
-                var mm = make("marine");
-                var off = 1.1 * MARINE_W;
-                if (waveFirst) {
-                    if (waveIsRespawn) {
-                        /* respawn: reinforce from the edge of the marine home quadrant */
-                        var home = marineHome();
-                        mm.x = (home.qx === 0) ? -MARINE_INSET : W + MARINE_INSET;
-                        mm.y = (home.qy === 0) ? -MARINE_INSET : H + MARINE_INSET;
-                        waveChainDir = (mm.x < 0) ? 1 : -1;
-                    } else {
-                        /* wave: farthest corner (diagonally opposite the lings), just off-screen */
-                        var lx = 0, ly = 0, ln = 0;
-                        for (var lq = 0; lq < units.length; lq++) {
-                            var lc = units[lq];
-                            if (lc.kind === "ling" && !lc.dead) { lx += lc.x; ly += lc.y; ln++; }
-                        }
-                        if (ln > 0) { lx /= ln; ly /= ln; } else { lx = W / 2; ly = H / 2; }
-                        mm.x = (lx < W / 2) ? W + MARINE_INSET : -MARINE_INSET;
-                        mm.y = (ly < H / 2) ? H + MARINE_INSET : -MARINE_INSET;
-                        waveChainDir = (mm.x < 0) ? 1 : -1;
-                    }
-                    waveFirst = false;
-                } else {
-                    /* chain along the border, 1.1x marine width apart */
-                    mm.x = waveSpawnX + waveChainDir * off;
-                    mm.y = waveSpawnY;
+                var pair = Math.min(2, wavePending);
+                var along = waveAnchor + rand(-0.5, 0.5) * MARINE_W;
+                for (var pi = 0; pi < pair; pi++) {
+                    var slot = (pair === 2) ? (pi === 0 ? -0.7 : 0.7) * MARINE_W : 0;
+                    spawnMarine(along + slot);
                 }
-                waveSpawnX = mm.x;
-                waveSpawnY = mm.y;
-                mm.heading = Math.atan2(H / 2 - mm.y, W / 2 - mm.x) + rand(-0.3, 0.3);
-                mm.aim = mm.heading;
-                /* deploy point ~1/5 of the way into the arena, along the entry heading */
-                var dd = MARINE_INSET + 0.22 * Math.min(W, H);
-                mm.deployX = Math.max(30, Math.min(W - 30, mm.x + Math.cos(mm.heading) * dd));
-                mm.deployY = Math.max(30, Math.min(H - 30, mm.y + Math.sin(mm.heading) * dd));
-                mm.deployT = 3;
-                units.push(mm);
-                wavePending--;
+                wavePending -= pair;
             }
         }
 

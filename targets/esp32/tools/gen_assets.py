@@ -44,7 +44,7 @@ SCALED = {k: UNIT_SCALE for k in ["lingW", "baneW", "marineW", "eggW", "lingBump
 SCALED.update({k: RADIUS_SCALE for k in ["baneSplashR", "allyRadius", "marineScanRadius",
                                           "marineGroupRadius", "berserkCatchRadius"]})
 ESP32_DEFAULTS = {"showSeconds": False}
-SETTINGS_GROUP = {"hour24": "Display", "showSeconds": "Display", "showClock": "Display", "landscape": "Display",
+SETTINGS_GROUP = {"hour24": "Display", "showSeconds": "Display", "showClock": "Display", "landscape": "Display", "showHealthBars": "Display",
                   "unitCount": "Game", "unitSpeed": "Game"}
 
 

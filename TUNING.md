@@ -99,6 +99,9 @@ Settings are grouped into three tiers:
 | `marineRespawnLo` | 10 | Seconds between marine respawns while marines are alive (min). | Visible |
 | `marineRespawnHi` | 14 | … (max). | Visible |
 | `marineSpawnGap` | 1 | Seconds between marines within one wave. | Visible |
+| `marineEntrySpeed` | 1.5 | Speed multiplier while new marines march in from off-screen. | Visible |
+| `marineEntryDepth` | 0.11 | The march-in boost stops this far inside the edge (x shorter side). | Visible |
+| `marineSightMult` | 2 | Marines patrol when no zerg is within this x weapon range. | Visible |
 | `marineSpawnInset` | 6 | How many px off-screen marines spawn. | Advanced |
 | `marineWaveSizeLo` | 6 | Min marines per wave (when none alive). | Visible |
 | `marineWaveSizeHi` | 8 | Max marines per wave. | Visible |
@@ -144,6 +147,7 @@ Settings are grouped into three tiers:
 | `hour24` | true | 24h vs 12h clock. |
 | `showSeconds` | true | Show seconds. |
 | `showClock` | true | Show the clock block. |
+| `showHealthBars` | true | Show unit health bars. |
 | `landscape` | false | Horizontal screen (on) or vertical (off). ESP32 rotates the panel live and restarts the battle; the web preview swaps `mapW`/`mapH`. |
 | `unitCount` | 10 | Initial unit count on first load. |
 | `unitSpeed` | 1.0 | Global unit movement speed multiplier. |

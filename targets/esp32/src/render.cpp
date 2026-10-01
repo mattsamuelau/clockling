@@ -175,7 +175,7 @@ static void drawBand(Band& b, const Overlay& ov) {
         const UnitDraw& d = s_ud[i];
         if (d.ymax < bTop || d.ymin > bBot) continue;
         gfx::sprite(b, *d.img, d.x, d.y, d.w, d.rot, d.mirror, 255);
-        if (!d.bar) continue;
+        if (!d.bar || !TUNB(showHealthBars)) continue;
         /* health bar under every non-egg unit (0.75x the web size, like the units) */
         float bw = 22, bh = 2, by = d.y + d.hh / 2 + 3;
         gfx::fillRect(b, d.x - bw / 2, by, bw, bh, 0, 140);
