@@ -20,7 +20,7 @@ Settings are grouped into three tiers:
 - **Core** — the unit ruleset and population caps. Changing these changes *what units
   do*, not just how strong they are:
   `maxLings`, `maxBanes`, `maxMarines`, `attackGroupSize`, `berserkBanes`,
-  `berserkUntilDeath`, `maxEngageMarines`, `allyRadius`, `marineScanRadius`,
+  `berserkUntilDeath`, `attackOdds`, `allyRadius`, `marineScanRadius`,
   `marineGroupRadius`, `berserkCatchRadius`,
   `eggTimeMin`, `eggTimeMax`, `marineTactics`, `marineKiteFrac`.
 - **Normal** — the usual balance knobs (health, damage, speeds, spawn pace):
@@ -79,12 +79,13 @@ Settings are grouped into three tiers:
 | `lingBiteInterval` | 0.2 | Seconds between bites. | Visible |
 | `baneSplashDamage` | 90 | Damage a baneling deals to every marine in blast radius. | Visible |
 | `baneSplashR` | 75 | Baneling blast radius (px). | Visible |
-| `attackGroupSize` | 5 | Swarm size (lings + banes) needed to attack; capped at `maxLings`. | Visible |
+| `attackGroupSize` | 5 | Minimum swarm strength (ling 1, bane 2) to attack; capped at `maxLings`. | Visible |
 | `berserkBanes` | 2 | Banelings alive needed to trigger bane berserk. | Visible |
 | `berserkUntilDeath` | false | On: berserk never retreats; off: cancels when outnumbered. | Visible |
-| `maxEngageMarines` | 4 | Largest marine group a swarm will attack. | Visible |
+| `attackOdds` | 1.5 | Swarm strength (ling 1, bane 2) needed per marine in the target group. | Visible |
+| `lingFleeSpeedMult` | 1.4 | Speed multiplier for lings escaping marines. | Visible |
 | `allyRadius` | 45 | Lings/banes this close to each other count as one swarm (keep above ~2x `lingBump` + 8). | Visible |
-| `marineScanRadius` | 140 | Idle lings keep this far from marines. Keep above marine range (`marineW` x `marineRangeMult`). | Visible |
+| `marineScanRadius` | 140 | Lings flee marines inside this radius (never less than 1.25x marine range). | Visible |
 | `marineGroupRadius` | 60 | Radius around a marine used to count its group. | Visible |
 | `berserkCatchRadius` | 80 | Lings catch berserk from a berserk bane within this radius. | Visible |
 | `berserkSpeedMult` | 1.5 | Speed multiplier while berserk. | Visible |

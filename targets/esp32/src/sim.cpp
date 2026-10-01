@@ -211,21 +211,6 @@ static Home marineHome() {
     return h;
 }
 
-/* put a new egg anywhere except the quadrant with the most marines */
-static void placeEggOpposite(Unit* egg) {
-    int marineCount = countKind(K_MARINE);
-    Home home = marineHome();
-    int ox[4], oy[4], n = 0;
-    for (int x = 0; x < 2; x++)
-        for (int y = 0; y < 2; y++) {
-            if (marineCount > 0 && x == home.qx && y == home.qy) continue;
-            ox[n] = x; oy[n] = y; n++;
-        }
-    int pick = min(n - 1, (int)(random01() * n));
-    egg->x = frand(ox[pick] * W / 2.0f + 16, ox[pick] * W / 2.0f + W / 2.0f - 16);
-    egg->y = frand(oy[pick] * H / 2.0f + 16, oy[pick] * H / 2.0f + H / 2.0f - 16);
-}
-
 static int pendingLings() {
     int n = countKind(K_LING);
     for (int i = 0; i < nUnits; i++) {
@@ -308,24 +293,92 @@ static void patrolWaypoint() {
     }
 }
 
+static float hiveX = 0, hiveY = 0;  /* safe rally point: eggs are laid and lings regroup here */
+
+/* lings treat marines inside this radius as a threat. Never less than 1.25x marine
+ * range, so a small marineScanRadius can't leave idle lings inside the kill zone. */
+static float threatRadius() { return fmaxf(TUN(marineScanRadius), marineRange() * 1.25f); }
+
+static float nearestMarineDist(float x, float y) {
+    Unit* m = nearestMarine(x, y);
+    if (!m) return 1e9f;
+    float dx = m->x - x, dy = m->y - y;
+    return sqrtf(dx * dx + dy * dy);
+}
+
+/* The hive: where eggs are laid and threatened lings regroup. Keep the current
+ * eggs / swarm position while it is safe, otherwise move to the spot (on a 3x3
+ * grid) farthest from any marine. */
+static void updateHive(float zx, float zy, int zn) {
+    float safe = threatRadius() * 1.1f;
+    if (eggN > 0 && nearestMarineDist(eggCx, eggCy) > safe) { hiveX = eggCx; hiveY = eggCy; return; }
+    if (zn > 0 && nearestMarineDist(zx, zy) > safe) { hiveX = zx; hiveY = zy; return; }
+    if (countKind(K_MARINE) == 0) {
+        if (eggN > 0) { hiveX = eggCx; hiveY = eggCy; }
+        else if (zn > 0) { hiveX = zx; hiveY = zy; }
+        else { hiveX = W / 2.0f; hiveY = H / 2.0f; }
+        return;
+    }
+    float best = -1;
+    for (int gi = 0; gi < 3; gi++)
+        for (int gj = 0; gj < 3; gj++) {
+            float gx = W * (gi + 0.5f) / 3, gy = H * (gj + 0.5f) / 3;
+            float gd = nearestMarineDist(gx, gy);
+            if (gd > best) { best = gd; hiveX = gx; hiveY = gy; }
+        }
+}
+
+/* lay a new egg at the hive, so hatchlings start inside the swarm */
+static void placeEggAtHive(Unit* egg) {
+    egg->x = constrain(hiveX + frand(-22, 22), 16.0f, W - 16.0f);
+    egg->y = constrain(hiveY + frand(-22, 22), 16.0f, H - 16.0f);
+}
+
 /* guard: flock as one swarm (boids: separation + alignment + cohesion) around
- * the eggs, out of marine weapon range and out of the marine quadrant */
+ * the hive, out of marine weapon range and out of the marine quadrant */
 static void fallBack(Unit* c, float lo, float hi) {
     float ax = 0, ay = 0;
 
-    /* avoid the nearest marine when close */
-    Unit* m = nearestMarine(c->x, c->y);
-    if (m) {
-        float dmx = c->x - m->x, dmy = c->y - m->y;
-        float dm2 = dmx * dmx + dmy * dmy;
-        float avoidR = TUN(marineScanRadius);
-        if (dm2 < avoidR * avoidR) {
-            float dm = sqrtf(dm2); if (dm == 0) dm = 1;
-            float w = 1 - (dm / avoidR);
-            ax += (dmx / dm) * w * 2.2f;
-            ay += (dmy / dm) * w * 2.2f;
-        }
+    /* flee: a marine inside the threat radius -> run from all of them, toward
+     * the hive (if that isn't toward the marines), off the walls, fast, and
+     * re-plan quickly so stragglers don't get picked off */
+    float threatR = threatRadius();
+    float fx = 0, fy = 0;
+    bool threatened = false;
+    for (int i = 0; i < nUnits; i++) {
+        const Unit& tm = units[i];
+        if (tm.kind != K_MARINE || tm.dead) continue;
+        float tdx = c->x - tm.x, tdy = c->y - tm.y;
+        float td = sqrtf(tdx * tdx + tdy * tdy); if (td == 0) td = 1;
+        if (td >= threatR) continue;
+        float tw = 1.3f - td / threatR;   /* closer marines push harder */
+        fx += (tdx / td) * tw;
+        fy += (tdy / td) * tw;
+        threatened = true;
     }
+    if (threatened) {
+        float fl = sqrtf(fx * fx + fy * fy); if (fl == 0) fl = 1;
+        ax = (fx / fl) * 3;
+        ay = (fy / fl) * 3;
+        float hx0 = hiveX - c->x, hy0 = hiveY - c->y;
+        float hd0 = sqrtf(hx0 * hx0 + hy0 * hy0); if (hd0 == 0) hd0 = 1;
+        if ((hx0 * fx + hy0 * fy) / (hd0 * fl) > -0.2f) {
+            ax += (hx0 / hd0) * 1.2f;
+            ay += (hy0 / hd0) * 1.2f;
+        }
+        /* slide along walls instead of pinning into corners */
+        const float wallR = 40;
+        if (c->x < wallR) ax += (1 - c->x / wallR) * 2.5f;
+        if (c->x > W - wallR) ax -= (1 - (W - c->x) / wallR) * 2.5f;
+        if (c->y < wallR) ay += (1 - c->y / wallR) * 2.5f;
+        if (c->y > H - wallR) ay -= (1 - (H - c->y) / wallR) * 2.5f;
+        c->want = atan2f(ay, ax);
+        c->speed = frand(lo, hi) * TUN(lingFleeSpeedMult);
+        c->fleeing = true;
+        c->retarget = fminf(c->retarget, 0.2f);
+        return;
+    }
+    c->fleeing = false;
 
     /* stay out of the quadrant with the most marines */
     if (countKind(K_MARINE) > 0) {
@@ -372,9 +425,9 @@ static void fallBack(Unit* c, float lo, float hi) {
         if (hl > 0.01f) { ax += (hx / hl) * 0.5f; ay += (hy / hl) * 0.5f; }
     }
 
-    /* guard the eggs: gentle pull toward them when the swarm drifts away */
-    if (eggN > 0) {
-        float ex = eggCx - c->x, ey = eggCy - c->y;
+    /* guard the hive (where the eggs are laid): gentle pull when drifting away */
+    {
+        float ex = hiveX - c->x, ey = hiveY - c->y;
         float de = sqrtf(ex * ex + ey * ey); if (de == 0) de = 1;
         float pull = 0.35f * fminf(1.0f, de / 60);
         ax += (ex / de) * pull;
@@ -505,11 +558,13 @@ static void marineTacticsSteer(Unit* c) {
 }
 
 /* Swarm decisions. Lings and banes chained within allyRadius of each other form
- * one swarm, and the whole swarm attacks together when it is at least
- * attackGroupSize strong (capped at maxLings, so it is always reachable) and its
- * target marine group is no bigger than maxEngageMarines. Once committed it keeps
- * attacking until cut to half strength, so it doesn't flicker at the threshold.
- * A berserk baneling in the swarm always sends it in. */
+ * one swarm, and the whole swarm attacks together when its strength (ling = 1,
+ * bane = 2) is at least attackGroupSize (capped at maxLings, so it is always
+ * reachable) AND at least attackOdds x the target marine group (every marine within
+ * weapon range of the target). Once committed it keeps attacking while it holds
+ * half of both, so it doesn't flicker at the threshold. A cornered swarm (marines
+ * already inside 70% of their range) fights at half odds rather than run, and a
+ * berserk baneling in the swarm always sends it in. */
 static void updateSwarm() {
     static int zs[MAX_UNITS], stack[MAX_UNITS];
     int nz = 0;
@@ -523,6 +578,10 @@ static void updateSwarm() {
     }
     eggN = en;
     if (en) { eggCx = ex / en; eggCy = ey / en; }
+    float zcx = 0, zcy = 0;
+    for (int i = 0; i < nz; i++) { zcx += units[zs[i]].x; zcy += units[zs[i]].y; }
+    if (nz) { zcx /= nz; zcy /= nz; }
+    updateHive(zcx, zcy, nz);
 
     float r2 = TUN(allyRadius) * TUN(allyRadius);
     int nc = 0;
@@ -545,12 +604,13 @@ static void updateSwarm() {
 
     int need = max(1, min((int)TUN(attackGroupSize), MAX_LINGS));
     for (int k = 0; k < nc; k++) {
-        int size = 0; float cx = 0, cy = 0;
+        int size = 0; float power = 0, cx = 0, cy = 0;
         bool committed = false, berserkBane = false;
         for (int i = 0; i < nz; i++) {
             const Unit& z = units[zs[i]];
             if (z.cluster != k) continue;
             size++; cx += z.x; cy += z.y;
+            power += z.kind == K_BANE ? 2 : 1;
             if (z.attacking) committed = true;
             if (z.kind == K_BANE && z.berserk) berserkBane = true;
         }
@@ -558,10 +618,15 @@ static void updateSwarm() {
         bool attack = false;
         Unit* m = nearestMarine(cx, cy);
         if (m) {
-            int mg = countNearbyMarines(m, TUN(marineGroupRadius));
-            int maxEngage = (int)TUN(maxEngageMarines);
-            attack = (size >= need && mg <= maxEngage) ||
-                     (committed && size >= (need + 1) / 2 && mg <= maxEngage + 1) ||
+            /* the target group = every marine close enough to join this fight */
+            int mg = countNearbyMarines(m, fmaxf(TUN(marineGroupRadius), marineRange()));
+            float odds = mg * TUN(attackOdds);
+            /* cornered: marines already this close, running is death, so fight */
+            float dmx = m->x - cx, dmy = m->y - cy, cr = marineRange() * 0.7f;
+            bool cornered = dmx * dmx + dmy * dmy < cr * cr;
+            attack = (power >= need && power >= odds) ||
+                     (cornered && power >= odds / 2) ||
+                     (committed && power >= need / 2.0f && power >= odds / 2) ||
                      berserkBane;
         }
         for (int i = 0; i < nz; i++)
@@ -651,7 +716,7 @@ static void step(Unit* c, float dt) {
                 }
             }
         }
-        turnToward(c, ZERG_TURN, dt);
+        turnToward(c, c->fleeing ? 0.75f : ZERG_TURN, dt);
         float v = c->speed * TUN(zergSpeed) * unitSpeed * dt;
         c->x += cosf(c->heading) * v;
         c->y += sinf(c->heading) * v;
@@ -769,7 +834,7 @@ void update(float dt) {
             while (respawnLeftLings > 0 && n < TUN(respawnBatch) && pendingLings() < MAX_LINGS) {
                 Unit* egg = make(K_EGG, K_LING);
                 if (!egg) break;
-                placeEggOpposite(egg);
+                placeEggAtHive(egg);
                 respawnLeftLings--;
                 n++;
             }
