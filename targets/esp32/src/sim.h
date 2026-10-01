@@ -9,7 +9,7 @@ enum SplatCol : uint8_t { SC_LING, SC_BANE, SC_MARINE };
 
 struct Unit {
     Kind kind, hatchKind;
-    bool dead, berserk, entered, shooting, attacking;
+    bool dead, berserk, entered, shooting, attacking, fleeing;
     int8_t face, faceDir;
     uint8_t frame;
     uint8_t splatCol;

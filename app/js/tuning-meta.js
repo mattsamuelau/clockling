@@ -34,15 +34,16 @@ var TUNING_META = {
         lingBiteInterval: { class: "Visible", default: 0.2, meaning: "Seconds between bites" },
         baneSplashDamage: { class: "Visible", default: 90, meaning: "Baneling blast damage" },
         baneSplashR: { class: "Visible", default: 75, meaning: "Baneling blast radius (px)" },
-        attackGroupSize: { class: "Visible", default: 5, meaning: "Swarm size (lings + banes) needed to attack; capped at maxLings" },
+        attackGroupSize: { class: "Visible", default: 5, meaning: "Minimum swarm strength (ling 1, bane 2) to attack; capped at maxLings" },
         berserkBanes: { class: "Visible", default: 2, meaning: "Banelings alive needed to trigger bane berserk" },
         berserkUntilDeath: { class: "Visible", default: false, meaning: "On: berserk never retreats; off: cancels when outnumbered" },
-        maxEngageMarines: { class: "Visible", default: 4, meaning: "Largest marine group a swarm will attack" },
+        attackOdds: { class: "Visible", default: 1.5, meaning: "Swarm strength (ling 1, bane 2) needed per marine in the target group" },
         allyRadius: { class: "Visible", default: 45, meaning: "Lings/banes this close to each other count as one swarm" },
-        marineScanRadius: { class: "Visible", default: 140, meaning: "Idle lings keep this far from marines (keep above marine range = marineW x marineRangeMult)" },
+        marineScanRadius: { class: "Visible", default: 140, meaning: "Lings flee marines inside this radius (never less than 1.25x marine range)" },
         marineGroupRadius: { class: "Visible", default: 60, meaning: "Radius around a marine used to count its group" },
         berserkCatchRadius: { class: "Visible", default: 80, meaning: "Lings catch berserk from a berserk bane within this radius" },
         berserkSpeedMult: { class: "Visible", default: 1.5, meaning: "Speed multiplier while berserk" },
+        lingFleeSpeedMult: { class: "Visible", default: 1.4, meaning: "Speed multiplier for lings escaping marines" },
 
         /* Terran (marines) */
         marineSpawnRateMult: { class: "Visible", default: 1.5, meaning: "Marine spawn rate multiplier" },
@@ -103,7 +104,7 @@ var TUNING_META = {
 
     /* Groups for UI organization */
     groups: {
-        "Zerg Rules": ["attackGroupSize", "berserkBanes", "berserkUntilDeath", "maxEngageMarines", "allyRadius", "marineScanRadius", "marineGroupRadius", "berserkCatchRadius"],
+        "Zerg Rules": ["attackGroupSize", "lingFleeSpeedMult", "berserkBanes", "berserkUntilDeath", "attackOdds", "allyRadius", "marineScanRadius", "marineGroupRadius", "berserkCatchRadius"],
         "Zerg Units": ["maxLings", "maxBanes", "lingHp", "baneHp", "lingBiteDamage", "lingBiteInterval", "baneSplashDamage", "baneSplashR", "berserkSpeedMult"],
         "Zerg Lifecycle": ["respawnInterval", "respawnBatch", "eggTimeMin", "eggTimeMax", "eggHatchMult", "morphAge", "morphCooldown", "morphChancePerSec"],
         "Terran Units": ["maxMarines", "marineHp", "marineShootDamage", "marineShootInterval", "marineRangeMult"],

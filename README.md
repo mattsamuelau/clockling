@@ -17,18 +17,21 @@ Each unit follows a short, fixed set of rules (kept intentionally simple):
 **Swarm** (lings + banes)
 - Lings and banes chained within `allyRadius` of each other form one swarm, and the
   swarm decides as a unit.
-- It attacks when it is at least `attackGroupSize` strong (capped at `maxLings`, so the
-  threshold is always reachable) **and** the target marine group (marines within
-  `marineGroupRadius`) is no bigger than `maxEngageMarines`.
-- Once committed it keeps attacking until cut to half strength, so it doesn't flicker
+- It attacks when its strength (ling 1, bane 2) is at least `attackGroupSize` (capped at
+  `maxLings`) **and** at least `attackOdds` x the target marine group (every marine within
+  weapon range of the target), so it masses up in proportion to what it faces.
+- A cornered swarm (marines already inside 70% of their range) fights at half odds
+  rather than run.
+- Once committed it keeps attacking while it holds half of both, so it doesn't flicker
   at the threshold. A berserk baneling in the swarm always sends it in.
 
 **Zergling**
-1. **Guard** - flock as a boids swarm (separation, alignment, cohesion) around the eggs,
-   staying `marineScanRadius` from marines (keep this above marine range) and out of
-   the marine quadrant.
-2. **Attack** - charge the nearest marine whenever the swarm attacks.
-3. **Berserk** - catch berserk from a berserk bane within `berserkCatchRadius` and charge
+1. **Flee** - any marine within `marineScanRadius` (at least 1.25x marine range): run from
+   all nearby marines toward the hive at `lingFleeSpeedMult`, sliding along walls.
+2. **Guard** - otherwise flock as a boids swarm (separation, alignment, cohesion) around the
+   hive, the safe spot where new eggs are laid, so hatchlings start inside the swarm.
+3. **Attack** - charge the nearest marine whenever the swarm attacks.
+4. **Berserk** - catch berserk from a berserk bane within `berserkCatchRadius` and charge
    at berserk speed. It ends when the swarm calls off the attack, unless
    `berserkUntilDeath` is on.
 
@@ -50,7 +53,7 @@ Each unit follows a short, fixed set of rules (kept intentionally simple):
 All units steer smoothly toward their chosen heading instead of snapping to it.
 
 Each rule maps to a clearly-named parameter (`attackGroupSize`, `berserkBanes`,
-`maxEngageMarines`, …). See `TUNING.md` for the full list and every setting's
+`attackOdds`, …). See `TUNING.md` for the full list and every setting's
 **Core / Normal / Advanced** tier.
 
 ## Quickstart (preview)
