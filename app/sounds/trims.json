@@ -1,7 +1,27 @@
 {
+  "ling_attack.wav": [
+    0.8,
+    1.59
+  ],
+  "ling_chill.wav": [
+    1.22,
+    2.09
+  ],
+  "ling_die.wav": [
+    0.56,
+    1.83
+  ],
   "marine_bitten.wav": [
     7.05,
     9.44
+  ],
+  "marine_die1.wav": [
+    0.57,
+    2.17
+  ],
+  "marine_die2.wav": [
+    1.2,
+    2.8
   ],
   "marine_die_ling.wav": [
     7.46,
