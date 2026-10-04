@@ -10,19 +10,19 @@ var SETTINGS = {
     hour24: true,
     showSeconds: false,
     clockPosition: 0,      /* 0 top, 1 middle, 2 bottom, 3 top left, 4 top right, 5 bottom left, 6 bottom right */
-    clockBehind: false,    /* draw the clock behind the units instead of on top */
-    clockScale: 1,         /* web only: clock size multiplier */
+    clockBehind: true,     /* draw the clock behind the units instead of on top */
+    clockScale: 0.55,      /* web only: clock size multiplier */
     timeZone: "auto",      /* web only: IANA zone (e.g. "Europe/London") or "auto" = this device */
 
     /* battle */
-    gameSpeed: 1,          /* time multiplier */
+    gameSpeed: 1.5,        /* speed multiplier */
     unitScale: 1,          /* population multiplier (max units, wave sizes, spawn rate) */
     unitCount: 10,         /* starting lings */
     unitSpeed: 1.0,        /* movement speed multiplier for every unit */
     showHealthBars: true,
     showKills: true,       /* web only: one yellow mark per ling a marine has killed */
     showScore: false,      /* supply bar + numbers along the top */
-    fieldSize: 320,        /* web only: battlefield short side in logical px (smaller = bigger units) */
+    fieldSize: 1280,       /* web only: battlefield short side in logical px (smaller = bigger units) */
 
     /* device */
     landscape: true        /* ESP32 only: horizontal 320x240 panel (off = vertical 240x320) */
