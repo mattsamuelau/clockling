@@ -71,11 +71,25 @@ both.
 
 | Key | Default | Meaning | Class |
 |---|---|---|---|
+| `ovJoinRadius` | 2.5 | Overmind (zergSkill 30%+): only zerg within this of the swarm's front (x marine range) count toward an attack; stragglers rally to the front. | Visible |
+| `ovSurround` | 40 | Overmind (zergSkill 50%+): degrees each attacking ling arcs off the straight line so the swarm wraps around the marines. | Visible |
+| `ovBaneHold` | true | Overmind (zergSkill 50%+): banes ride in the pack until lings are biting a clump of marines. | Visible |
+| `ovBaneClump` | 2 | Overmind: marines that must stand inside a bane's splash before it rolls in. | Visible |
+| `ovBaneMaxHold` | 6 | Overmind: longest a bane waits in the pack (s). | Visible |
+| `ovFrontMorph` | 0.8 | Overmind: how strongly morphs pick lings at the front line / near the terran spawn (x zergSkill; 0 = oldest lings). | Visible |
+| `ovBaneVanguard` | 0.5 | Overmind: share of a committing swarm's banes that lead at ling pace to break the marine line (the rest hold in the pack for a clump). | Visible |
+| `ovGuardBanes` | true | Overmind (zergSkill 40%+): up to 3 idle lings step between a hunted baneling and its hunter to draw fire, peeling off below half HP. | Visible |
+| `zergNoHope` | 0.35 | A committed swarm fights to the death unless the whole swarm drops below this share of the strength the fight needs (attackOdds x marines). | Visible |
+| `zergSmarts` | true | A swarm ready to attack stalks first, circling the marines just out of range, and only commits when cornered, overwhelming them or out of patience (off = it charges straight in). | Visible |
+| `zergPatience` | 8 | zergSmarts: seconds a stalking swarm circles before it attacks anyway. | Visible |
+| `zergAllInOdds` | 1.5 | zergSmarts: a stalking swarm attacks at once when it has this many times attackOdds (0 = never). | Visible |
+| `zergStandoff` | 1.3 | zergSmarts: stalking ring radius (x marine range). | Advanced |
+| `zergCornerDist` | 0.18 | zergSmarts: a swarm this close to walls (x board short side) with marines near counts as cornered and attacks. | Advanced |
 | `attackGroupSize` | 14 | Minimum swarm strength (ling 1, bane 2) to attack; capped at maxLings. | Visible |
 | `lingFleeSpeedMult` | 1.6 | Speed multiplier for lings escaping marines. | Visible |
 | `berserkBanes` | 2 | Banelings alive needed to trigger bane berserk. | Visible |
 | `berserkUntilDeath` | false | On: berserk never retreats; off: cancels when outnumbered. | Visible |
-| `attackOdds` | 1.5 | Swarm strength (ling 1, bane 2) needed per marine in the target group. | Visible |
+| `attackOdds` | 2.25 | Swarm strength (ling 1, bane 2) needed per marine in the target group. | Visible |
 | `allyRadius` | 45 | Lings/banes this close to each other count as one swarm. | Visible |
 | `marineScanRadius` | 140 | Lings flee marines inside this radius (never less than 1.25x marine range). | Visible |
 | `marineGroupRadius` | 60 | Radius around a marine used to count its group. | Visible |
@@ -102,7 +116,12 @@ both.
 
 | Key | Default | Meaning | Class |
 |---|---|---|---|
+| `startArmy` | 0.7 | Both sides open the battle with this share of their caps (lings at a hive on one side, a full marine wave from the far edge), so the action starts at once. | Visible |
+| `growthRate` | 0.25 | Growth mode: caps grow by this share of their base per minute. | Visible |
+| `growthMax` | 6 | Growth mode: caps stop growing at this multiple of their base. | Visible |
 | `respawnInterval` | 1.5 | Seconds between ling-egg refill batches. | Visible |
+| `zergWaveLo` | 20 | Min seconds after the zerg are wiped out (no lings, banes or eggs) before eggs come back. | Visible |
+| `zergWaveHi` | 25 | Max seconds after the zerg are wiped out before eggs come back. | Visible |
 | `respawnBatch` | 8 | Eggs spawned per refill batch. | Visible |
 | `eggTimeMin` | 7 | Min seconds until an egg hatches. | Visible |
 | `eggTimeMax` | 9 | Max seconds until an egg hatches. | Visible |
@@ -129,6 +148,7 @@ both.
 
 | Key | Default | Meaning | Class |
 |---|---|---|---|
+| `marineSpawnMode` | 0 | Where marine waves enter: 0 far from the zerg, 1 behind the marines already fighting, 2 strategist (reinforce while they hold, land far away when they're overrun). | Visible |
 | `marineEntrySpeed` | 1.5 | Speed multiplier while new marines march in from off-screen. | Visible |
 | `marineEntryDepth` | 0.09 | March-in boost stops this far inside the edge (x shorter side). | Visible |
 | `marineSpawnRateMult` | 1.5 | Marine spawn rate multiplier. | Visible |
@@ -159,13 +179,25 @@ both.
 | `stimDuration` | 3 | Seconds a stimpack lasts. | Visible |
 | `stimCooldown` | 10 | Seconds before a marine can stim again. | Visible |
 | `stimSpeedMult` | 2 | Speed multiplier while stimmed. | Visible |
-| `stimHpCost` | 0.5 | Share of current HP a stimpack costs. | Visible |
-| `stimRegenMult` | 0.1 | HP regen multiplier after a stim (for stimRegenTime). | Visible |
-| `stimRegenTime` | 10 | Seconds of slowed regen from the moment a marine stims. | Visible |
-| `stimFxTime` | 5 | Seconds the green stim glow shows (never shorter than the stim). | Visible |
+| `stimHpCost` | 0.5 | Share of MAX HP each stimpack costs (it can kill: green marines may stim themselves to death). | Visible |
+| `stimRegenMult` | 0 | HP regen multiplier after a stim (for stimRegenTime). | Visible |
+| `stimRegenTime` | 20 | Seconds of slowed regen from the moment a marine stims. | Visible |
 | `stimGroupMax` | 3 | Only marine groups this small (or smaller) stim to escape. | Visible |
 | `stimRegroupDist` | 0.3 | Lone marines farther than this from the main mob (x board short side) stim back to it. | Visible |
-| `marineKiteSpeed` | 0.5 | Speed multiplier while kiting / running back to the mob (on top of skill footwork and stim). | Visible |
+| `marineKiteSpeed` | 0.5 | Speed multiplier while kiting / running back to the mob for green marines (on top of skill footwork and stim); rises to 1x at max skill. | Visible |
+| `marineUpright` | true | Marines stand upright (feet down) when not firing, facing and leaning with their squad's walk; off = they always face the closest zerg, leaning at most marineMaxTilt. | Visible |
+| `marineWalkTilt` | 25 | marineUpright: max degrees a marine leans from upright while walking (it turns fully to its target when firing). | Visible |
+| `marineMicro` | true | Per-marine micro (50%+ skill), like SC2 bots: stutter-step back while the gun cools down, fire when ready, and split away from banelings. | Visible |
+| `marineBaneHunt` | true | The 1-2 closest healthy marines (60%+ skill) stim forward and shoot a bane that isn't charging - in the open or stuck among them - keeping out of its splash. | Visible |
+| `marineStimAttack` | true | A healthy marine group (3+, 60%+ skill) in a fight it can win stims together and pushes in hard. | Visible |
+| `marineSquads` | true | Split kiting: a big marine mob splits into control groups that kite independently, taking turns to backstep and peeling apart to pull the swarm apart (off = the whole mob kites as one). | Visible |
+| `marineCtrlGroups` | 4 | marineSquads: most control groups one mob splits into (2 below 75% skill, none below 50%). | Visible |
+| `marineCtrlGroupSize` | 6 | marineSquads: marines per control group (a mob of 12 makes 2 groups, 40 makes marineCtrlGroups). | Visible |
+| `marineFlank` | true | Marines advance on a flank instead of straight at the zerg. | Visible |
+| `marineStimPush` | true | Stimmed elite marines (75%+ skill) push in while firing and kite back later. | Visible |
+| `marineEliteKite` | true | Elite marines (75%+ skill) stutter-step whenever lings close in, and kite at full footwork speed. | Visible |
+| `marineFlankAngle` | 45 | Degrees off the direct line marines advance at, so they come in on a flank (scaled by skill; straight in when they overwhelm 3:1). | Visible |
+| `marineMaxTilt` | 45 | Max degrees a marine sprite leans from level when aiming up or down (feet stay down). | Visible |
 | `marineSkillTopSpeed` | 3 | Movement multiplier at max marine skill (1x at half skill). | Advanced |
 
 ## Movement
@@ -216,11 +248,15 @@ both.
 | `clockBehind` | true | Draw the clock behind the units. | both |
 | `clockScale` | 0.55 | Clock size. | web |
 | `timeZone` | auto | Time zone (auto = this device). | web |
-| `gameSpeed` | 5 | Speed multiplier. | both |
-| `unitScale` | 5 | Unit multiplier (population, waves, spawn rate). | both |
-| `marineSkill` | 0.6 | Marine smarts: 0 = stand and die, 1 = one marine can dance around a swarm. | web |
+| `gameSpeed` | 2.5 | Speed multiplier. | both |
+| `unitScale` | 2 | Unit multiplier (population, waves, spawn rate). | both |
+| `marineSkill` | 0.8 | Marine smarts: 0 = stand and die, 1 = one marine can dance around a swarm. | web |
+| `zergSkill` | 0.8 | Overmind smarts: 0 = every swarm piles in, 1 = backup gathers, lings surround, banes wait for a clump. | web |
+| `zergBrain` | 0 | Overmind brain: Default = the tuning panel, Trained = the self-play champion (tools/sim/train.js). | web |
+| `terranBrain` | 0 | Commander brain: Default = the tuning panel, Trained = the self-play champion (tools/sim/train.js). | web |
 | `unitCount` | 10 | Starting zerglings. | both |
 | `unitSpeed` | 1 | Movement speed multiplier for every unit. | both |
+| `growthMode` | false | Growth mode: both sides keep getting reinforcements beyond the caps until one wipes the other off the board, then caps reset. | web |
 | `showHealthBars` | true | Show unit health bars. | both |
 | `showKills` | true | Marine kill marks (one per ling killed). | web |
 | `gore` | true | Gore mode: splats and corpses linger (splat 16.2 s, corpse 19.2 s). | both |
@@ -228,7 +264,7 @@ both.
 | `soundOn` | true | Play sound effects. | web |
 | `soundVolume` | 30 | Sound volume. | web |
 | `soundRate` | 1 | How often chatter and voicelines play (0 = never). | web |
-| `musicTrack` | 3 | Background music. | web |
+| `musicTrack` | 6 | Background music. | web |
 | `musicVolume` | 30 | Music volume. | web |
 | `landscape` | true | Horizontal screen (off = vertical). | ESP32 |
 

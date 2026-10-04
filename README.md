@@ -157,6 +157,33 @@ Every key is documented in **[TUNING.md](TUNING.md)**.
 > `bake_tuning.py` rewrites the TUNING block in `swarm.js` from the table inside it. It
 > ignores arguments, so only run it when you mean to; keep its table equal to the defaults.
 
+## Testing and training the AI (web)
+
+The web sim can run headless in Node, so balance and AI changes are measured
+rather than eyeballed. Everything lives in `tools/sim/`:
+
+- **`harness.js`** runs the real `app/js/swarm.js` without a browser and reports
+  how the battle went: how long each side controlled the map, how often control
+  swung, losses, stims, bane kills and wipes.
+- **`balance.js`** searches spawn / respawn / swarm settings for the battle
+  presets (Balanced, Terran, Zerg, Mental), scoring each candidate on whether the
+  fight is *fun*: each side takes decisive control for a while, then loses it,
+  rather than a stalemate or a wipe. `apply_presets.py` writes the winners into
+  the defaults and the presets.
+- **`train.js`** trains the two commanders by self-play: the zerg **Overmind**
+  and the terran **Commander** are each a set of decision settings (when to
+  attack, bane timing, control groups, stim use, where to spawn...), never unit
+  stats. Two populations evolve against each other and are rewarded for
+  efficient trades, holding the map and wiping the enemy (`rewards.js`). The
+  champions land in `app/js/brains.js` as the *Trained* Overmind / Commander
+  options in the settings drawer.
+
+Both the marines (skill slider, per-marine stutter-step and bane splits,
+control-group kiting, stim) and the zerg (Zerg skill slider: surrounds, bane
+timing, stalking, protecting banes) have toggles in the tuning panel, so any
+behaviour can be switched off to compare. These AI features are web-only; the
+ESP32 sim keeps the simpler rules.
+
 ## Porting to another device
 
 1. **Pick a display path.** Anything that can run a browser can just show `clockling.html`
@@ -182,9 +209,11 @@ app/
   js/swarm.js             battle sim + TUNING defaults (reference implementation)
   js/settings.js          SETTINGS defaults
   js/tuning-meta.js       labels/meanings/groups/options for every key
+  js/brains.js            trained Overmind / Commander brains (from tools/sim/train.js)
   images/                 sprite frames
 targets/esp32/            ESP32 firmware (PlatformIO); see its README
 docs/                     demo GIF, screenshot, the original project brief
+tools/sim/                headless sim, balance search and self-play training (see above)
 TUNING.md                 every setting explained
 bake_tuning.py            writes a table of values into swarm.js's TUNING block
 ```

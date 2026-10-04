@@ -301,6 +301,7 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
 
 <script src="app/js/settings.js"></script>
 <script src="app/js/tuning-meta.js"></script>
+<script src="app/js/brains.js"></script>
 <script src="app/js/swarm.js"></script>
 <script>
 (function () {
@@ -448,6 +449,7 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         else if (key === "unitScale") Swarm.setUnitScale(SETTINGS.unitScale);
         else if (key === "fieldSize" || key === "clockScale") layout();
         else if (key === "musicTrack" || key === "musicVolume") setMusic();
+        else if (key === "zergBrain" || key === "terranBrain") Swarm.setTuning({});   /* re-layer the brains */
         if (/^clock|showClock/.test(key)) applyClockLayout();
         tick();
         save();
@@ -549,23 +551,23 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
     /* battle presets: battle settings + zerg/terran tuning go back to their
      * defaults, then the preset's overrides apply and the battle restarts.
      * Clock, sound and display settings are left alone. */
-    var BATTLE_KEYS = ["gameSpeed", "unitScale", "unitSpeed", "marineSkill"];
+    var BATTLE_KEYS = ["gameSpeed", "unitScale", "unitSpeed", "growthMode", "marineSkill", "zergSkill", "zergBrain", "terranBrain"];
     var PRESETS = [
-        { name: "Balanced", hint: "The default fight", s: {}, t: {} },
-        { name: "Terran", hint: "Big ling swarms mass up, then sharp marines mow them down",
-          s: { marineSkill: 0.85 },
-          t: { maxLings: 30, maxBanes: 2, morphChancePerSec: 0.05, attackGroupSize: 30, attackOdds: 0.6,
-               respawnInterval: 3, respawnBatch: 6, maxMarines: 8, marineRespawnLo: 4, marineRespawnHi: 6,
-               marineWaveLo: 10, marineWaveHi: 12 } },
-        { name: "Zerg", hint: "Green marines, long gaps with no marines at all",
-          s: { marineSkill: 0.3 },
-          t: { maxLings: 24, respawnInterval: 0.75, marineWaveLo: 120, marineWaveHi: 150,
-               marineRespawnLo: 45, marineRespawnHi: 60 } },
-        { name: "Mental", hint: "Full supply (~300 lings vs 50 marines), max speed, huge swarms crash in",
-          s: { gameSpeed: 5, unitScale: 5 },
-          t: { maxLings: 60, maxBanes: 6, maxMarines: 10, respawnInterval: 0.5, respawnBatch: 16,
-               attackGroupSize: 150, attackOdds: 2,
-               marineRespawnLo: 2, marineRespawnHi: 3, marineWaveLo: 5, marineWaveHi: 6 } }
+        { name: "Balanced", hint: "Both sides smart: the default fight",
+          s: { gameSpeed: 2.5, unitScale: 2, unitSpeed: 1, growthMode: false, marineSkill: 0.8, zergSkill: 0.8, zergBrain: 0, terranBrain: 0 },
+          t: {} },
+        { name: "Terran", hint: "Smart marines kite and split; a basic swarm piles in",
+          s: { gameSpeed: 2.5, unitScale: 2, unitSpeed: 1, growthMode: false, marineSkill: 1, zergSkill: 0.2, zergBrain: 0, terranBrain: 0 },
+          t: {} },
+        { name: "Zerg", hint: "A smart Overmind surrounds and times its banes; basic marines stand and shoot",
+          s: { gameSpeed: 2.5, unitScale: 2, unitSpeed: 1, growthMode: false, marineSkill: 0.2, zergSkill: 1, zergBrain: 0, terranBrain: 0 },
+          t: {} },
+        { name: "Mental", hint: "Max speed, 5x units, growth mode on, both sides smart and the swarm mega-aggro",
+          s: { gameSpeed: 5, unitScale: 5, unitSpeed: 1, growthMode: true, marineSkill: 1, zergSkill: 1, zergBrain: 0, terranBrain: 0 },
+          t: { maxLings: 30, maxBanes: 4, maxMarines: 8, respawnInterval: 1, respawnBatch: 8,
+               attackGroupSize: 10, attackOdds: 1.2, zergPatience: 3, zergAllInOdds: 1, zergNoHope: 0.15,
+               marineRespawnLo: 4, marineRespawnHi: 6, marineWaveLo: 8, marineWaveHi: 10,
+               growthRate: 0.5, growthMax: 1.6 } }
     ];
     function applyPreset(p) {
         BATTLE_KEYS.forEach(function (k) { SETTINGS[k] = DEF_SETTINGS[k]; });
@@ -629,7 +631,11 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         presetRow(b);
         sliderRow(b, "gameSpeed", "Speed", x);
         sliderRow(b, "unitScale", "Units", x);
+        switchRow(b, "growthMode", "Growth mode", "Both sides keep reinforcing until one wipes the other out, then it starts again");
         sliderRow(b, "marineSkill", "Marine skill", function (v) { return Math.round(v * 100) + "%"; });
+        sliderRow(b, "zergSkill", "Zerg skill", function (v) { return Math.round(v * 100) + "%"; });
+        selectRow(b, "zergBrain", "Overmind", META.settings.zergBrain.options);
+        selectRow(b, "terranBrain", "Commander", META.settings.terranBrain.options);
         segRow(b, "fieldSize", "Battlefield", "Smaller field = bigger units", META.settings.fieldSize.options);
         switchRow(b, "showHealthBars", "Health bars");
         switchRow(b, "showKills", "Kill marks", "One mark per zergling a marine has killed");
@@ -1125,20 +1131,32 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
     setInterval(chatterTick, 250);
 
     /* background music: one looping track quietly under the SFX, crossfaded
-     * when switched. Index = SETTINGS.musicTrack. */
+     * when switched. Index = SETTINGS.musicTrack; MUSIC_ALL plays every track
+     * in MUSIC_ORDER, moving on when one ends and starting over after the last. */
     var MUSIC = [null, "zerg.mp3", "protoss.mp3", "terran1.mp3", "terran2.mp3", "terran3.mp3"];
+    var MUSIC_ALL = 6;
+    var MUSIC_ORDER = ["terran1.mp3", "terran2.mp3", "terran3.mp3", "zerg.mp3", "protoss.mp3"];
+    var musicPos = -1;
     var MUSIC_FADE_MS = 1500;
     var music = null;   /* { a: Audio, track, gain 0..1, target 0 or 1 } */
     var musicOld = [];  /* tracks fading out */
     function musicLevel() { return Math.max(0, Math.min(1, (+SETTINGS.musicVolume || 0) / 100)); }
-    function setMusic() {
+    function nextInOrder() {
+        for (var i = 0; i < MUSIC_ORDER.length; i++) {
+            musicPos = (musicPos + 1) % MUSIC_ORDER.length;
+            if (!missing["music/" + MUSIC_ORDER[musicPos]]) return MUSIC_ORDER[musicPos];
+        }
+        return null;
+    }
+    function setMusic(next) {
         var t = +SETTINGS.musicTrack || 0;
-        if (music && music.track === t) return;            /* volume change: the fader applies it */
+        if (music && music.track === t && !next) return;   /* volume change: the fader applies it */
         if (music) { music.target = 0; musicOld.push(music); music = null; }
-        var file = MUSIC[t];
+        var file = t === MUSIC_ALL ? nextInOrder() : MUSIC[t];
         if (!file || missing["music/" + file]) return;
         var a = new Audio("app/sounds/music/" + file);
-        a.loop = true;
+        a.loop = t !== MUSIC_ALL;
+        if (t === MUSIC_ALL) a.addEventListener("ended", function () { if (music && music.a === a) setMusic(true); });
         a.volume = 0;
         a.addEventListener("error", function () { missing["music/" + file] = true; });
         music = { a: a, track: t, gain: 0, target: 1 };
