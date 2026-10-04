@@ -58,6 +58,13 @@ Manual tweaks work too: edit the `default:` in `tuning-meta.js` or the value in
 `settings.js`, then run `python gen_docs.py` and
 `python targets/esp32/tools/gen_assets.py`.
 
+## Sounds
+
+Web-only for now: drop wav/mp3 files into `app/sounds/` - see the
+[sound design brief](app/sounds/README.md) for the events, source clips and
+speed-scaling rules. Missing files are skipped silently; toggle in
+Settings > Sound effects.
+
 ## Use it
 
 ### Web
