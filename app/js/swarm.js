@@ -43,8 +43,8 @@ var Swarm = (function () {
         mapW: 216,
         mapH: 432,
         marineSpawnRateMult: 1.5, /* >1 spawns marines faster */
-        maxLings: 14,
-        maxBanes: 2,
+        maxLings: 16,
+        maxBanes: 3,
         maxMarines: 6,
         lingW: 30,
         baneW: 39,             /* 30% larger than the ling */
@@ -53,8 +53,8 @@ var Swarm = (function () {
         lingBump: 10,
         baneBump: 12,
         marineBump: 12,
-        respawnInterval: 2,   /* seconds between ling-egg refill batches */
-        respawnBatch: 4,        /* eggs spawned per batch */
+        respawnInterval: 1.5,   /* seconds between ling-egg refill batches */
+        respawnBatch: 8,        /* eggs spawned per batch */
         marineWaveLo: 30,        /* how long after all marines die until the next wave */
         marineWaveHi: 32,
         marineRespawnLo: 8,    /* how often marines spawn while marines are alive */
@@ -70,8 +70,8 @@ var Swarm = (function () {
         morphAge: 4,           /* ling must live this long before morphing */
         morphCooldown: 2,
         morphChancePerSec: 1, /* chance/sec an eligible ling starts morphing */
-        eggTimeMin: 8,             /* min seconds until an egg hatches */
-        eggTimeMax: 10,            /* max seconds until an egg hatches */
+        eggTimeMin: 7,             /* min seconds until an egg hatches */
+        eggTimeMax: 9,            /* max seconds until an egg hatches */
         eggHatchMult: 1.5,         /* when an egg hatches, one other egg speeds up this much */
         splatLife: 1.21,
         splatBase: 7,           /* splat start radius (grows only 20%) */
@@ -97,12 +97,12 @@ var Swarm = (function () {
         marineKiteFrac: 0.6,    /* marines back off from zerg closer than this x range */
         marineRangeMult: 3,      /* marine weapon range = this * marineW */
         allyRadius: 45,          /* lings/banes this close to each other form one swarm */
-        attackGroupSize: 5,      /* swarm size needed to attack (capped at maxLings) */
+        attackGroupSize: 10,     /* swarm size needed to attack (capped at maxLings) */
         marineScanRadius: 140,   /* idle lings keep this far from marines (> marine range) */
         marineGroupRadius: 60,   /* radius around a marine used to count its group */
         attackOdds: 1.5,         /* swarm strength needed per marine in the target group */
         berserkSpeedMult: 1.5,   /* speed multiplier while berserk */
-        lingFleeSpeedMult: 1.4,  /* speed multiplier for lings escaping marines */
+        lingFleeSpeedMult: 1.6,  /* speed multiplier for lings escaping marines */
         berserkBanes: 2,         /* banes alive needed to trigger bane berserk */
         berserkCatchRadius: 80,  /* lings catch berserk from a berserk bane within this */
         berserkUntilDeath: false,/* on: berserk never retreats; off: cancels when outnumbered */

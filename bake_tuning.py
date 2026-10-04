@@ -4,7 +4,7 @@ import os
 import re
 
 vals = {
-    "maxLings": 14, "maxBanes": 2, "maxMarines": 6,
+    "maxLings": 16, "maxBanes": 3, "maxMarines": 6,
     "zergSpeed": 1.2, "terranSpeed": 1.2,
     "marineSpawnRateMult": 1.5,
     "marineWaveLo": 30, "marineWaveHi": 32,
@@ -18,14 +18,14 @@ vals = {
     "marineGroupWeight": 0.5, "marineAwayWeight": 1, "marineTurnRate": 0.25,
     "marineHealPct": 0.10, "marineHealInterval": 0.5,
     "marineSplatScale": 1.4,
-    "respawnInterval": 2, "respawnBatch": 4,
-    "eggTimeMin": 8, "eggTimeMax": 10, "eggHatchMult": 1.5,
+    "respawnInterval": 1.5, "respawnBatch": 8,
+    "eggTimeMin": 7, "eggTimeMax": 9, "eggHatchMult": 1.5,
     "lingHp": 100, "baneHp": 140,
     "lingBiteDamage": 10, "lingBiteInterval": 0.2,
     "baneSplashDamage": 90, "baneSplashR": 61, "baneSplatScale": 2.5,
-    "attackGroupSize": 5, "berserkBanes": 2, "attackOdds": 1.5,
+    "attackGroupSize": 10, "berserkBanes": 2, "attackOdds": 1.5,
     "allyRadius": 45, "marineScanRadius": 140, "marineGroupRadius": 60,
-    "berserkCatchRadius": 80, "berserkSpeedMult": 1.5, "lingFleeSpeedMult": 1.4,
+    "berserkCatchRadius": 80, "berserkSpeedMult": 1.5, "lingFleeSpeedMult": 1.6,
     "morphAge": 4, "morphCooldown": 2, "morphChancePerSec": 1,
     "retargetInterval": 0.5, "aimInterval": 0.3,
     "splatLife": 1.21, "splatBase": 7, "splatFadeStart": 0.6,
