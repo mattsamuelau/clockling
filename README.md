@@ -60,8 +60,10 @@ Manual tweaks work too: edit the `default:` in `tuning-meta.js` or the value in
 
 ## Sounds
 
-Web-only for now: drop wav/mp3 files into `app/sounds/` - see the
-[sound design brief](app/sounds/README.md) for the events, source clips and
+Web-only for now: SFX, marine chatter and a background-music picker
+(Settings > Battle). The clips in `app/sounds/` are built by
+`python build_sounds.py` from the sources in the
+[sound design brief](app/sounds/README.md), which also covers the events and
 speed-scaling rules. Missing files are skipped silently; toggle in
 Settings > Sound effects.
 

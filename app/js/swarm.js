@@ -502,8 +502,8 @@ var Swarm = (function () {
         mm.deployY = Math.max(20, Math.min(H - 20, mm.y + ny * dd));
         mm.deployT = 3;
         units.push(mm);
-        /* occasional arrival voiceline */
-        if (Math.random() < 0.25) sound("marineVoice");
+        /* arrival voiceline (the page throttles it and shares the voice channel) */
+        sound("marineSpawn");
     }
 
     /* the marine quadrant with the most marines, plus the centroid inside it */
@@ -1027,14 +1027,20 @@ var Swarm = (function () {
                 rot: lrot, mirror: lmirror, life: corpseLife(), max: corpseLife()
             });
         } else if (c.kind === "bane") {
-            sound("baneDie");
             /* splash: damage EVERY marine in blast range, not just the touched one */
+            var baneKills = 0;
             for (var i = 0; i < units.length; i++) {
                 var m = units[i];
                 if (m.kind !== "marine" || m.dead) continue;
                 var dx = m.x - c.x, dy = m.y - c.y;
-                if (dx * dx + dy * dy < BANE_SPLASH_R * BANE_SPLASH_R) m.hp -= BANE_SPLASH_DMG;
+                if (dx * dx + dy * dy < BANE_SPLASH_R * BANE_SPLASH_R) {
+                    var hadHp = m.hp > 0;
+                    m.hp -= BANE_SPLASH_DMG;
+                    if (hadHp && m.hp <= 0) baneKills++;
+                }
             }
+            /* the big boom only when the blast killed a marine; otherwise a plain ling death */
+            sound(baneKills > 0 ? "baneDie" : "lingDie");
         } else if (c.kind === "marine") {
             sound("marineDie");
             /* corpse: freeze the frame, show only the bottom half, fade out */
@@ -1192,6 +1198,7 @@ var Swarm = (function () {
                     units.push(nb);
                 } else {
                     /* two lings hatch out of each zergling egg */
+                    sound("lingChill");
                     for (var h2 = 0; h2 < 2; h2++) {
                         var nl = make("ling");
                         nl.x = eg.x + (h2 === 0 ? -6 : 6);
@@ -1467,6 +1474,18 @@ var Swarm = (function () {
         }
     }
 
+    /* for the page's sound logic: live marines, and how many are firing right now */
+    function marineStatus() {
+        var alive = 0, shooting = 0;
+        for (var i = 0; i < units.length; i++) {
+            var u = units[i];
+            if (u.kind !== "marine" || u.dead) continue;
+            alive++;
+            if (u.shootTarget) shooting++;
+        }
+        return { alive: alive, shooting: shooting };
+    }
+
     function setGameSpeed(n) {
         gameSpeed = parseFloat(n) || 1;
     }
@@ -1528,6 +1547,6 @@ var Swarm = (function () {
 
     return { init: init, start: start, stop: stop, restart: restart, setCount: setCount, killNear: killNear,
              setGameSpeed: setGameSpeed, setUnitScale: setUnitScale, setTuning: setTuning, resize: resize,
-             setSoundHandler: setSoundHandler,
+             setSoundHandler: setSoundHandler, marineStatus: marineStatus,
              TUNING: TUNING, debugUnits: function () { return units; } };
 })();

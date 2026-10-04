@@ -120,6 +120,10 @@ var TUNING_META = {
                      options: { "480": "Small", "640": "Medium", "960": "Large", "1280": "Huge" } },
         soundOn: { class: "Visible", meaning: "Play sound effects", only: "web" },
         soundVolume: { class: "Visible", meaning: "Sound volume", only: "web", min: 0, max: 100, step: 5 },
+        soundRate: { class: "Visible", meaning: "How often chatter and voicelines play (0 = never)", only: "web", min: 0, max: 3, step: 0.25 },
+        musicTrack: { class: "Visible", meaning: "Background music", only: "web",
+                      options: ["Off", "Zerg", "Protoss", "Terran 1", "Terran 2", "Terran 3"] },
+        musicVolume: { class: "Visible", meaning: "Music volume", only: "web", min: 0, max: 100, step: 5 },
         landscape: { class: "Visible", meaning: "Horizontal screen (off = vertical)", only: "esp32" }
     },
 
@@ -135,7 +139,7 @@ var TUNING_META = {
         "Visuals": ["lingW", "baneW", "marineW", "eggW", "lingBump", "baneBump", "marineBump", "splatLife", "splatBase", "splatFadeStart", "corpseLife", "goreSplatLife", "goreCorpseLife", "baneSplatLifeMult", "marineSplatScale", "baneSplatScale", "retargetInterval", "aimInterval"],
         "Map": ["mapW", "mapH"],
         "Clock": ["showClock", "hour24", "showSeconds", "clockPosition", "clockBehind", "clockScale", "timeZone"],
-        "Battle": ["gameSpeed", "unitScale", "fieldSize", "showHealthBars", "showKills", "showScore", "gore", "unitCount", "unitSpeed"],
+        "Battle": ["gameSpeed", "unitScale", "fieldSize", "showHealthBars", "showKills", "showScore", "gore", "unitCount", "unitSpeed", "soundOn", "soundVolume", "soundRate", "musicTrack", "musicVolume"],
         "Display": ["landscape"]
     }
 };

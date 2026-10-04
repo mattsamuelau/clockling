@@ -391,6 +391,7 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         if (key === "gameSpeed") Swarm.setGameSpeed(SETTINGS.gameSpeed);
         else if (key === "unitScale") Swarm.setUnitScale(SETTINGS.unitScale);
         else if (key === "fieldSize" || key === "clockScale") layout();
+        else if (key === "musicTrack" || key === "musicVolume") setMusic();
         if (/^clock|showClock/.test(key)) applyClockLayout();
         tick();
         save();
@@ -509,6 +510,9 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         switchRow(b, "showScore", "Score bar", "Zerg vs terran supply along the top");
         switchRow(b, "soundOn", "Sound effects");
         sliderRow(b, "soundVolume", "Volume", function (v) { return Math.round(v) + "%"; });
+        sliderRow(b, "soundRate", "Chatter", function (v) { return v ? x(v) : "Off"; });
+        selectRow(b, "musicTrack", "Music", META.settings.musicTrack.options);
+        sliderRow(b, "musicVolume", "Music volume", function (v) { return Math.round(v) + "%"; });
         switchRow(b, "gore", "Gore", "Splats and corpses linger much longer");
         var restart = el("button", "btn block"); restart.textContent = "Restart battle";
         restart.addEventListener("click", function () { Swarm.restart(); toast("Battle restarted"); });
@@ -534,7 +538,7 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         host.innerHTML = "";
         var shown = { showClock: 1, hour24: 1, showSeconds: 1, clockPosition: 1, clockBehind: 1, clockScale: 1, timeZone: 1,
                       gameSpeed: 1, unitScale: 1, fieldSize: 1, showHealthBars: 1, showKills: 1, showScore: 1, gore: 1,
-                      soundOn: 1, soundVolume: 1 };
+                      soundOn: 1, soundVolume: 1, soundRate: 1, musicTrack: 1, musicVolume: 1 };
         Object.keys(META.groups).forEach(function (g) {
             var keys = META.groups[g].filter(function (k) {
                 if (HIDDEN_TUNING[k] || shown[k]) return false;
@@ -705,36 +709,162 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
     Swarm.setUnitScale(SETTINGS.unitScale);
     Swarm.init({ canvas: "swarm", assets: "app/images/" });
 
-    /* sounds: sim events -> app/sounds/*. Files are optional: a missing one is
-     * detected on first play and skipped from then on. */
+    /* sounds: sim events -> app/sounds/* (see app/sounds/README.md). Files are
+     * optional: one that fails to load is skipped from then on. Each event lists
+     * one or more clips; a random one plays (never the same twice in a row).
+     *   vol   - mix level (x soundVolume)
+     *   gap   - min ms between plays at 1x speed (scaled with gameSpeed below)
+     *   voice - uses the single voice channel: never overlaps another line
+     *   chat  - chatter / voiceline: how often it fires follows soundRate */
     var SOUNDS = {
-        lingChill:   { file: "ling_chill.wav",   vol: 0.30, gap: 1200 },
-        lingAttack:  { file: "ling_attack.wav",  vol: 0.50, gap: 400 },
-        lingDie:     { file: "ling_die.wav",     vol: 0.45, gap: 150 },
-        baneDie:     { file: "bane_die.wav",     vol: 0.65, gap: 200 },
-        marineShoot: { file: "marine_shoot.wav", vol: 0.25, gap: 120 },
-        marineDie:   { file: "marine_die.wav",   vol: 0.50, gap: 200 },
-        marineVoice: { file: "marine_voice.wav", vol: 0.60, gap: 1200 }
+        lingChill:   { files: ["ling_chill.wav"],   vol: 0.30, gap: 2500, chat: true },
+        lingAttack:  { files: ["ling_attack.wav"],  vol: 0.50, gap: 400 },
+        lingDie:     { files: ["ling_die.wav"],     vol: 0.45, gap: 150 },
+        baneDie:     { files: ["bane_die.wav"],     vol: 0.65, gap: 200 },
+        marineShoot: { files: ["marine_shoot.wav"], vol: 0.25, gap: 120 },
+        marineDie:   { files: ["marine_die.wav"],   vol: 0.50, gap: 200 },
+        marineVoice: { files: ["marine_voice1.wav", "marine_voice2.wav"], vol: 0.60, gap: 0, voice: true },
+        marineSpawn: { files: ["marine_spawn.wav"], vol: 0.60, gap: 4000, voice: true, chat: true }
     };
-    var soundPool = {}, soundLast = {};
+    var SOUND_RATE_MIN = 0.75, SOUND_RATE_MAX = 2.0;   /* playback rate clamp, whatever the game speed */
+    var COPIES_PER_CLIP = 3;                           /* overlapping copies of one clip (gunfire etc.) */
+    var soundPool = {}, soundLast = {}, soundPrev = {}, missing = {};
+    var voiceBusy = null;                              /* the voice line playing now */
+
+    /* playback rate follows gameSpeed inside the clamp. Gaps shrink with the rate
+     * (sounds keep pace with the sim) but past the clamp they grow again, so
+     * triggers never pile up at 5x. */
+    function soundSpeed() {
+        var g = +SETTINGS.gameSpeed || 1;
+        var rate = Math.max(SOUND_RATE_MIN, Math.min(SOUND_RATE_MAX, g));
+        return { rate: rate, gapMul: Math.max(1, g / rate) / rate };
+    }
+    function voiceIsBusy() { return !!(voiceBusy && !voiceBusy.paused && !voiceBusy.ended); }
+
+    function clipAudio(file) {
+        var pool = soundPool[file] || (soundPool[file] = []);
+        for (var i = 0; i < pool.length; i++) if (pool[i].paused || pool[i].ended) return pool[i];
+        if (pool.length >= COPIES_PER_CLIP) return null;   /* every copy busy: drop this one */
+        var a;
+        try { a = new Audio("app/sounds/" + file); } catch (e) { missing[file] = true; return null; }
+        a.preload = "auto";
+        a.addEventListener("error", function () { missing[file] = true; });
+        pool.push(a);
+        return a;
+    }
+
+    function pickClip(name, s) {
+        var ok = s.files.filter(function (f) { return !missing[f]; });
+        if (!ok.length) return null;
+        if (ok.length > 1) ok = ok.filter(function (f) { return f !== soundPrev[name]; });
+        var f = ok[Math.floor(Math.random() * ok.length)];
+        soundPrev[name] = f;
+        return f;
+    }
+
     function playSound(name) {
         if (!SETTINGS.soundOn) return;
         var s = SOUNDS[name];
-        if (!s || s.missing) return;
-        var now = Date.now();
-        if (soundLast[name] && now - soundLast[name] < s.gap) return;
-        soundLast[name] = now;
-        if (!soundPool[name]) {
-            try { soundPool[name] = new Audio("app/sounds/" + s.file); }
-            catch (e) { s.missing = true; return; }
+        if (!s) return;
+        var rate = +SETTINGS.soundRate;
+        if (s.chat) {
+            if (!(rate > 0)) return;
+            if (rate < 1 && Math.random() > rate) return;   /* thin out below 1x */
         }
-        var a = soundPool[name];
+        if (s.voice && voiceIsBusy()) return;
+        var sp = soundSpeed();
+        var gap = s.gap * sp.gapMul / (s.chat ? Math.max(1, rate) : 1);
+        var now = Date.now();
+        if (soundLast[name] && now - soundLast[name] < gap) return;
+        var file = pickClip(name, s);
+        if (!file) return;
+        var a = clipAudio(file);
+        if (!a) return;
+        soundLast[name] = now;
         a.volume = Math.max(0, Math.min(1, s.vol * SETTINGS.soundVolume / 100));
+        a.playbackRate = sp.rate;
         a.currentTime = 0;
+        if (s.voice) voiceBusy = a;
         var p = a.play();
-        if (p && p.catch) p.catch(function () { s.missing = true; soundPool[name] = null; });
+        if (p && p.catch) p.catch(function (e) {
+            /* blocked until the first click/tap (autoplay rule) is not "missing" */
+            if (e && e.name === "NotSupportedError") missing[file] = true;
+            if (voiceBusy === a) voiceBusy = null;
+        });
     }
     Swarm.setSoundHandler(playSound);
+
+    /* marine chatter: only while no marine is firing - random lines one after
+     * another on the voice channel, with a pause between (shorter at a higher
+     * soundRate) */
+    var chatterNext = 0;
+    function chatterTick() {
+        if (!SETTINGS.soundOn || document.hidden) return;
+        var rate = +SETTINGS.soundRate;
+        if (!(rate > 0)) return;
+        var now = Date.now();
+        var st = Swarm.marineStatus();
+        if (!st.alive || st.shooting || voiceIsBusy()) {
+            /* wait a beat after the fighting / the current line before talking again */
+            if (st.shooting || voiceIsBusy()) chatterNext = Math.max(chatterNext, now + 1500 / rate);
+            return;
+        }
+        if (!chatterNext) chatterNext = now + 2000;
+        if (now < chatterNext) return;
+        chatterNext = now + (3000 + Math.random() * 5000) / rate;
+        playSound("marineVoice");
+    }
+    setInterval(chatterTick, 250);
+
+    /* background music: one looping track quietly under the SFX, crossfaded
+     * when switched. Index = SETTINGS.musicTrack. */
+    var MUSIC = [null, "zerg.mp3", "protoss.mp3", "terran1.mp3", "terran2.mp3", "terran3.mp3"];
+    var MUSIC_FADE_MS = 1500;
+    var music = null;   /* { a: Audio, track, gain 0..1, target 0 or 1 } */
+    var musicOld = [];  /* tracks fading out */
+    function musicLevel() { return Math.max(0, Math.min(1, (+SETTINGS.musicVolume || 0) / 100)); }
+    function setMusic() {
+        var t = +SETTINGS.musicTrack || 0;
+        if (music && music.track === t) return;            /* volume change: the fader applies it */
+        if (music) { music.target = 0; musicOld.push(music); music = null; }
+        var file = MUSIC[t];
+        if (!file || missing["music/" + file]) return;
+        var a = new Audio("app/sounds/music/" + file);
+        a.loop = true;
+        a.volume = 0;
+        a.addEventListener("error", function () { missing["music/" + file] = true; });
+        music = { a: a, track: t, gain: 0, target: 1 };
+        playMusic();
+    }
+    function playMusic() {
+        if (!music || document.hidden) return;
+        var p = music.a.play();
+        if (p && p.catch) p.catch(function () { /* waits for the first click/tap */ });
+    }
+    setInterval(function () {
+        var step = 50 / MUSIC_FADE_MS, lvl = musicLevel();
+        function fade(m) {
+            if (m.a.paused && m.target > 0) return;        /* not started yet: hold at 0, fade in once playing */
+            m.gain += Math.max(-step, Math.min(step, m.target - m.gain));
+            m.a.volume = Math.max(0, Math.min(1, m.gain * lvl));
+        }
+        if (music) fade(music);
+        musicOld = musicOld.filter(function (m) {
+            fade(m);
+            if (m.gain > 0 && !m.a.paused) return true;
+            m.a.pause(); m.a.removeAttribute("src"); m.a.load();
+            return false;
+        });
+    }, 50);
+    /* browsers block audio until the first interaction: start the music then */
+    ["pointerdown", "keydown", "touchstart"].forEach(function (ev) {
+        document.addEventListener(ev, function () { if (music && music.a.paused) playMusic(); }, { passive: true });
+    });
+    document.addEventListener("visibilitychange", function () {
+        if (!music) return;
+        if (document.hidden) music.a.pause(); else playMusic();
+    });
+    setMusic();
     layout();
     applyClockLayout();
     tick();

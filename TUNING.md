@@ -211,6 +211,9 @@ both.
 | `fieldSize` | 1280 | Battlefield size (smaller = bigger units). | web |
 | `soundOn` | true | Play sound effects. | web |
 | `soundVolume` | 70 | Sound volume. | web |
+| `soundRate` | 1 | How often chatter and voicelines play (0 = never). | web |
+| `musicTrack` | 0 | Background music. | web |
+| `musicVolume` | 35 | Music volume. | web |
 | `landscape` | true | Horizontal screen (off = vertical). | ESP32 |
 
 ESP32-only device settings (`brightness`, `fpsCap`) are defined in `targets/esp32/tools/gen_assets.py`.

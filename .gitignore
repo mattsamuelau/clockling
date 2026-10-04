@@ -21,3 +21,6 @@ desktop.ini
 
 # PlatformIO
 .pio/
+
+# sound sources downloaded by build_sounds.py
+.sound-src/

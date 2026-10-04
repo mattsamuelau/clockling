@@ -28,6 +28,9 @@ var SETTINGS = {
     /* audio (web only) */
     soundOn: true,
     soundVolume: 70,       /* percent */
+    soundRate: 1,          /* how often chatter and voicelines fire (0 = never, 2 = twice as often) */
+    musicTrack: 0,         /* 0 off, 1 Zerg, 2 Protoss, 3 Terran 1, 4 Terran 2, 5 Terran 3 */
+    musicVolume: 35,       /* percent */
 
     /* device */
     landscape: true        /* ESP32 only: horizontal 320x240 panel (off = vertical 240x320) */

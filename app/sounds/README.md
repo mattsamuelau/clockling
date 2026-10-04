@@ -1,22 +1,26 @@
 # Sounds (web only)
 
-Drop the sound files here. Any short clip the browser can play works
-(wav / mp3 / ogg). Missing files are detected on first play and skipped
-silently; sounds can be turned off in Settings &gt; Sound effects.
+The clips here are built from the sources in the brief below by
+`python build_sounds.py` (repo root; needs ffmpeg and `pip install yt-dlp curl_cffi`).
+Re-cut a clip by editing its start / length in that script and re-running it.
+Any clip the browser can play works (wav / mp3 / ogg). Missing files are
+detected on first play and skipped silently; sounds can be turned off in
+Settings &gt; Sound effects.
 
 | File | Plays when |
 |---|---|
-| `ling_chill.wav` | a zergling chills or hatches from an egg |
+| `ling_chill.wav` | a zergling chills or hatches from an egg (follows Chatter) |
 | `ling_attack.wav` | lings decide to attack / go aggro |
 | `ling_die.wav` | a zergling dies |
 | `bane_die.wav` | a baneling explodes and kills marines (a bane dying without kills plays `ling_die.wav`) |
 | `marine_shoot.wav` | a marine fires |
-| `marine_die.wav` | a marine dies |
-| `marine_voice.wav` | an idle marine chatters (only while no marine is attacking) |
-| `marine_spawn.wav` | a new marine spawns in |
-| `music/*.wav` | looping background track (see brief below) |
+| `marine_die.wav` | a marine dies (no source yet - skipped until one lands) |
+| `marine_voice1..2.wav` | idle marine chatter, random line (only while no marine is attacking) |
+| `marine_spawn.wav` | a new marine spawns in (follows Chatter) |
+| `music/*.mp3` | looping background track (see brief below) |
 
-Names must match exactly - `clockling.html` loads them by name from this folder.
+Names must match exactly - `clockling.html` loads them by name from this folder
+(`SOUNDS` lists one or more files per event; a random one plays).
 
 ## Sound design brief
 
@@ -45,9 +49,17 @@ Behaviour rules:
   per-event `gap` throttle with speed, so triggers never pile up.
 - **Config:** add a sound-frequency knob (e.g. `soundRate`) for how often chatter
   and voicelines fire; per-event `gap` already exists in `clockling.html`.
-- **Background music:** `music/zerg.wav`, `music/protoss.wav`, `music/terran1..3.wav`
+- **Background music:** `music/zerg.mp3`, `music/protoss.mp3`, `music/terran1..3.mp3`
   loop quietly under the SFX, with a **dropdown selector** (`musicTrack`, web only:
   Off / Zerg / Protoss / Terran 1-3). Fade between tracks when switched.
 
-Multiple clips per event (`marine_voice1..2`, spawn variants) need a small loader
-update (SOUNDS entries -> arrays). Do that when the clips land.
+Implementation notes:
+
+- Music is mp3, not wav: five ~5 min tracks as wav would be ~250 MB. Cuts are
+  the OST chapters Zerg One, Protoss One, Terran One / Two / Three.
+- Playback rate = gameSpeed clamped to 0.75-2.0x. Gaps shrink with that rate
+  and grow again past the clamp (5x: gaps are 1.25x the 1x value).
+- Each clip has up to 3 overlapping copies (gunfire); past that a play is dropped.
+- `soundRate` (Settings > Chatter, 0-3x, 0 = off) sets the pause between marine
+  lines and the throttle on ling chill / spawn lines. Music has its own volume
+  (`musicVolume`) and ignores the Sound effects switch.
