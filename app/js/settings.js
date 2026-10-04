@@ -15,17 +15,17 @@ var SETTINGS = {
     timeZone: "auto",      /* web only: IANA zone (e.g. "Europe/London") or "auto" = this device */
 
     /* battle */
-    gameSpeed: 2.5,        /* speed multiplier */
+    gameSpeed: 5,        /* speed multiplier */
     unitScale: 2,          /* population multiplier (max units, wave sizes, spawn rate) */
-    marineSkill: 0.8,      /* web only: marine AI skill 0 (stand and die) .. 1 (elite kiting) */
-    zergSkill: 0.8,        /* web only: Overmind skill 0 (pile in) .. 1 (gather, surround, timed banes) */
+    marineSkill: 1,      /* web only: marine AI skill 0 (stand and die) .. 1 (elite kiting) */
+    zergSkill: 0.75,        /* web only: Overmind skill 0 (pile in) .. 1 (gather, surround, timed banes) */
     zergBrain: 0,          /* web only: Overmind brain 0 Default, 1 Trained (app/js/brains.js) */
     terranBrain: 0,        /* web only: Commander brain 0 Default, 1 Trained */
     unitCount: 10,         /* starting lings */
     unitSpeed: 1.0,        /* movement speed multiplier for every unit */
-    unlockMultipliers: false, /* web only: Speed / Units become free number boxes instead of sliders */
+    unlockMultipliers: true, /* web only: Speed / Units become free number boxes instead of sliders */
     blueShell: true,       /* web only: wipes cost ~a minute, comebacks are huge, the loser's waves grow (blueShellWait / Boost / Dom) */
-    growthMode: false,     /* web only: caps keep growing until a side is wiped out, then reset (growthRate / growthMax) */
+    growthMode: true,     /* web only: caps keep growing until a side is wiped out, then reset (growthRate / growthMax) */
     showHealthBars: true,
     showKills: true,       /* web only: one yellow mark per ling a marine has killed */
     gore: true,            /* gore mode: splats and corpses linger (splat 16.2 s, corpse 19.2 s) */

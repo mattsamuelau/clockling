@@ -31,7 +31,7 @@ var SPACE = {
         zergNoHope: [0.1, 0.6], zergSmarts: [true, false], zergPatience: [5, 90], zergAllInOdds: [0, 8],
         zergStandoff: [1, 2.5], zergCornerDist: [0, 0.4],
         ovJoinRadius: [0.5, 6], ovSurround: [0, 80], ovBaneHold: [true, false],
-        ovGuardBanes: [true, false], ovMuster: [0, 20], ovBaneShare: [0, 1], ovBaneVanguard: [0, 1], ovBaneClump: [1, 6, "int"], ovBaneMaxHold: [0, 20], ovFrontMorph: [0, 1],
+        ovEncircle: [true, false], ovGuardBanes: [true, false], ovAllIn: [true, false], ovAllInFrac: [0.5, 1], ovReinforceGap: [0, 30], ovWallPress: [true, false], ovMuster: [0, 20], ovBaneShare: [0, 1], ovBaneVanguard: [0, 1], ovBaneClump: [1, 6, "int"], ovBaneMaxHold: [0, 20], ovFrontMorph: [0, 1],
         berserkBanes: [1, 6, "int"], morphChancePerSec: [0.05, 1]
     },
     terran: {

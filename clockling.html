@@ -580,12 +580,12 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
      * Clock, sound and display settings are left alone. */
     var BATTLE_KEYS = ["gameSpeed", "unitScale", "unitSpeed", "blueShell", "growthMode", "marineSkill", "zergSkill", "zergBrain", "terranBrain"];
     var PRESETS = [
-        { name: "Balanced", hint: "Both sides smart: the default fight",
-          s: { gameSpeed: 2.5, unitScale: 2, unitSpeed: 1, blueShell: true, growthMode: false, marineSkill: 0.8, zergSkill: 0.8, zergBrain: 0, terranBrain: 0 },
+        { name: "Balanced", hint: "Both sides smart, growing armies that swing back and forth: the default fight",
+          s: { gameSpeed: 5, unitScale: 2, unitSpeed: 1, blueShell: true, growthMode: true, marineSkill: 1, zergSkill: 0.75, zergBrain: 0, terranBrain: 0 },
           t: {} },
         { name: "Terran", hint: "Smart marines kite and split; a basic swarm piles in",
           s: { gameSpeed: 2.5, unitScale: 2, unitSpeed: 1, blueShell: true, growthMode: false, marineSkill: 1, zergSkill: 0.2, zergBrain: 0, terranBrain: 0 },
-          t: {} },
+          t: { ddayMax: 6, respawnInterval: 9 } },
         { name: "Zerg", hint: "A smart Overmind surrounds and times its banes; basic marines stand and shoot",
           s: { gameSpeed: 2.5, unitScale: 2, unitSpeed: 1, blueShell: true, growthMode: false, marineSkill: 0.2, zergSkill: 1, zergBrain: 0, terranBrain: 0 },
           t: {} },
