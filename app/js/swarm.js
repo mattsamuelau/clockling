@@ -146,6 +146,10 @@ var Swarm = (function () {
     var MARINE_SPAWN_RATE, ZERG_SPEED, TERRAN_SPEED, MARINE_TACTICS, RETARGET_T, AIM_T;
     var MORPH_AGE, MORPH_CD, EGG_TIME_MIN, EGG_TIME_MAX, SPLAT_LIFE, SPLAT_BASE;
     var BANE_SPLASH_R, BANE_SPLASH_DMG, BANE_HP, CORPSE_LIFE, BANE_SPLAT_SCALE;
+    /* gore mode (SETTINGS.gore, on by default): splats and corpses linger */
+    var GORE_SPLAT_LIFE = 21.21, GORE_CORPSE_LIFE = 19.2;
+    function splatLife() { return SETTINGS.gore !== false ? GORE_SPLAT_LIFE : SPLAT_LIFE; }
+    function corpseLife() { return SETTINGS.gore !== false ? GORE_CORPSE_LIFE : CORPSE_LIFE; }
     var LING_SPLAT = ["#e02828", "#ff6b4a"];
     var BANE_SPLAT = ["#39ff14", "#b8ff4d"]; /* fluoro lime green */
     var MARINE_SPLAT = ["#d62020", "#ff6b4a"];
@@ -986,7 +990,7 @@ var Swarm = (function () {
 
     function addSplat(x, y, col, scale) {
         splats.push({
-            x: x, y: y, life: SPLAT_LIFE, max: SPLAT_LIFE,
+            x: x, y: y, life: splatLife(), max: splatLife(),
             outer: col[0], inner: col[1], seed: Math.floor(Math.random() * 4),
             base: SPLAT_BASE * (scale || 1)
         });
@@ -1050,7 +1054,7 @@ var Swarm = (function () {
             var lrot = (lfd === 1) ? (lmirror ? lang + Math.PI : lang) : (lmirror ? -lang : lang + Math.PI);
             corpses.push({
                 x: c.x, y: c.y, w: c.w, img: lingFrames[c.frame],
-                rot: lrot, mirror: lmirror, life: CORPSE_LIFE, max: CORPSE_LIFE
+                rot: lrot, mirror: lmirror, life: corpseLife(), max: corpseLife()
             });
         } else if (c.kind === "bane") {
             /* splash: damage EVERY marine in blast range, not just the touched one */
@@ -1069,7 +1073,7 @@ var Swarm = (function () {
             var ms = marineSet(c);
             corpses.push({
                 x: c.x, y: c.y, w: c.w, img: ms[c.frame % ms.length],
-                rot: rot, mirror: mirror, life: CORPSE_LIFE, max: CORPSE_LIFE
+                rot: rot, mirror: mirror, life: corpseLife(), max: corpseLife()
             });
         }
     }

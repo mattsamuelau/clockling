@@ -84,6 +84,7 @@ enum TKey : uint8_t {
   T_unitCount,
   T_unitSpeed,
   T_showHealthBars,
+  T_gore,
   T_landscape,
   T_brightness,
   T_fpsCap,

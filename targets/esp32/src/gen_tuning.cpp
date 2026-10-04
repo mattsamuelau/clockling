@@ -82,6 +82,7 @@ const TMeta TMETA[T_COUNT] = {
   {"unitCount", 10.0f, 0, 1, 1, "Starting zerglings", nullptr},
   {"unitSpeed", 1.0f, 0, 1, 1, "Movement speed multiplier for every unit", nullptr},
   {"showHealthBars", 1.0f, 1, 0, 1, "Show unit health bars", nullptr},
+  {"gore", 1.0f, 1, 0, 1, "Gore mode: splats and corpses linger (splat 21.21 s, corpse 19.2 s)", nullptr},
   {"landscape", 1.0f, 1, 0, 2, "Horizontal screen (off = vertical)", nullptr},
   {"brightness", 100.0f, 0, 0, 2, "Backlight brightness (%)", nullptr},
   {"fpsCap", 30.0f, 0, 1, 2, "Max frames per second (lower = cooler, less power)", nullptr}

@@ -22,6 +22,7 @@ var SETTINGS = {
     showHealthBars: true,
     showKills: true,       /* web only: one yellow mark per ling a marine has killed */
     showScore: false,      /* supply bar + numbers along the top */
+    gore: true,            /* gore mode: splats and corpses linger (splat 21.21 s, corpse 19.2 s) */
     fieldSize: 1280,       /* web only: battlefield short side in logical px (smaller = bigger units) */
 
     /* device */
