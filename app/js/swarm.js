@@ -39,83 +39,15 @@ var Swarm = (function () {
     var unitScale = 1;
     var assetBase = "images/";  /* sprite folder, relative to the page */
 
-    /* ALL tunable numbers live here so balance is easy to tweak. */
-    var TUNING = {
-        mapW: 216,
-        mapH: 432,
-        marineSpawnRateMult: 1.5, /* >1 spawns marines faster */
-        maxLings: 16,
-        maxBanes: 3,
-        maxMarines: 6,
-        lingW: 30,
-        baneW: 39,             /* 30% larger than the ling */
-        marineW: 42,
-        eggW: 21,               /* eggs are 30% smaller than a ling; both egg types */
-        lingBump: 10,
-        baneBump: 12,
-        marineBump: 12,
-        respawnInterval: 1.5,   /* seconds between ling-egg refill batches */
-        respawnBatch: 8,        /* eggs spawned per batch */
-        marineWaveLo: 30,        /* how long after all marines die until the next wave */
-        marineWaveHi: 32,
-        marineRespawnLo: 8,    /* how often marines spawn while marines are alive */
-        marineRespawnHi: 10,
-        marineSpawnGap: 0.5,    /* marines in a wave spawn this many seconds apart */
-        marineSpawnInset: 6,    /* how many px off-screen marines spawn */
-        marineWaveSizeLo: 6,    /* min marines per wave (no marines alive) */
-        marineWaveSizeHi: 6,    /* max marines per wave */
-        marineRespawnSizeLo: 2, /* min marines per respawn cycle (while alive) */
-        marineRespawnSizeHi: 2, /* max marines per respawn cycle */
-        retargetInterval: 0.5,  /* lings/banes retarget this often (anti-jitter) */
-        aimInterval: 0.3,       /* marine re-aims this often */
-        morphAge: 4,           /* ling must live this long before morphing */
-        morphCooldown: 2,
-        morphChancePerSec: 1, /* chance/sec an eligible ling starts morphing */
-        eggTimeMin: 7,             /* min seconds until an egg hatches */
-        eggTimeMax: 9,            /* max seconds until an egg hatches */
-        eggHatchMult: 1.5,         /* when an egg hatches, one other egg speeds up this much */
-        eggHp: 100,               /* egg hit points (eggs act as a tanky shield) */
-        eggDamageMult: 0.001,     /* fraction of normal damage an egg takes per hit (0.001 = 0.1%) */
-        splatLife: 1.21,
-        splatBase: 7,           /* splat start radius (grows only 20%) */
-        splatFadeStart: 0.6,    /* fraction of splat life before it starts fading */
-        baneSplashR: 61,        /* baneling blast radius (damages all marines inside) */
-        baneSplashDamage: 90,   /* damage a baneling deals to every marine in range */
-        baneHp: 140,            /* baneling health (1.5x a zergling) */
-        corpseLife: 2.2,        /* dead marine sprite lingers this long, fading */
-        marineSplatScale: 1.4,  /* marine death splat is bigger */
-        baneSplatScale: 2.5,      /* baneling splat is 2x normal */
-        lingHp: 100,            /* zergling hit points */
-        marineHp: 120,          /* marine hit points */
-        marineShootDamage: 25,  /* marine damage per shot */
-        marineShootInterval: 0.36,
-        lingBiteDamage: 10,     /* ling damage per bite */
-        lingBiteInterval: 0.2,
-        marineHealPct: 0.1,    /* marines heal this fraction of max hp per tick */
-        marineHealInterval: 0.5,
-        marineGroupWeight: 0.5, /* pull toward other marines */
-        marineAwayWeight: 1,  /* push away from zerg */
-        marineTurnRate: 0.25,   /* marine steering: share of the turn closed per 1/8 s */
-        marineFleeHpPct: 0.9,   /* marines kite below this hp fraction */
-        marineKiteFrac: 0.6,    /* marines back off from zerg closer than this x range */
-        marineRangeMult: 3,      /* marine weapon range = this * marineW */
-        allyRadius: 45,          /* lings/banes this close to each other form one swarm */
-        attackGroupSize: 14,     /* swarm size needed to attack (capped at maxLings) */
-        marineScanRadius: 140,   /* idle lings keep this far from marines (> marine range) */
-        marineGroupRadius: 60,   /* radius around a marine used to count its group */
-        attackOdds: 1.5,         /* swarm strength needed per marine in the target group */
-        berserkSpeedMult: 1.5,   /* speed multiplier while berserk */
-        lingFleeSpeedMult: 1.6,  /* speed multiplier for lings escaping marines */
-        berserkBanes: 2,         /* banes alive needed to trigger bane berserk */
-        berserkCatchRadius: 80,  /* lings catch berserk from a berserk bane within this */
-        berserkUntilDeath: false,/* on: berserk never retreats; off: cancels when outnumbered */
-        zergSpeed: 1.2,            /* base speed multiplier for zerg units */
-        terranSpeed: 1.2,        /* base speed multiplier for terran (marine) units */
-        marineTactics: true,     /* new marine AI (kite/regroup/advance); false = classic */
-        marineEntrySpeed: 1.5,   /* speed multiplier while marching in from off-screen */
-        marineEntryDepth: 0.09,  /* march-in boost stops this x (shorter side) inside the edge */
-        marineSightMult: 2,      /* no zerg within this x weapon range: patrol */
-    };
+    /* ALL tunable numbers live in app/js/tuning-meta.js (single source of truth).
+     * TUNING here is derived from TUNING_META.tuning defaults at load. */
+    var TUNING = {};
+    (function () {
+        var m = (typeof TUNING_META !== "undefined" && TUNING_META && TUNING_META.tuning) || {};
+        for (var k in m) {
+            if (Object.prototype.hasOwnProperty.call(m, k)) TUNING[k] = m[k].default;
+        }
+    })();
 
     /* Dev/test hook: ?tun_<key>=<number> overrides (used by headless test harnesses). */
     (function () {
@@ -148,7 +80,12 @@ var Swarm = (function () {
     var BERSERK_CATCH_RADIUS, BERSERK_UNTIL_DEATH, MARINE_WAVE_SIZE_LO, MARINE_WAVE_SIZE_HI, MARINE_RESPAWN_SIZE_LO, MARINE_RESPAWN_SIZE_HI;
     var MARINE_SPAWN_RATE, ZERG_SPEED, TERRAN_SPEED, MARINE_TACTICS, RETARGET_T, AIM_T;
     var MORPH_AGE, MORPH_CD, EGG_TIME_MIN, EGG_TIME_MAX, SPLAT_LIFE, SPLAT_BASE;
-    var BANE_SPLASH_R, BANE_SPLASH_DMG, BANE_HP, CORPSE_LIFE, BANE_SPLAT_SCALE;
+    var BANE_SPLASH_R, BANE_SPLASH_DMG, BANE_HP, CORPSE_LIFE, BANE_SPLAT_SCALE, BANE_SPLAT_LIFE_MULT;
+    /* gore mode (SETTINGS.gore, on by default): splats and corpses linger.
+     * Timings come from TUNING.goreSplatLife / TUNING.goreCorpseLife. */
+    var GORE_SPLAT_LIFE, GORE_CORPSE_LIFE;
+    function splatLife() { return SETTINGS.gore !== false ? GORE_SPLAT_LIFE : SPLAT_LIFE; }
+    function corpseLife() { return SETTINGS.gore !== false ? GORE_CORPSE_LIFE : CORPSE_LIFE; }
     var LING_SPLAT = ["#e02828", "#ff6b4a"];
     var BANE_SPLAT = ["#39ff14", "#b8ff4d"]; /* fluoro lime green */
     var MARINE_SPLAT = ["#d62020", "#ff6b4a"];
@@ -221,6 +158,9 @@ var Swarm = (function () {
         BANE_HP = TUNING.baneHp;
         CORPSE_LIFE = TUNING.corpseLife;
         BANE_SPLAT_SCALE = TUNING.baneSplatScale;
+        BANE_SPLAT_LIFE_MULT = TUNING.baneSplatLifeMult;
+        GORE_SPLAT_LIFE = TUNING.goreSplatLife;
+        GORE_CORPSE_LIFE = TUNING.goreCorpseLife;
         applyUnitScale();
     }
 
@@ -1016,8 +956,10 @@ var Swarm = (function () {
     }
 
     function addSplat(x, y, col, scale) {
+        /* green (baneling) splats fade BANE_SPLAT_LIFE_MULT x as fast as red ones */
+        var life = splatLife() * (col === BANE_SPLAT ? BANE_SPLAT_LIFE_MULT : 1);
         splats.push({
-            x: x, y: y, life: SPLAT_LIFE, max: SPLAT_LIFE,
+            x: x, y: y, life: life, max: life,
             outer: col[0], inner: col[1], seed: Math.floor(Math.random() * 4),
             base: SPLAT_BASE * (scale || 1)
         });
@@ -1082,7 +1024,7 @@ var Swarm = (function () {
             var lrot = (lfd === 1) ? (lmirror ? lang + Math.PI : lang) : (lmirror ? -lang : lang + Math.PI);
             corpses.push({
                 x: c.x, y: c.y, w: c.w, img: lingFrames[c.frame],
-                rot: lrot, mirror: lmirror, life: CORPSE_LIFE, max: CORPSE_LIFE
+                rot: lrot, mirror: lmirror, life: corpseLife(), max: corpseLife()
             });
         } else if (c.kind === "bane") {
             sound("baneDie");
@@ -1103,7 +1045,7 @@ var Swarm = (function () {
             var ms = marineSet(c);
             corpses.push({
                 x: c.x, y: c.y, w: c.w, img: ms[c.frame % ms.length],
-                rot: rot, mirror: mirror, life: CORPSE_LIFE, max: CORPSE_LIFE
+                rot: rot, mirror: mirror, life: corpseLife(), max: corpseLife()
             });
         }
     }
