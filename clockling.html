@@ -99,6 +99,49 @@ body.drawer-open #drawer { transform: none; }
 .card h2 { margin: 8px 0 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--purple); }
 .row { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 6px 0; border-top: 1px solid rgba(195, 155, 255, 0.07); }
 .card h2 + .row { border-top: 0; }
+/* ---------------------------------------------------------------- battle stats pop-out (top left) */
+.fab-left { right: auto; left: max(14px, env(safe-area-inset-left)); }
+.fab-left:hover { transform: none; }
+body.stats-open .fab-left { opacity: 0; pointer-events: none; }
+#statsPanel {
+    position: fixed; z-index: 25; top: max(14px, env(safe-area-inset-top)); left: max(14px, env(safe-area-inset-left));
+    width: min(360px, calc(100vw - 28px)); max-height: calc(100vh - 28px); overflow-y: auto;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45); padding: 0 14px;
+    transform-origin: top left; transform: scale(0.92); opacity: 0; pointer-events: none;
+    transition: transform 0.2s cubic-bezier(.2,.8,.2,1), opacity 0.2s;
+}
+body.stats-open #statsPanel { transform: none; opacity: 1; pointer-events: auto; }
+.stats-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 0 4px; }
+.stats-head h1 { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--purple); }
+.teams { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 6px 0 10px; }
+.team { border-radius: 10px; padding: 8px 10px; background: rgba(255, 255, 255, 0.03); border-top: 2px solid; }
+.team.terran { border-color: #4a90ff; box-shadow: inset 0 0 0 1px rgba(74, 144, 255, 0.18); }
+.team.zerg { border-color: #d9479f; box-shadow: inset 0 0 0 1px rgba(217, 71, 159, 0.18); }
+.team-name { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px; }
+.team-name i { width: 8px; height: 8px; border-radius: 2px; }
+.team.terran .team-name i { background: #4a90ff; box-shadow: 3px 0 0 #ff4d4d; }
+.team.zerg .team-name i { background: #d9479f; box-shadow: 3px 0 0 var(--green); }
+.team dl { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; margin: 0; font-size: 12px; }
+.team dt { color: var(--dim); }
+.team dd { margin: 0; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
+.chart-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 4px; }
+.chart-title { font-size: 12px; color: var(--dim); }
+.seg.small button { padding: 3px 7px; font-size: 11px; }
+.chart-wrap { position: relative; margin: 8px 0 4px; }
+#statChart { display: block; width: 100%; height: 120px; border-radius: 8px; touch-action: none; }
+.chart-tip { display: none; position: absolute; top: 4px; pointer-events: none; background: rgba(11, 6, 24, 0.94); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; font-size: 11px; white-space: nowrap; }
+.chart-tip b { display: block; color: var(--dim); font-weight: 500; margin-bottom: 2px; }
+.chart-tip span { display: flex; align-items: center; gap: 5px; color: var(--text); font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11px; color: var(--text); padding-bottom: 8px; }
+.legend span { display: flex; align-items: center; gap: 5px; }
+.legend .muted { color: var(--dim); }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.swatch.terran { background: #4a90ff; }
+.swatch.zerg { background: #d9479f; }
+#cardStats .btn.block { margin-bottom: 10px; }
+
 .row .lbl { flex: 1; min-width: 0; }
 .row .lbl b { display: block; font-weight: 500; }
 .row .lbl small { display: block; color: var(--dim); font-size: 12px; }
@@ -197,6 +240,18 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
 <button class="fab" id="gear" aria-label="Settings" title="Settings (S)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
 </button>
+
+<button class="fab fab-left" id="statsBtn" aria-label="Battle stats" title="Battle stats (T)" aria-expanded="false" aria-controls="statsPanel">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+</button>
+
+<aside id="statsPanel" aria-label="Battle stats" aria-hidden="true">
+    <div class="stats-head">
+        <h1>Battle stats</h1>
+        <button class="icon-btn" id="closeStats" aria-label="Close battle stats">&times;</button>
+    </div>
+    <section id="cardStats"></section>
+</aside>
 
 <aside id="drawer" aria-label="Settings">
     <div class="drawer-head">
@@ -489,6 +544,55 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
 
     var x = function (v) { return (Math.round(v * 100) / 100) + "×"; };
 
+
+    /* battle presets: battle settings + zerg/terran tuning go back to their
+     * defaults, then the preset's overrides apply and the battle restarts.
+     * Clock, sound and display settings are left alone. */
+    var BATTLE_KEYS = ["gameSpeed", "unitScale", "unitSpeed", "marineSkill"];
+    var PRESETS = [
+        { name: "Balanced", hint: "The default fight", s: {}, t: {} },
+        { name: "Terran", hint: "Big ling swarms mass up, then sharp marines mow them down",
+          s: { marineSkill: 0.85 },
+          t: { maxLings: 30, maxBanes: 2, morphChancePerSec: 0.05, attackGroupSize: 30, attackOdds: 0.6,
+               respawnInterval: 3, respawnBatch: 6, maxMarines: 8, marineRespawnLo: 4, marineRespawnHi: 6,
+               marineWaveLo: 10, marineWaveHi: 12 } },
+        { name: "Zerg", hint: "Green marines, long gaps with no marines at all",
+          s: { marineSkill: 0.3 },
+          t: { maxLings: 24, respawnInterval: 0.75, marineWaveLo: 120, marineWaveHi: 150,
+               marineRespawnLo: 45, marineRespawnHi: 60 } },
+        { name: "Mental", hint: "Full supply (~300 lings vs 50 marines), max speed, huge swarms crash in",
+          s: { gameSpeed: 5, unitScale: 5 },
+          t: { maxLings: 60, maxBanes: 6, maxMarines: 10, respawnInterval: 0.5, respawnBatch: 16,
+               attackGroupSize: 150, attackOdds: 2,
+               marineRespawnLo: 2, marineRespawnHi: 3, marineWaveLo: 5, marineWaveHi: 6 } }
+    ];
+    function applyPreset(p) {
+        BATTLE_KEYS.forEach(function (k) { SETTINGS[k] = DEF_SETTINGS[k]; });
+        applyObj(SETTINGS, p.s);
+        var t = {};
+        for (var k in DEF_TUNING) if (!HIDDEN_TUNING[k]) t[k] = DEF_TUNING[k];
+        for (k in p.t) t[k] = p.t[k];
+        Swarm.setTuning(t);
+        Swarm.setGameSpeed(SETTINGS.gameSpeed);
+        Swarm.setUnitScale(SETTINGS.unitScale);
+        save();
+        buildAll();
+        Swarm.restart();
+        toast(p.name + " preset: " + p.hint);
+    }
+    function presetRow(parent) {
+        var row = el("div", "row slider");
+        row.appendChild(label("Preset", "Resets the battle tuning, then applies the preset"));
+        var seg = el("div", "seg");
+        PRESETS.forEach(function (p) {
+            var b = el("button"); b.type = "button"; b.textContent = p.name; b.title = p.hint;
+            b.addEventListener("click", function () { applyPreset(p); });
+            seg.appendChild(b);
+        });
+        row.appendChild(seg);
+        parent.appendChild(row);
+    }
+
     function buildMain() {
         var c = $("cardClock");
         c.querySelectorAll(".row").forEach(function (r) { r.remove(); });
@@ -502,13 +606,13 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
 
         var b = $("cardBattle");
         b.querySelectorAll(".row, .btn").forEach(function (r) { r.remove(); });
+        presetRow(b);
         sliderRow(b, "gameSpeed", "Speed", x);
         sliderRow(b, "unitScale", "Units", x);
         sliderRow(b, "marineSkill", "Marine skill", function (v) { return Math.round(v * 100) + "%"; });
         segRow(b, "fieldSize", "Battlefield", "Smaller field = bigger units", META.settings.fieldSize.options);
         switchRow(b, "showHealthBars", "Health bars");
         switchRow(b, "showKills", "Kill marks", "One mark per zergling a marine has killed");
-        switchRow(b, "showScore", "Score bar", "Zerg vs terran supply along the top");
         switchRow(b, "soundOn", "Sound effects");
         sliderRow(b, "soundVolume", "Volume", function (v) { return Math.round(v) + "%"; });
         sliderRow(b, "soundRate", "Chatter", function (v) { return v ? x(v) : "Off"; });
@@ -538,7 +642,7 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         var host = $("advGroups");
         host.innerHTML = "";
         var shown = { showClock: 1, hour24: 1, showSeconds: 1, clockPosition: 1, clockBehind: 1, clockScale: 1, timeZone: 1,
-                      gameSpeed: 1, unitScale: 1, marineSkill: 1, fieldSize: 1, showHealthBars: 1, showKills: 1, showScore: 1, gore: 1,
+                      gameSpeed: 1, unitScale: 1, marineSkill: 1, fieldSize: 1, showHealthBars: 1, showKills: 1, gore: 1,
                       soundOn: 1, soundVolume: 1, soundRate: 1, musicTrack: 1, musicVolume: 1 };
         Object.keys(META.groups).forEach(function (g) {
             var keys = META.groups[g].filter(function (k) {
@@ -611,7 +715,179 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         });
     });
 
-    function buildAll() { buildMain(); buildAdvanced(); }
+    /* ------------------------------------------------------------ battle stats
+     * Units lost per side + a "who's winning" chart: each side's share of the
+     * total supply on the field (marine 1, ling/bane 0.5), sampled every 2 s and
+     * kept for 30 min. Terran = blue / white / red accent, Zerg = pink-purple /
+     * green accent (validated as a pair for colour-blind readers). */
+    var STAT_SAMPLE_MS = 2000, STAT_KEEP_MS = 30 * 60000;
+    var TERRAN_COL = "#4a90ff", ZERG_COL = "#d9479f";
+    var statHist = [], statBattle = 0, statWindow = 5;   /* minutes shown */
+    var statHover = null;                                /* hovered x (css px) or null */
+
+    function sampleStats() {
+        var st = Swarm.stats();
+        if (st.battle !== statBattle) { statBattle = st.battle; statHist = []; }
+        var now = Date.now();
+        statHist.push({ t: now, z: st.zergSupply, tr: st.terranSupply });
+        while (statHist.length && now - statHist[0].t > STAT_KEEP_MS) statHist.shift();
+        if (document.body.classList.contains("stats-open")) renderStats(st);
+    }
+
+    function fmtAgo(ms) {
+        var s = Math.round(ms / 1000);
+        return s < 60 ? s + "s ago" : Math.floor(s / 60) + "m " + (s % 60) + "s ago";
+    }
+    function fmtSupply(v) { return (v % 1 === 0) ? String(v) : v.toFixed(1); }
+
+    function buildStats() {
+        var c = $("cardStats");
+        c.innerHTML = "";
+        var teams = el("div", "teams");
+        teams.innerHTML =
+            '<div class="team terran"><div class="team-name"><i></i>Terran</div>' +
+            '<dl><dt>Marines lost</dt><dd data-k="lost.marine"></dd>' +
+            '<dt>On the field</dt><dd data-k="field.marine"></dd>' +
+            '<dt>Zerg killed</dt><dd data-k="zergKilled"></dd>' +
+            '<dt>Stims used</dt><dd data-k="stims"></dd></dl></div>' +
+            '<div class="team zerg"><div class="team-name"><i></i>Zerg</div>' +
+            '<dl><dt>Zerglings lost</dt><dd data-k="lost.ling"></dd>' +
+            '<dt>Banelings lost</dt><dd data-k="lost.bane"></dd>' +
+            '<dt>Eggs lost</dt><dd data-k="lost.egg"></dd>' +
+            '<dt>Marines killed</dt><dd data-k="lost.marine"></dd>' +
+            '<dt>Banes that hit</dt><dd data-k="baneKills"></dd></dl></div>';
+        c.appendChild(teams);
+
+        var head = el("div", "chart-head");
+        var title = el("div", "chart-title"); title.textContent = "Who's winning (share of supply)";
+        head.appendChild(title);
+        var seg = el("div", "seg small");
+        [1, 5, 15, 30].forEach(function (m) {
+            var b = el("button"); b.type = "button"; b.textContent = m + "m";
+            if (m === statWindow) b.className = "on";
+            b.addEventListener("click", function () {
+                statWindow = m;
+                Array.prototype.forEach.call(seg.children, function (x) { x.className = ""; });
+                b.className = "on";
+                renderStats();
+            });
+            seg.appendChild(b);
+        });
+        head.appendChild(seg);
+        c.appendChild(head);
+
+        var wrap = el("div", "chart-wrap");
+        var cv = el("canvas"); cv.id = "statChart";
+        cv.setAttribute("role", "img");
+        var tip = el("div", "chart-tip"); tip.id = "statTip";
+        wrap.appendChild(cv); wrap.appendChild(tip);
+        c.appendChild(wrap);
+        var legend = el("div", "legend");
+        legend.innerHTML = '<span><i class="swatch terran"></i>Terran</span><span><i class="swatch zerg"></i>Zerg</span>' +
+                           '<span class="muted">dashed line = even</span>';
+        c.appendChild(legend);
+
+        function hover(e) {
+            var r = cv.getBoundingClientRect();
+            statHover = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+            renderStats();
+        }
+        cv.addEventListener("pointermove", hover);
+        cv.addEventListener("pointerdown", hover);
+        cv.addEventListener("pointerleave", function () { statHover = null; renderStats(); });
+
+        var reset = el("button", "btn block"); reset.textContent = "Reset stats";
+        reset.addEventListener("click", function () { Swarm.resetStats(); sampleStats(); toast("Stats reset"); });
+        c.appendChild(reset);
+        renderStats();
+    }
+
+    function renderStats(st) {
+        st = st || Swarm.stats();
+        var card = $("cardStats");
+        if (!card) return;
+        var vals = { "lost.marine": st.lost.marine, "lost.ling": st.lost.ling, "lost.bane": st.lost.bane,
+                     "lost.egg": st.lost.egg, "field.marine": st.field.marine,
+                     zergKilled: st.lost.ling + st.lost.bane, stims: st.stims, baneKills: st.baneKills };
+        card.querySelectorAll("dd[data-k]").forEach(function (d) { d.textContent = vals[d.dataset.k]; });
+        drawStatChart();
+    }
+
+    function drawStatChart() {
+        var cv = $("statChart"), tip = $("statTip");
+        if (!cv) return;
+        var w = cv.clientWidth, h = cv.clientHeight, dpr = window.devicePixelRatio || 1;
+        if (!w || !h) return;
+        if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+        var g = cv.getContext("2d");
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        g.clearRect(0, 0, w, h);
+        var now = Date.now(), span = statWindow * 60000, t0 = now - span;
+        var pts = statHist.filter(function (p) { return p.t >= t0 - STAT_SAMPLE_MS; });
+        var padT = 4, padB = 16, ph = h - padT - padB;
+        function X(t) { return Math.max(0, (t - t0) / span * w); }
+        function Y(share) { return padT + share * ph; }   /* share = terran fraction; terran fills the top */
+        function share(p) { var tot = p.z + p.tr; return tot > 0 ? p.tr / tot : 0.5; }
+
+        /* axis labels (muted ink) */
+        g.fillStyle = "#a59bc9";
+        g.font = "10px Roboto, system-ui, sans-serif";
+        g.textAlign = "left"; g.fillText(statWindow + "m ago", 0, h - 3);
+        g.textAlign = "right"; g.fillText("now", w, h - 3);
+
+        if (pts.length < 2) {
+            g.textAlign = "center";
+            g.fillText("Collecting data…", w / 2, padT + ph / 2);
+            cv.setAttribute("aria-label", "Who's winning chart: not enough data yet");
+            tip.style.display = "none";
+            return;
+        }
+        /* zerg fills the whole plot, terran's share is drawn over it from the top */
+        g.fillStyle = ZERG_COL;
+        g.beginPath();
+        g.moveTo(X(pts[0].t), padT); g.lineTo(X(pts[0].t), Y(1));
+        g.lineTo(X(pts[pts.length - 1].t), Y(1)); g.lineTo(X(pts[pts.length - 1].t), padT);
+        g.closePath(); g.fill();
+        g.fillStyle = TERRAN_COL;
+        g.beginPath();
+        g.moveTo(X(pts[0].t), padT);
+        pts.forEach(function (p) { g.lineTo(X(p.t), Y(share(p))); });
+        g.lineTo(X(pts[pts.length - 1].t), padT);
+        g.closePath(); g.fill();
+        /* 2px surface gap along the boundary */
+        g.strokeStyle = "#160e30"; g.lineWidth = 2; g.lineJoin = "round";
+        g.beginPath();
+        pts.forEach(function (p, i) { if (i) g.lineTo(X(p.t), Y(share(p))); else g.moveTo(X(p.t), Y(share(p))); });
+        g.stroke();
+        /* even line */
+        g.strokeStyle = "rgba(255,255,255,0.55)"; g.lineWidth = 1; g.setLineDash([4, 4]);
+        g.beginPath(); g.moveTo(0, Y(0.5)); g.lineTo(w, Y(0.5)); g.stroke();
+        g.setLineDash([]);
+
+        var last = pts[pts.length - 1];
+        var lead = share(last) > 0.5 ? "Terran" : share(last) < 0.5 ? "Zerg" : "Even";
+        cv.setAttribute("aria-label", "Who's winning over the last " + statWindow + " minutes. Now: Terran " +
+            fmtSupply(last.tr) + " supply, Zerg " + fmtSupply(last.z) + " supply (" + lead + " ahead).");
+
+        /* hover: crosshair + tooltip at the nearest sample */
+        if (statHover === null) { tip.style.display = "none"; return; }
+        var best = pts[0];
+        pts.forEach(function (p) { if (Math.abs(X(p.t) - statHover) < Math.abs(X(best.t) - statHover)) best = p; });
+        var bx = X(best.t);
+        g.strokeStyle = "rgba(255,255,255,0.8)"; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(bx, padT); g.lineTo(bx, padT + ph); g.stroke();
+        g.fillStyle = "#fff"; g.strokeStyle = "#160e30"; g.lineWidth = 2;
+        g.beginPath(); g.arc(bx, Y(share(best)), 4, 0, 6.283); g.fill(); g.stroke();
+        tip.innerHTML = '<b>' + fmtAgo(now - best.t) + '</b>' +
+            '<span><i class="swatch terran"></i>Terran ' + fmtSupply(best.tr) + '</span>' +
+            '<span><i class="swatch zerg"></i>Zerg ' + fmtSupply(best.z) + '</span>';
+        tip.style.display = "block";
+        var tw = tip.offsetWidth;
+        tip.style.left = Math.max(0, Math.min(w - tw, bx + 10 > w - tw ? bx - tw - 10 : bx + 10)) + "px";
+    }
+    setInterval(sampleStats, STAT_SAMPLE_MS);
+
+    function buildAll() { buildMain(); buildStats(); buildAdvanced(); }
 
     /* ------------------------------------------------------------ drawer / modal */
     function openDrawer(open) {
@@ -619,6 +895,14 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         $("drawer").setAttribute("aria-hidden", open ? "false" : "true");
     }
     $("gear").addEventListener("click", function () { openDrawer(true); });
+    function openStats(open) {
+        document.body.classList.toggle("stats-open", open);
+        $("statsPanel").setAttribute("aria-hidden", open ? "false" : "true");
+        $("statsBtn").setAttribute("aria-expanded", open ? "true" : "false");
+        if (open) setTimeout(function () { renderStats(); }, 30);
+    }
+    $("statsBtn").addEventListener("click", function () { openStats(true); });
+    $("closeStats").addEventListener("click", function () { openStats(false); });
     $("closeDrawer").addEventListener("click", function () { openDrawer(false); });
 
     $("resetAll").addEventListener("click", function () {
@@ -688,8 +972,9 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
             return;
         }
         if (e.key === "s" || e.key === "S") openDrawer(!document.body.classList.contains("drawer-open"));
+        else if (e.key === "t" || e.key === "T") openStats(!document.body.classList.contains("stats-open"));
         else if (e.key === "r" || e.key === "R") { Swarm.restart(); toast("Battle restarted"); }
-        else if (e.key === "Escape") { openDrawer(false); $("modal").classList.remove("open"); }
+        else if (e.key === "Escape") { openDrawer(false); openStats(false); $("modal").classList.remove("open"); }
     });
 
     /* fade the gear button when idle */
@@ -723,7 +1008,7 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         lingDie:     { files: ["ling_die.wav"],     vol: 0.45, gap: 150 },
         baneDie:     { files: ["bane_die.wav"],     vol: 0.65, gap: 200 },
         marineShoot: { files: ["marine_shoot.wav"], vol: 0.25, gap: 120 },
-        marineDie:   { files: ["marine_die.wav"],   vol: 0.50, gap: 200 },
+        marineDie:   { files: ["marine_die1.wav", "marine_die2.wav"], vol: 0.50, gap: 200 },
         marineVoice: { files: ["marine_voice1.wav", "marine_voice2.wav"], vol: 0.60, gap: 0, voice: true },
         marineSpawn: { files: ["marine_spawn.wav"], vol: 0.60, gap: 4000, voice: true, chat: true }
     };

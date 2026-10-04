@@ -34,6 +34,8 @@ SOURCES = {
     "sb_zzewht03":    ("url", SB + "plxrvnyb.mp3"),   # 62043074 zergling-zzewht03
     "sb_zzedth00":    ("url", SB + "dazobaje.mp3"),   # 62041948 zergling-zzedth00
     "sb_zzewht00":    ("url", SB + "nlayjvvk.mp3"),   # 62042588 zergling-zzewht00
+    "sb_tmadth00":    ("url", SB + "apzoeape.mp3"),   # 62042568 marine-tmadth00
+    "sb_tmadth01":    ("url", SB + "zvnprblk.mp3"),   # 62042583 marine-tmadth01
     "mi_good_to_go":  ("mi", "marine-good-to-go-50098"),
     "mi_rock_n_roll": ("mi", "rock-and-roll-marine-20680"),
     "mi_piece_of_me": ("mi", "wanna-piece-of-me-boy-marine-64377"),
@@ -46,6 +48,8 @@ SFX = {
     "ling_attack":   ("sb_zzewht03", 0, None),
     "ling_die":      ("sb_zzedth00", 0, None),
     "ling_chill":    ("sb_zzewht00", 0, None),
+    "marine_die1":   ("sb_tmadth00", 0, None),
+    "marine_die2":   ("sb_tmadth01", 0, None),
     "marine_voice1": ("mi_good_to_go", 0, None),
     "marine_voice2": ("mi_rock_n_roll", 0, None),
     "marine_spawn":  ("mi_piece_of_me", 0, None),

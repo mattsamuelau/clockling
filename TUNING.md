@@ -108,7 +108,7 @@ both.
 | `eggTimeMax` | 9 | Max seconds until an egg hatches. | Visible |
 | `eggHatchMult` | 1.5 | Egg hatch acceleration multiplier. | Advanced |
 | `eggHp` | 100 | Egg hit points (eggs act as a tanky shield). | Visible |
-| `eggDamageMult` | 0.001 | Fraction of normal damage an egg takes per hit (0.001 = 0.1%). | Visible |
+| `eggDamageMult` | 0.1 | Fraction of normal damage an egg takes per hit (0.1 = 10%: about 40 shots). | Visible |
 | `eggOverlap` | 0 | How much a new egg may overlap another (0 = never touch, 1 = may stack). | Visible |
 | `eggMarineClearance` | 0.4 | Eggs are laid at least this far from any marine (fraction of the board's short side), on the far side from the marines. | Visible |
 | `morphAge` | 4 | Lings must live this long before morphing. | Visible |
@@ -160,7 +160,8 @@ both.
 | `stimCooldown` | 10 | Seconds before a marine can stim again. | Visible |
 | `stimSpeedMult` | 2 | Speed multiplier while stimmed. | Visible |
 | `stimHpCost` | 0.5 | Share of current HP a stimpack costs. | Visible |
-| `stimRegenMult` | 0.25 | HP regen multiplier while stimmed. | Visible |
+| `stimRegenMult` | 0.1 | HP regen multiplier after a stim (for stimRegenTime). | Visible |
+| `stimRegenTime` | 10 | Seconds of slowed regen from the moment a marine stims. | Visible |
 | `stimGroupMax` | 3 | Only marine groups this small (or smaller) stim to escape. | Visible |
 | `stimRegroupDist` | 0.3 | Lone marines farther than this from the main mob (x board short side) stim back to it. | Visible |
 | `marineKiteSpeed` | 0.5 | Speed multiplier while kiting / running back to the mob (on top of skill footwork and stim). | Visible |
@@ -221,7 +222,6 @@ both.
 | `unitSpeed` | 1 | Movement speed multiplier for every unit. | both |
 | `showHealthBars` | true | Show unit health bars. | both |
 | `showKills` | true | Marine kill marks (one per ling killed). | web |
-| `showScore` | false | Score bar along the top. | web |
 | `gore` | true | Gore mode: splats and corpses linger (splat 16.2 s, corpse 19.2 s). | both |
 | `fieldSize` | 1280 | Battlefield size (smaller = bigger units). | web |
 | `soundOn` | false | Play sound effects. | web |

@@ -87,7 +87,7 @@ var Swarm = (function () {
     var EGG_OVERLAP, EGG_MARINE_CLEAR;
     var STIM_DURATION, STIM_COOLDOWN, STIM_SPEED_MULT, STIM_HP_COST, STIM_REGEN_MULT, STIM_GROUP_MAX,
         STIM_REGROUP_DIST, MARINE_SKILL_TOP_SPEED;
-    var LING_BOOST_MULT, LING_BOOST_TIME, LING_BOOST_CD, MARINE_KITE_SPEED;
+    var LING_BOOST_MULT, LING_BOOST_TIME, LING_BOOST_CD, MARINE_KITE_SPEED, STIM_REGEN_TIME;
     function splatLife() { return SETTINGS.gore !== false ? GORE_SPLAT_LIFE : SPLAT_LIFE; }
     function corpseLife() { return SETTINGS.gore !== false ? GORE_CORPSE_LIFE : CORPSE_LIFE; }
     var LING_SPLAT = ["#e02828", "#ff6b4a"];
@@ -108,6 +108,7 @@ var Swarm = (function () {
         STIM_SPEED_MULT = TUNING.stimSpeedMult;
         STIM_HP_COST = Math.max(0, Math.min(0.95, TUNING.stimHpCost));
         STIM_REGEN_MULT = TUNING.stimRegenMult;
+        STIM_REGEN_TIME = TUNING.stimRegenTime;
         STIM_GROUP_MAX = TUNING.stimGroupMax;
         STIM_REGROUP_DIST = TUNING.stimRegroupDist;
         MARINE_SKILL_TOP_SPEED = TUNING.marineSkillTopSpeed;
@@ -265,7 +266,7 @@ var Swarm = (function () {
             c.shootCd = SHOOT_T; c.aim = c.heading; c.healCd = 0; c.entered = false; c.shootTarget = null;
             c.flashT = 0; c.hitX = 0; c.hitY = 0; c.kills = 0;
             c.deployT = 0; c.deployX = 0; c.deployY = 0;
-            c.stimT = 0; c.stimCd = 0; c.combat = false; c.kitePhase = "shoot"; c.runT = 0; c.shootT = 0;
+            c.stimT = 0; c.stimCd = 0; c.stimRegenT = 0; c.combat = false; c.kitePhase = "shoot"; c.runT = 0; c.shootT = 0;
             c.runDir = null; c.regroupTo = null;
         } else if (kind === "egg") {
             c.w = EGG_W; c.bumpR = 12; c.speed = 0; c.t = 0; c.hatchMult = 1;
@@ -835,6 +836,8 @@ var Swarm = (function () {
         m.hp -= m.hp * STIM_HP_COST;
         m.stimT = STIM_DURATION;
         m.stimCd = STIM_COOLDOWN;
+        m.stimRegenT = Math.max(STIM_DURATION, STIM_REGEN_TIME);   /* slow healing outlasts the stim */
+        stats.stims++;
         return true;
     }
 
@@ -1145,6 +1148,7 @@ var Swarm = (function () {
             if (c.flashT > 0) c.flashT -= dt;
             if (c.stimT > 0) c.stimT -= dt;
             if (c.stimCd > 0) c.stimCd -= dt;
+            if (c.stimRegenT > 0) c.stimRegenT -= dt;
             if (c.kitePhase === "run") c.runT += dt; else c.shootT += dt;
             var skill = marineSkill();
             c.retarget -= dt;
@@ -1394,8 +1398,27 @@ var Swarm = (function () {
         }
     }
 
-    function killUnit(c) {
+    /* battle stats for the page's stats panel (units lost, stims, bane kills).
+     * battle increments on every restart so the page can reset its history. */
+    var stats = { battle: 1, lost: { ling: 0, bane: 0, marine: 0, egg: 0 }, stims: 0, baneKills: 0 };
+    function resetStats() {
+        stats.battle++;
+        stats.lost = { ling: 0, bane: 0, marine: 0, egg: 0 };
+        stats.stims = 0; stats.baneKills = 0;
+    }
+    function getStats() {
+        var field = { ling: 0, bane: 0, marine: 0, egg: 0 };
+        for (var i = 0; i < units.length; i++) {
+            var u = units[i];
+            if (!u.dead && field[u.kind] !== undefined) field[u.kind]++;
+        }
+        return { battle: stats.battle, lost: stats.lost, stims: stats.stims, baneKills: stats.baneKills,
+                 field: field, zergSupply: (field.ling + field.bane) * 0.5, terranSupply: field.marine };
+    }
+
+    function killUnit(c, tapped) {
         if (c.dead) return;
+        if (stats.lost[c.kind] !== undefined) stats.lost[c.kind]++;
         addSplat(c.x, c.y, c.splatCol, c.splatScale);
         c.dead = true;
         if (c.kind === "ling") {
@@ -1423,8 +1446,9 @@ var Swarm = (function () {
                     if (hadHp && m.hp <= 0) baneKills++;
                 }
             }
+            stats.baneKills += baneKills;
             /* the big boom only when the blast killed a marine; otherwise a plain ling death */
-            sound(baneKills > 0 ? "baneDie" : "lingDie");
+            sound(baneKills > 0 || tapped ? "baneDie" : "lingDie");
         } else if (c.kind === "marine") {
             sound("marineDie");
             /* corpse: freeze the frame, show only the bottom half, fade out */
@@ -1667,7 +1691,7 @@ var Swarm = (function () {
                 if (hc.healCd <= 0) {
                     hc.healCd = MARINE_HEAL_T;
                     var maxHp = (hc.kind === "marine") ? MARINE_HP : (hc.kind === "bane") ? BANE_HP : LING_HP;
-                    var heal = maxHp * MARINE_HEAL_PCT * ((hc.kind === "marine" && hc.stimT > 0) ? STIM_REGEN_MULT : 1);
+                    var heal = maxHp * MARINE_HEAL_PCT * ((hc.kind === "marine" && hc.stimRegenT > 0) ? STIM_REGEN_MULT : 1);
                     hc.hp = Math.min(maxHp, hc.hp + heal);
                 }
             }
@@ -1791,33 +1815,6 @@ var Swarm = (function () {
         drawCorpses(ctx, dt);
         for (var k = 0; k < units.length; k++) drawUnit(units[k], ctx);
 
-        /* score (showScore, off by default) */
-        if (SETTINGS.showScore) {
-            /* supply bar: zerg (purple) vs terran (blue). 1 marine = 1 supply,
-             * 1 ling/bane = 0.5 supply, so the bar shows who is ahead. */
-            var zergSupply = (countKind("ling") + countKind("bane")) * 0.5;
-            var terranSupply = countKind("marine");
-            var totalSupply = zergSupply + terranSupply;
-            var frac = totalSupply > 0 ? zergSupply / totalSupply : 0.5;
-            var margin = 6, barH = 2, barY = 6, barW = W - margin * 2;
-            var split = margin + barW * frac;
-            ctx.fillStyle = "#c39bff";
-            ctx.fillRect(margin, barY, split - margin, barH);
-            ctx.fillStyle = "#6ab8ff";
-            ctx.fillRect(split, barY, margin + barW - split, barH);
-            /* supply numbers just below the bar, coloured to match (no labels) */
-            var zergStr = (zergSupply % 1 === 0) ? String(zergSupply) : zergSupply.toFixed(1);
-            var terranStr = (terranSupply % 1 === 0) ? String(terranSupply) : terranSupply.toFixed(1);
-            ctx.font = "bold 10px Arial";
-            ctx.textAlign = "left";
-            ctx.fillStyle = "#c39bff";
-            ctx.fillText(zergStr, margin, barY + barH + 12);
-            ctx.textAlign = "right";
-            ctx.fillStyle = "#6ab8ff";
-            ctx.fillText(terranStr, W - margin, barY + barH + 12);
-            ctx.textAlign = "left";
-        }
-
         /* firing lines: brief, semi-transparent, gun tip -> random point on the ling */
         for (var fl = 0; fl < units.length; fl++) {
             var fm = units[fl];
@@ -1868,7 +1865,7 @@ var Swarm = (function () {
             if (c.dead || c.kind === "egg") continue;
             var dx = c.x - x, dy = c.y - y;
             var rr = r + c.bumpR;
-            if (dx * dx + dy * dy < rr * rr) killUnit(c);
+            if (dx * dx + dy * dy < rr * rr) killUnit(c, true);
         }
     }
 
@@ -1895,6 +1892,7 @@ var Swarm = (function () {
 
     /* restart the battle with the configured starting population */
     function restart() {
+        resetStats();
         setCount(SETTINGS.unitCount || MAX_LINGS);
     }
 
@@ -1946,5 +1944,6 @@ var Swarm = (function () {
     return { init: init, start: start, stop: stop, restart: restart, setCount: setCount, killNear: killNear,
              setGameSpeed: setGameSpeed, setUnitScale: setUnitScale, setTuning: setTuning, resize: resize,
              setSoundHandler: setSoundHandler, marineStatus: marineStatus,
+             stats: getStats, resetStats: resetStats,
              TUNING: TUNING, debugUnits: function () { return units; } };
 })();
