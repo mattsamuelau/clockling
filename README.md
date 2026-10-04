@@ -1,21 +1,4 @@
 # Clockling
-
-**Time on top. Total war underneath.** A clock with a live zerglings-vs-marines battle
-raging behind it: the swarm masses up and rushes, banelings roll in and pop, marines
-march in pairs and kite. Tap to splat whatever is under your finger.
-
-![Clockling demo](docs/demo.gif)
-
-This is a private project: run it yourself from a clone (see [Use it](#use-it)). It's a
-plain web page with no build step, so it takes about ten seconds.
-
----
-
-## Two versions, one battle
-
-Clockling runs in two places. They play by the same rules with the same default settings;
-the web version simply has more room for extras.
-
 | | **Web** - `clockling.html` | **ESP32** - `targets/esp32/` |
 |---|---|---|
 | Runs on | Any browser (desktop, phone, embedded iframe) | Freenove ESP32 Display, 2.8" 240x320 "CYD" (FNK0114B) |
