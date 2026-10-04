@@ -13,8 +13,8 @@ var TUNING_META = {
         mapH: { class: "Advanced", default: 432, meaning: "Battlefield height (px)" },
 
         /* Max units */
-        maxLings: { class: "Visible", default: 14, meaning: "Max zerglings on screen" },
-        maxBanes: { class: "Visible", default: 2, meaning: "Max banelings on screen" },
+        maxLings: { class: "Visible", default: 16, meaning: "Max zerglings on screen" },
+        maxBanes: { class: "Visible", default: 3, meaning: "Max banelings on screen" },
         maxMarines: { class: "Visible", default: 6, meaning: "Max marines on screen" },
 
         /* Movement */
@@ -22,10 +22,10 @@ var TUNING_META = {
         terranSpeed: { class: "Visible", default: 1.2, meaning: "Terran base speed multiplier" },
 
         /* Zerg (zerglings, banelings, eggs) */
-        respawnInterval: { class: "Visible", default: 2, meaning: "Seconds between ling-egg refill batches" },
-        respawnBatch: { class: "Visible", default: 4, meaning: "Eggs spawned per refill batch" },
-        eggTimeMin: { class: "Visible", default: 8, meaning: "Min seconds until an egg hatches" },
-        eggTimeMax: { class: "Visible", default: 10, meaning: "Max seconds until an egg hatches" },
+        respawnInterval: { class: "Visible", default: 1.5, meaning: "Seconds between ling-egg refill batches" },
+        respawnBatch: { class: "Visible", default: 8, meaning: "Eggs spawned per refill batch" },
+        eggTimeMin: { class: "Visible", default: 7, meaning: "Min seconds until an egg hatches" },
+        eggTimeMax: { class: "Visible", default: 9, meaning: "Max seconds until an egg hatches" },
         eggHatchMult: { class: "Advanced", default: 1.5, meaning: "Egg hatch acceleration multiplier" },
         morphAge: { class: "Visible", default: 4, meaning: "Lings must live this long before morphing" },
         morphCooldown: { class: "Visible", default: 2, meaning: "Seconds between successful morphs" },
@@ -36,7 +36,7 @@ var TUNING_META = {
         lingBiteInterval: { class: "Visible", default: 0.2, meaning: "Seconds between bites" },
         baneSplashDamage: { class: "Visible", default: 90, meaning: "Baneling blast damage" },
         baneSplashR: { class: "Visible", default: 61, meaning: "Baneling blast radius (px)" },
-        attackGroupSize: { class: "Visible", default: 5, meaning: "Minimum swarm strength (ling 1, bane 2) to attack; capped at maxLings" },
+        attackGroupSize: { class: "Visible", default: 10, meaning: "Minimum swarm strength (ling 1, bane 2) to attack; capped at maxLings" },
         berserkBanes: { class: "Visible", default: 2, meaning: "Banelings alive needed to trigger bane berserk" },
         berserkUntilDeath: { class: "Visible", default: false, meaning: "On: berserk never retreats; off: cancels when outnumbered" },
         attackOdds: { class: "Visible", default: 1.5, meaning: "Swarm strength (ling 1, bane 2) needed per marine in the target group" },
@@ -45,7 +45,7 @@ var TUNING_META = {
         marineGroupRadius: { class: "Visible", default: 60, meaning: "Radius around a marine used to count its group" },
         berserkCatchRadius: { class: "Visible", default: 80, meaning: "Lings catch berserk from a berserk bane within this radius" },
         berserkSpeedMult: { class: "Visible", default: 1.5, meaning: "Speed multiplier while berserk" },
-        lingFleeSpeedMult: { class: "Visible", default: 1.4, meaning: "Speed multiplier for lings escaping marines" },
+        lingFleeSpeedMult: { class: "Visible", default: 1.6, meaning: "Speed multiplier for lings escaping marines" },
 
         /* Terran (marines) */
         marineSpawnRateMult: { class: "Visible", default: 1.5, meaning: "Marine spawn rate multiplier" },
