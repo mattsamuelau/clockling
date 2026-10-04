@@ -3,14 +3,7 @@
 </p>
 
 # Clockling
-
-**Time on top. Total war underneath.** Clock display with a live zergling-versus-marine
-simulation.
-
-[![Clockling demo](docs/demo.gif)](https://mattsamuelau.github.io/clockling/)
-
-**[Open Clockling in your browser](https://mattsamuelau.github.io/clockling/)** - full
-screen, settings behind the gear, share your setup as a link or embed it anywhere.
+**[Open Clockling](https://mattsamuelau.github.io/clockling/)**
 
 | | **Web** - `clockling.html` | **ESP32** - `targets/esp32/` |
 |---|---|---|
