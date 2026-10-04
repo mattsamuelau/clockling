@@ -131,7 +131,8 @@ def build_music(name):
     af = "loudnorm=I=-18:TP=-2,afade=t=in:d=1.5,afade=t=out:st=%d:d=3" % (dur - 3)
     run(["ffmpeg", "-v", "error", "-y", "-ss", str(start), "-t", str(dur), "-i", src,
          "-af", af, "-ar", "44100", "-ac", "2", "-c:a", "libmp3lame", "-b:a", "96k", out])
-    print("wrote", os.path.relpath(out, ROOT))
+    trimmed = trim_sounds.reapply("music/" + name + ".mp3")
+    print("wrote", os.path.relpath(out, ROOT), "(trimmed to %.0f s)" % trimmed if trimmed else "")
 
 
 def main():

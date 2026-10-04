@@ -34,7 +34,8 @@ http.createServer(function (req, res) {
             res.end("404 - not found: " + pathname);
             return;
         }
-        res.writeHead(200, { "Content-Type": TYPES[path.extname(file)] || "application/octet-stream" });
+        /* no-store: a re-trimmed / rebuilt sound or edited js shows up on the next reload */
+        res.writeHead(200, { "Content-Type": TYPES[path.extname(file)] || "application/octet-stream", "Cache-Control": "no-store" });
         res.end(data);
     });
 }).listen(PORT, function () {

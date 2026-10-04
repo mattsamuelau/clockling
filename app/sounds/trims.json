@@ -1,4 +1,8 @@
 {
+  "bane_die.wav": [
+    0.0,
+    1.2
+  ],
   "ling_attack.wav": [
     0.8,
     1.59
@@ -30,5 +34,17 @@
   "marine_shoot.wav": [
     2.65,
     5.66
+  ],
+  "marine_spawn.wav": [
+    0.0,
+    1.72
+  ],
+  "marine_voice1.wav": [
+    0.0,
+    1.55
+  ],
+  "marine_voice2.wav": [
+    0.0,
+    1.58
   ]
 }
