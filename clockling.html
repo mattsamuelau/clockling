@@ -339,6 +339,7 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
     }
 
     function save() {
+        refreshPresets();
         try {
             localStorage.setItem(STORE, JSON.stringify({
                 s: diff(SETTINGS, DEF_SETTINGS), t: diff(TUNING, DEF_TUNING, HIDDEN_TUNING)
@@ -580,6 +581,23 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         Swarm.restart();
         toast(p.name + " preset: " + p.hint);
     }
+    /* true when the live battle settings + tuning are exactly this preset */
+    function presetMatches(p) {
+        for (var i = 0; i < BATTLE_KEYS.length; i++) {
+            var k = BATTLE_KEYS[i];
+            if (SETTINGS[k] !== (k in p.s ? p.s[k] : DEF_SETTINGS[k])) return false;
+        }
+        for (k in DEF_TUNING) {
+            if (HIDDEN_TUNING[k]) continue;
+            if (TUNING[k] !== (k in p.t ? p.t[k] : DEF_TUNING[k])) return false;
+        }
+        return true;
+    }
+    var presetSeg = null;
+    function refreshPresets() {
+        if (!presetSeg) return;
+        PRESETS.forEach(function (p, i) { presetSeg.children[i].className = presetMatches(p) ? "on" : ""; });
+    }
     function presetRow(parent) {
         var row = el("div", "row slider");
         row.appendChild(label("Preset", "Resets the battle tuning, then applies the preset"));
@@ -591,6 +609,8 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         });
         row.appendChild(seg);
         parent.appendChild(row);
+        presetSeg = seg;
+        refreshPresets();
     }
 
     function buildMain() {

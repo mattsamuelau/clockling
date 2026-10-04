@@ -26,11 +26,11 @@ var SETTINGS = {
     fieldSize: 1280,       /* web only: battlefield short side in logical px (smaller = bigger units) */
 
     /* audio (web only) */
-    soundOn: false,
-    soundVolume: 70,       /* percent */
+    soundOn: true,
+    soundVolume: 30,       /* percent */
     soundRate: 1,          /* how often chatter and voicelines fire (0 = never, 2 = twice as often) */
     musicTrack: 3,         /* 0 off, 1 Zerg, 2 Protoss, 3 Terran 1, 4 Terran 2, 5 Terran 3 */
-    musicVolume: 35,       /* percent */
+    musicVolume: 30,       /* percent */
 
     /* device */
     landscape: true        /* ESP32 only: horizontal 320x240 panel (off = vertical 240x320) */

@@ -224,11 +224,11 @@ both.
 | `showKills` | true | Marine kill marks (one per ling killed). | web |
 | `gore` | true | Gore mode: splats and corpses linger (splat 16.2 s, corpse 19.2 s). | both |
 | `fieldSize` | 1280 | Battlefield size (smaller = bigger units). | web |
-| `soundOn` | false | Play sound effects. | web |
-| `soundVolume` | 70 | Sound volume. | web |
+| `soundOn` | true | Play sound effects. | web |
+| `soundVolume` | 30 | Sound volume. | web |
 | `soundRate` | 1 | How often chatter and voicelines play (0 = never). | web |
 | `musicTrack` | 3 | Background music. | web |
-| `musicVolume` | 35 | Music volume. | web |
+| `musicVolume` | 30 | Music volume. | web |
 | `landscape` | true | Horizontal screen (off = vertical). | ESP32 |
 
 ESP32-only device settings (`brightness`, `fpsCap`) are defined in `targets/esp32/tools/gen_assets.py`.
