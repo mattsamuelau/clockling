@@ -504,6 +504,7 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         b.querySelectorAll(".row, .btn").forEach(function (r) { r.remove(); });
         sliderRow(b, "gameSpeed", "Speed", x);
         sliderRow(b, "unitScale", "Units", x);
+        sliderRow(b, "marineSkill", "Marine skill", function (v) { return Math.round(v * 100) + "%"; });
         segRow(b, "fieldSize", "Battlefield", "Smaller field = bigger units", META.settings.fieldSize.options);
         switchRow(b, "showHealthBars", "Health bars");
         switchRow(b, "showKills", "Kill marks", "One mark per zergling a marine has killed");
@@ -537,7 +538,7 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         var host = $("advGroups");
         host.innerHTML = "";
         var shown = { showClock: 1, hour24: 1, showSeconds: 1, clockPosition: 1, clockBehind: 1, clockScale: 1, timeZone: 1,
-                      gameSpeed: 1, unitScale: 1, fieldSize: 1, showHealthBars: 1, showKills: 1, showScore: 1, gore: 1,
+                      gameSpeed: 1, unitScale: 1, marineSkill: 1, fieldSize: 1, showHealthBars: 1, showKills: 1, showScore: 1, gore: 1,
                       soundOn: 1, soundVolume: 1, soundRate: 1, musicTrack: 1, musicVolume: 1 };
         Object.keys(META.groups).forEach(function (g) {
             var keys = META.groups[g].filter(function (k) {

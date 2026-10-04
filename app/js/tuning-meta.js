@@ -19,7 +19,7 @@ var TUNING_META = {
 
         /* Movement */
         zergSpeed: { class: "Visible", default: 1.2, meaning: "Zerg base speed multiplier" },
-        terranSpeed: { class: "Visible", default: 1.2, meaning: "Terran base speed multiplier" },
+        terranSpeed: { class: "Visible", default: 1.35, meaning: "Terran base speed multiplier" },
 
         /* Zerg (zerglings, banelings, eggs) */
         respawnInterval: { class: "Visible", default: 1.5, meaning: "Seconds between ling-egg refill batches" },
@@ -49,6 +49,9 @@ var TUNING_META = {
         marineGroupRadius: { class: "Visible", default: 60, meaning: "Radius around a marine used to count its group" },
         berserkCatchRadius: { class: "Visible", default: 80, meaning: "Lings catch berserk from a berserk bane within this radius" },
         berserkSpeedMult: { class: "Visible", default: 1.5, meaning: "Speed multiplier while berserk" },
+        lingAttackBoostMult: { class: "Visible", default: 1.5, meaning: "Speed burst for every ling that joins an attack (berserk lings get the larger of this and berserk speed)", only: "web", min: 1, max: 3, step: 0.1 },
+        lingAttackBoostTime: { class: "Visible", default: 3, meaning: "Seconds the attack speed burst lasts", only: "web", min: 0, max: 10, step: 0.5 },
+        lingAttackBoostCooldown: { class: "Visible", default: 5, meaning: "Seconds after a burst ends before a ling can burst again", only: "web", min: 0, max: 30, step: 0.5 },
         lingFleeSpeedMult: { class: "Visible", default: 1.6, meaning: "Speed multiplier for lings escaping marines" },
 
         /* Terran (marines) */
@@ -78,6 +81,14 @@ var TUNING_META = {
         marineTactics: { class: "Visible", default: true, meaning: "New marine AI: kite, regroup, or advance" },
         marineHealPct: { class: "Advanced", default: 0.10, meaning: "HP all units heal per tick" },
         marineHealInterval: { class: "Advanced", default: 0.5, meaning: "Seconds between heal ticks" },
+        stimDuration: { class: "Visible", default: 3, meaning: "Seconds a stimpack lasts", only: "web", min: 0.5, max: 10, step: 0.5 },
+        stimCooldown: { class: "Visible", default: 10, meaning: "Seconds before a marine can stim again", only: "web", min: 0, max: 60, step: 1 },
+        stimSpeedMult: { class: "Visible", default: 2, meaning: "Speed multiplier while stimmed", only: "web", min: 1, max: 4, step: 0.1 },
+        stimHpCost: { class: "Visible", default: 0.5, meaning: "Share of current HP a stimpack costs", only: "web", min: 0, max: 0.9, step: 0.05 },
+        stimRegenMult: { class: "Visible", default: 0.25, meaning: "HP regen multiplier while stimmed", only: "web", min: 0, max: 1, step: 0.05 },
+        stimGroupMax: { class: "Visible", default: 3, meaning: "Only marine groups this small (or smaller) stim to escape", only: "web", min: 1, max: 20, step: 1 },
+        stimRegroupDist: { class: "Visible", default: 0.3, meaning: "Lone marines farther than this from the main mob (x board short side) stim back to it", only: "web", min: 0.05, max: 1, step: 0.05 },
+        marineSkillTopSpeed: { class: "Advanced", default: 3, meaning: "Movement multiplier at max marine skill (1x at half skill)", only: "web", min: 1, max: 4, step: 0.1 },
 
         /* Visuals & timing */
         lingW: { class: "Advanced", default: 30, meaning: "Zergling sprite width (px)" },
@@ -113,6 +124,7 @@ var TUNING_META = {
         gameSpeed: { class: "Visible", meaning: "Speed multiplier", min: 0.25, max: 5, step: 0.25 },
         unitScale: { class: "Visible", meaning: "Unit multiplier (population, waves, spawn rate)", min: 0.5, max: 5, step: 0.5 },
         unitCount: { class: "Advanced", meaning: "Starting zerglings" },
+        marineSkill: { class: "Visible", meaning: "Marine smarts: 0 = stand and die, 1 = one marine can dance around a swarm", only: "web", min: 0, max: 1, step: 0.05 },
         unitSpeed: { class: "Advanced", meaning: "Movement speed multiplier for every unit" },
         showHealthBars: { class: "Visible", meaning: "Show unit health bars" },
         showKills: { class: "Visible", meaning: "Marine kill marks (one per ling killed)", only: "web" },
@@ -132,16 +144,16 @@ var TUNING_META = {
     /* Groups for UI organization */
     groups: {
         "Zerg Rules": ["attackGroupSize", "lingFleeSpeedMult", "berserkBanes", "berserkUntilDeath", "attackOdds", "allyRadius", "marineScanRadius", "marineGroupRadius", "berserkCatchRadius"],
-        "Zerg Units": ["maxLings", "maxBanes", "lingHp", "baneHp", "lingBiteDamage", "lingBiteInterval", "baneSplashDamage", "baneSplashR", "berserkSpeedMult"],
+        "Zerg Units": ["maxLings", "maxBanes", "lingHp", "baneHp", "lingBiteDamage", "lingBiteInterval", "baneSplashDamage", "baneSplashR", "berserkSpeedMult", "lingAttackBoostMult", "lingAttackBoostTime", "lingAttackBoostCooldown"],
         "Zerg Lifecycle": ["respawnInterval", "respawnBatch", "eggTimeMin", "eggTimeMax", "eggHatchMult", "eggHp", "eggDamageMult", "eggOverlap", "eggMarineClearance", "morphAge", "morphCooldown", "morphChancePerSec"],
         "Terran Units": ["maxMarines", "marineHp", "marineShootDamage", "marineShootInterval", "marineRangeMult"],
         "Terran Spawning": ["marineEntrySpeed", "marineEntryDepth", "marineSpawnRateMult", "marineWaveLo", "marineWaveHi", "marineWaveSizeLo", "marineWaveSizeHi", "marineRespawnLo", "marineRespawnHi", "marineRespawnSizeLo", "marineRespawnSizeHi", "marineSpawnGap", "marineSpawnInset"],
-        "Terran Behavior": ["marineTactics", "marineKiteFrac", "marineSightMult", "marineFleeHpPct", "marineGroupWeight", "marineAwayWeight", "marineTurnRate", "marineHealPct", "marineHealInterval"],
+        "Terran Behavior": ["marineTactics", "marineKiteFrac", "marineSightMult", "marineFleeHpPct", "marineGroupWeight", "marineAwayWeight", "marineTurnRate", "marineHealPct", "marineHealInterval", "stimDuration", "stimCooldown", "stimSpeedMult", "stimHpCost", "stimRegenMult", "stimGroupMax", "stimRegroupDist", "marineSkillTopSpeed"],
         "Movement": ["zergSpeed", "terranSpeed"],
         "Visuals": ["lingW", "baneW", "marineW", "eggW", "lingBump", "baneBump", "marineBump", "splatLife", "splatBase", "splatFadeStart", "corpseLife", "goreSplatLife", "goreCorpseLife", "baneSplatLifeMult", "marineSplatScale", "baneSplatScale", "retargetInterval", "aimInterval"],
         "Map": ["mapW", "mapH"],
         "Clock": ["showClock", "hour24", "showSeconds", "clockPosition", "clockBehind", "clockScale", "timeZone"],
-        "Battle": ["gameSpeed", "unitScale", "fieldSize", "showHealthBars", "showKills", "showScore", "gore", "unitCount", "unitSpeed", "soundOn", "soundVolume", "soundRate", "musicTrack", "musicVolume"],
+        "Battle": ["gameSpeed", "unitScale", "fieldSize", "showHealthBars", "showKills", "showScore", "gore", "unitCount", "unitSpeed", "marineSkill", "soundOn", "soundVolume", "soundRate", "musicTrack", "musicVolume"],
         "Display": ["landscape"]
     }
 };

@@ -6,7 +6,7 @@ const TMeta TMETA[T_COUNT] = {
   {"maxBanes", 3.0f, 0, 0, 4, "Max banelings on screen", nullptr},
   {"maxMarines", 7.0f, 0, 0, 6, "Max marines on screen", nullptr},
   {"zergSpeed", 1.2f, 0, 0, 9, "Zerg base speed multiplier", nullptr},
-  {"terranSpeed", 1.2f, 0, 0, 9, "Terran base speed multiplier", nullptr},
+  {"terranSpeed", 1.35f, 0, 0, 9, "Terran base speed multiplier", nullptr},
   {"respawnInterval", 1.5f, 0, 0, 5, "Seconds between ling-egg refill batches", nullptr},
   {"respawnBatch", 8.0f, 0, 0, 5, "Eggs spawned per refill batch", nullptr},
   {"eggTimeMin", 7.0f, 0, 0, 5, "Min seconds until an egg hatches", nullptr},

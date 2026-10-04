@@ -17,6 +17,7 @@ var SETTINGS = {
     /* battle */
     gameSpeed: 5,        /* speed multiplier */
     unitScale: 5,          /* population multiplier (max units, wave sizes, spawn rate) */
+    marineSkill: 0.6,      /* web only: marine AI skill 0 (stand and die) .. 1 (elite kiting) */
     unitCount: 10,         /* starting lings */
     unitSpeed: 1.0,        /* movement speed multiplier for every unit */
     showHealthBars: true,

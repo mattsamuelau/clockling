@@ -94,6 +94,9 @@ both.
 | `baneSplashDamage` | 90 | Baneling blast damage. | Visible |
 | `baneSplashR` | 61 | Baneling blast radius (px). | Visible |
 | `berserkSpeedMult` | 1.5 | Speed multiplier while berserk. | Visible |
+| `lingAttackBoostMult` | 1.5 | Speed burst for every ling that joins an attack (berserk lings get the larger of this and berserk speed). | Visible |
+| `lingAttackBoostTime` | 3 | Seconds the attack speed burst lasts. | Visible |
+| `lingAttackBoostCooldown` | 5 | Seconds after a burst ends before a ling can burst again. | Visible |
 
 ## Zerg Lifecycle
 
@@ -153,13 +156,21 @@ both.
 | `marineTurnRate` | 0.25 | Marine steering: share of the turn closed every 1/8 s. | Advanced |
 | `marineHealPct` | 0.1 | HP all units heal per tick. | Advanced |
 | `marineHealInterval` | 0.5 | Seconds between heal ticks. | Advanced |
+| `stimDuration` | 3 | Seconds a stimpack lasts. | Visible |
+| `stimCooldown` | 10 | Seconds before a marine can stim again. | Visible |
+| `stimSpeedMult` | 2 | Speed multiplier while stimmed. | Visible |
+| `stimHpCost` | 0.5 | Share of current HP a stimpack costs. | Visible |
+| `stimRegenMult` | 0.25 | HP regen multiplier while stimmed. | Visible |
+| `stimGroupMax` | 3 | Only marine groups this small (or smaller) stim to escape. | Visible |
+| `stimRegroupDist` | 0.3 | Lone marines farther than this from the main mob (x board short side) stim back to it. | Visible |
+| `marineSkillTopSpeed` | 3 | Movement multiplier at max marine skill (1x at half skill). | Advanced |
 
 ## Movement
 
 | Key | Default | Meaning | Class |
 |---|---|---|---|
 | `zergSpeed` | 1.2 | Zerg base speed multiplier. | Visible |
-| `terranSpeed` | 1.2 | Terran base speed multiplier. | Visible |
+| `terranSpeed` | 1.35 | Terran base speed multiplier. | Visible |
 
 ## Visuals
 
@@ -204,6 +215,7 @@ both.
 | `timeZone` | auto | Time zone (auto = this device). | web |
 | `gameSpeed` | 5 | Speed multiplier. | both |
 | `unitScale` | 5 | Unit multiplier (population, waves, spawn rate). | both |
+| `marineSkill` | 0.6 | Marine smarts: 0 = stand and die, 1 = one marine can dance around a swarm. | web |
 | `unitCount` | 10 | Starting zerglings. | both |
 | `unitSpeed` | 1 | Movement speed multiplier for every unit. | both |
 | `showHealthBars` | true | Show unit health bars. | both |

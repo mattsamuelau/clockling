@@ -85,6 +85,9 @@ var Swarm = (function () {
      * Timings come from TUNING.goreSplatLife / TUNING.goreCorpseLife. */
     var GORE_SPLAT_LIFE, GORE_CORPSE_LIFE;
     var EGG_OVERLAP, EGG_MARINE_CLEAR;
+    var STIM_DURATION, STIM_COOLDOWN, STIM_SPEED_MULT, STIM_HP_COST, STIM_REGEN_MULT, STIM_GROUP_MAX,
+        STIM_REGROUP_DIST, MARINE_SKILL_TOP_SPEED;
+    var LING_BOOST_MULT, LING_BOOST_TIME, LING_BOOST_CD;
     function splatLife() { return SETTINGS.gore !== false ? GORE_SPLAT_LIFE : SPLAT_LIFE; }
     function corpseLife() { return SETTINGS.gore !== false ? GORE_CORPSE_LIFE : CORPSE_LIFE; }
     var LING_SPLAT = ["#e02828", "#ff6b4a"];
@@ -100,6 +103,17 @@ var Swarm = (function () {
         MARINE_W = TUNING.marineW;
         EGG_W = TUNING.eggW;
         EGG_OVERLAP = Math.max(0, Math.min(1, TUNING.eggOverlap || 0));
+        STIM_DURATION = TUNING.stimDuration;
+        STIM_COOLDOWN = TUNING.stimCooldown;
+        STIM_SPEED_MULT = TUNING.stimSpeedMult;
+        STIM_HP_COST = Math.max(0, Math.min(0.95, TUNING.stimHpCost));
+        STIM_REGEN_MULT = TUNING.stimRegenMult;
+        STIM_GROUP_MAX = TUNING.stimGroupMax;
+        STIM_REGROUP_DIST = TUNING.stimRegroupDist;
+        MARINE_SKILL_TOP_SPEED = TUNING.marineSkillTopSpeed;
+        LING_BOOST_MULT = TUNING.lingAttackBoostMult;
+        LING_BOOST_TIME = TUNING.lingAttackBoostTime;
+        LING_BOOST_CD = TUNING.lingAttackBoostCooldown;
         EGG_MARINE_CLEAR = Math.max(0, TUNING.eggMarineClearance || 0);
         EGG_HP = TUNING.eggHp;
         EGG_DMG_MULT = TUNING.eggDamageMult;
@@ -238,6 +252,7 @@ var Swarm = (function () {
             c.faceDir = -1; c.face = -1; c.w = LING_W; c.bumpR = LING_BUMP;
             c.speed = rand(26, 46); c.splatCol = LING_SPLAT;
             c.hp = LING_HP; c.attackCd = 0; c.healCd = 0; c.berserk = false;
+            c.boostT = 0; c.boostCd = 0; c.wasAttacking = false;
         } else if (kind === "bane") {
             c.faceDir = 1; c.face = 1; c.w = BANE_W; c.bumpR = BANE_BUMP;
             c.speed = rand(24, 40); c.splatCol = BANE_SPLAT; c.splatScale = BANE_SPLAT_SCALE;
@@ -249,6 +264,8 @@ var Swarm = (function () {
             c.shootCd = SHOOT_T; c.aim = c.heading; c.healCd = 0; c.entered = false; c.shootTarget = null;
             c.flashT = 0; c.hitX = 0; c.hitY = 0; c.kills = 0;
             c.deployT = 0; c.deployX = 0; c.deployY = 0;
+            c.stimT = 0; c.stimCd = 0; c.combat = false; c.kitePhase = "shoot"; c.runT = 0; c.shootT = 0;
+            c.runDir = null; c.regroupTo = null;
         } else if (kind === "egg") {
             c.w = EGG_W; c.bumpR = 12; c.speed = 0; c.t = 0; c.hatchMult = 1;
             c.hatchT = rand(EGG_TIME_MIN, EGG_TIME_MAX);
@@ -764,6 +781,289 @@ var Swarm = (function () {
         }
     }
 
+    /* ---------------------------------------------------------------- marine AI
+     * SETTINGS.marineSkill (0..1) scales how well marines play:
+     *   0    stand still and shoot (they just die)
+     *   0.5  the old tactics, plus basic stutter-step kiting
+     *   1    fast reactions, tight unison kiting, wall-aware escapes, bane focus,
+     *        quick feet: one marine can dance around a whole swarm
+     * Combat is run per local group (marines within marineGroupRadius) so a
+     * squad kites in unison: RUN (face away, no shooting) until the zerg are
+     * outrun, then SHOOT (turn back, stand, fire), repeat. Stim (stimDuration s,
+     * stimCooldown s, costs stimHpCost of current HP, stimSpeedMult speed,
+     * stimRegenMult regen) is used by small groups that can no longer stand
+     * and fight, and by lone marines running back to the main marine mob. */
+    function marineSkill() {
+        var s = +SETTINGS.marineSkill;
+        return isNaN(s) ? 0.6 : Math.max(0, Math.min(1, s));
+    }
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    /* movement multiplier from skill: slow and clumsy below 0.5, light-footed above */
+    function marineFootwork(S) {
+        return S < 0.5 ? lerp(0.6, 1, S / 0.5) : lerp(1, MARINE_SKILL_TOP_SPEED, (S - 0.5) / 0.5);
+    }
+    function marineTurnRate(S) {
+        return S < 0.5 ? MARINE_TURN * (0.6 + 0.8 * S) : lerp(MARINE_TURN, 0.92, (S - 0.5) / 0.5);
+    }
+
+    /* px/s a zerg unit is moving at, including the attack burst. Berserk lings
+     * already charge at berserkSpeedMult, so they get the larger of the two. */
+    function zergMoveSpeed(z) {
+        var v = z.speed * ZERG_SPEED;
+        if (z.kind === "ling" && z.boostT > 0 && z.attacking) {
+            v *= z.berserk ? Math.max(1, LING_BOOST_MULT / BERSERK_SPEED_MULT) : LING_BOOST_MULT;
+        }
+        return v;
+    }
+
+    function nearestKind(x, y, kind) {
+        var best = null, bd = 1e18;
+        for (var i = 0; i < units.length; i++) {
+            var c = units[i];
+            if (c.kind !== kind || c.dead) continue;
+            var dx = c.x - x, dy = c.y - y, d2 = dx * dx + dy * dy;
+            if (d2 < bd) { bd = d2; best = c; }
+        }
+        return best;
+    }
+    function dist(a, x, y) { var dx = a.x - x, dy = a.y - y; return Math.sqrt(dx * dx + dy * dy); }
+
+    function stimMarine(m, S) {
+        if (m.stimT > 0 || m.stimCd > 0) return false;
+        if (m.hp < MARINE_HP * lerp(0.5, 0.3, S)) return false;   /* too hurt to pay for it */
+        m.hp -= m.hp * STIM_HP_COST;
+        m.stimT = STIM_DURATION;
+        m.stimCd = STIM_COOLDOWN;
+        return true;
+    }
+
+    /* best direction to run from (cx,cy): sample `nd` headings, keep the one whose
+     * look-ahead point is farthest from the closest zerg (banes count double),
+     * clear of the walls, and (when given) heading toward `goal` */
+    function marineEscapeDir(cx, cy, S, goal, prev, zs) {
+        var nd = 8 + Math.round(16 * S);
+        var look = 40 + 80 * S;
+        var best = prev, bs = -1e18;
+        var ga = goal ? Math.atan2(goal.y - cy, goal.x - cx) : 0;
+        for (var k = 0; k < nd; k++) {
+            var a = k / nd * 6.283 + (prev || 0) * 0;
+            var px = cx + Math.cos(a) * look, py = cy + Math.sin(a) * look;
+            var clear = 400, crowd = 0;
+            for (var i = 0; i < zs.length; i++) {
+                var z = zs[i];
+                var d = Math.sqrt((z.x - px) * (z.x - px) + (z.y - py) * (z.y - py));
+                var w = z.kind === "bane" ? 2 : 1;
+                if (d / w < clear) clear = d / w;
+                crowd += w / Math.max(12, d);
+            }
+            var m = Math.min(px, W - px, py, H - py);
+            var score = clear - crowd * 8 - Math.max(0, 70 - m) * 4;
+            if (goal) score += Math.cos(a - ga) * 70;
+            if (prev !== null && prev !== undefined) score += Math.cos(a - prev) * 12 * S;
+            if (score > bs) { bs = score; best = a; }
+        }
+        return best + rand(-1, 1) * (1 - S) * 0.5;
+    }
+
+    /* group marines (union of marines within r); each group is an array */
+    function marineGroups(ms, r) {
+        var parent = ms.map(function (_, i) { return i; });
+        function find(i) { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; }
+        for (var i = 0; i < ms.length; i++) {
+            for (var j = i + 1; j < ms.length; j++) {
+                var dx = ms[i].x - ms[j].x, dy = ms[i].y - ms[j].y;
+                if (dx * dx + dy * dy < r * r) parent[find(i)] = find(j);
+            }
+        }
+        var map = {}, out = [];
+        for (var k = 0; k < ms.length; k++) {
+            var root = find(k);
+            if (!map[root]) { map[root] = []; out.push(map[root]); }
+            map[root].push(ms[k]);
+        }
+        return out;
+    }
+
+    var marineCtrlT = 0;
+    function marineController(dt) {
+        var S = marineSkill();
+        marineCtrlT -= dt;
+        if (marineCtrlT > 0) return;
+        marineCtrlT = lerp(0.5, 0.05, S);
+
+        var ms = [], zs = [];
+        for (var i = 0; i < units.length; i++) {
+            var u = units[i];
+            if (u.dead) continue;
+            if (u.kind === "marine") {
+                if (u.entered && u.deployT <= 0) ms.push(u); else u.combat = false;
+            } else if (u.kind === "ling" || u.kind === "bane") zs.push(u);
+        }
+        if (!ms.length) return;
+
+        var R = MARINE_RANGE;
+        var kiteIn = R * lerp(0.3, 0.7, S);     /* start running when zerg get this close */
+        var kiteOut = R * lerp(0.45, 0.9, S);   /* turn and shoot again once they're this far */
+        var baneIn = R * lerp(0.35, 1.0, S);    /* banes: run earlier */
+        var baneOut = R * lerp(0.5, 1.15, S);
+        var maxRun = lerp(0.8, 1.6, S);         /* never run longer than this without a volley */
+        var minShoot = SHOOT_T * 1.05;          /* get a shot off before running again */
+
+        /* below 0.4 skill marines act alone; above it they move as squads */
+        var groups = S < 0.4 ? ms.map(function (m) { return [m]; }) : marineGroups(ms, MARINE_GROUP_RADIUS * 1.3);
+        var mob = null;
+        for (var g = 0; g < groups.length; g++) if (!mob || groups[g].length > mob.length) mob = groups[g];
+        var mobC = null;
+        if (mob) {
+            mobC = { x: 0, y: 0 };
+            for (var q = 0; q < mob.length; q++) { mobC.x += mob[q].x; mobC.y += mob[q].y; }
+            mobC.x /= mob.length; mobC.y /= mob.length;
+        }
+
+        for (g = 0; g < groups.length; g++) {
+            var grp = groups[g], n = grp.length;
+            var cx = 0, cy = 0, near = 1e9, nearB = 1e9, allClear = true, running = false, runT = 0, shootT = 1e9;
+            var myV = 1e9, stimV = 1e9, stimReady = true, feet = marineFootwork(S);
+            for (var a = 0; a < n; a++) {
+                var m = grp[a];
+                cx += m.x; cy += m.y;
+                /* slowest member sets the squad's pace */
+                var base = m.speed * TERRAN_SPEED * feet;
+                myV = Math.min(myV, base * (m.stimT > 0 ? STIM_SPEED_MULT : 1));
+                stimV = Math.min(stimV, base * STIM_SPEED_MULT);
+                if (m.stimT <= 0 && (m.stimCd > 0 || m.hp < MARINE_HP * lerp(0.5, 0.3, S))) stimReady = false;
+                var z = nearestZerg(m.x, m.y), b = nearestKind(m.x, m.y, "bane");
+                var dz = z ? dist(z, m.x, m.y) : 1e9, db = b ? dist(b, m.x, m.y) : 1e9;
+                if (dz < near) near = dz;
+                if (db < nearB) nearB = db;
+                if (dz < kiteOut || db < baneOut) allClear = false;
+                if (m.kitePhase === "run") { running = true; runT = Math.max(runT, m.runT || 0); }
+                else shootT = Math.min(shootT, m.shootT || 0);
+            }
+            cx /= n; cy /= n;
+
+            /* zerg near this group, and whether it can still stand and fight */
+            var local = [], strength = 0, threatV = 0, baneHp = 0, baneEta = 1e9;
+            for (var zi = 0; zi < zs.length; zi++) {
+                var zz = zs[zi];
+                var dd = dist(zz, cx, cy);
+                if (zz.kind === "bane" && dd < R * 1.4) {
+                    baneHp += Math.max(0, zz.hp);
+                    baneEta = Math.min(baneEta, Math.max(0, dd - MARINE_GROUP_RADIUS * 0.5) / Math.max(1, zergMoveSpeed(zz)));
+                }
+                if (dd < R * 2.5) { local.push(zz); if (dd < R * 1.5) strength += zz.kind === "bane" ? 2 : 1; }
+                if (dd < R * 1.3) threatV = Math.max(threatV, zergMoveSpeed(zz));   /* the fastest chaser */
+            }
+            /* kite band from the chasers' speed: start running while there is still
+             * room to turn away, run until there is room for another volley */
+            if (threatV > 0) {
+                var contact = MARINE_BUMP + LING_BUMP + 6;
+                kiteIn = Math.max(kiteIn * 0.6, contact + threatV * (SHOOT_T * lerp(2, 1.1, S) + lerp(0.4, 0.12, S)));
+                kiteOut = kiteIn + threatV * SHOOT_T * lerp(1.6, 1.1, S);
+            }
+            /* running only pays if it actually opens a gap; otherwise hold and shoot */
+            var canOutrun = myV > threatV * 1.05;
+            var canStimOutrun = S >= 0.25 && stimReady && stimV > threatV * 1.05;
+            /* banes: green marines run from any bane close by; skilled ones only when
+             * the squad can't shoot them down before they arrive */
+            var killTime = baneHp / Math.max(1, n * SHOOT_DMG / SHOOT_T);
+            var baneDanger = S < 0.5 ? nearB < baneIn : (nearB < baneIn && baneEta < killTime * lerp(1.6, 1.15, (S - 0.5) / 0.5));
+            /* supply (ling 0.5, bane 1) the group can take on standing; skilled
+             * marines know a tight squad can hold against more */
+            var outmatched = strength * 0.5 > n * lerp(2.5, 4, S);
+
+            /* a lone marine / pair far from the main mob runs back to it */
+            var regroup = null;
+            if (S >= 0.25 && mob && mob !== grp && n <= 2 && mob.length >= Math.max(3, n + 1)) {
+                var md = Math.sqrt((mobC.x - cx) * (mobC.x - cx) + (mobC.y - cy) * (mobC.y - cy));
+                if (md > STIM_REGROUP_DIST * Math.min(W, H)) regroup = mobC;
+            }
+
+            var combat = near < R * 1.25 || nearB < R * 1.4;
+            if (!combat) {
+                for (a = 0; a < n; a++) { grp[a].combat = false; grp[a].kitePhase = "shoot"; grp[a].regroupTo = regroup; }
+                continue;
+            }
+
+            /* stim: small groups that can no longer stand and fight, banes on top
+             * of them, or a lone marine running back to the mob */
+            var stimReason = (n <= STIM_GROUP_MAX && outmatched) ||
+                             (n <= STIM_GROUP_MAX && baneDanger) ||
+                             (regroup && near < R * 1.25);
+            var stimNow = false;
+
+            var phase = running ? "run" : "shoot";
+            if (S < 0.15) phase = "shoot";                          /* too green to kite */
+            else if (phase === "shoot") {
+                /* green marines back off from anything close; skilled squads only
+                 * give ground when they can't win standing (outmatched or hurt) */
+                /* hurt only moves a small group; a big squad holds while its wounded
+                 * shuffle behind (see marineCombatSteer) */
+                var hurt = false;
+                if (n <= STIM_GROUP_MAX) for (a = 0; a < n; a++) if (grp[a].hp < MARINE_HP * 0.5) hurt = true;
+                var mustKite = near < kiteIn && (S < 0.5 || outmatched || hurt);
+                var threatened = (mustKite || baneDanger || regroup) && (shootT >= minShoot || regroup);
+                if (threatened) {
+                    if (canOutrun) { phase = "run"; runT = 0; }
+                    else if (canStimOutrun && stimReason && Math.random() < lerp(0.4, 1, S)) {
+                        phase = "run"; runT = 0; stimNow = true;
+                    }
+                }
+            } else if (!canOutrun || ((allClear || runT > maxRun) && !(regroup && outmatched))) {
+                phase = "shoot";   /* gap opened (or they're catching up): turn and fire */
+            }
+            if (stimNow) for (a = 0; a < n; a++) stimMarine(grp[a], S);
+
+            var dir = phase === "run" ? marineEscapeDir(cx, cy, S, regroup, grp[0].runDir, local) : null;
+            for (a = 0; a < n; a++) {
+                var mm = grp[a];
+                if (mm.kitePhase !== phase) { mm.runT = 0; mm.shootT = 0; }
+                mm.kitePhase = phase;
+                mm.combat = true;
+                mm.regroupTo = regroup;
+                if (dir !== null) {
+                    /* run together: shared heading, pulled back toward the group centre */
+                    var ox = cx - mm.x, oy = cy - mm.y, od = Math.sqrt(ox * ox + oy * oy);
+                    var vx = Math.cos(dir), vy = Math.sin(dir);
+                    if (od > MARINE_GROUP_RADIUS * 0.6) { vx += ox / od * 0.4; vy += oy / od * 0.4; }
+                    mm.runDir = Math.atan2(vy, vx);
+                }
+            }
+        }
+    }
+
+    /* per-marine steering from the controller's decision (combat only) */
+    function marineCombatSteer(c, S) {
+        if (c.kitePhase === "run") {
+            c.want = c.runDir;
+            c.moveMul = 1;
+            return;
+        }
+        /* SHOOT: stand and fire. Skilled marines spread out against banelings so
+         * one bane can't catch several of them in its splash, and a badly hurt one
+         * steps back behind its squad while still shooting */
+        c.moveMul = 0;
+        if (S >= 0.5 && c.hp < MARINE_HP * 0.35) {
+            var z = nearestZerg(c.x, c.y);
+            if (z && dist(z, c.x, c.y) < MARINE_RANGE * 0.6) { marineSteerToward(c, z.x, z.y, true); c.moveMul = 0.5; }
+        }
+        if (S >= 0.5) {
+            var b = nearestKind(c.x, c.y, "bane");
+            if (b && dist(b, c.x, c.y) < MARINE_RANGE * 1.5) {
+                var om = nearestOtherMarine(c);
+                var od = om ? dist(om, c.x, c.y) : 1e9;
+                if (od < BANE_SPLASH_R * 1.2) {
+                    /* step away from the neighbour, and never toward the bane */
+                    var bd = dist(b, c.x, c.y) || 1;
+                    var sx = (c.x - om.x) / (od || 1) + (c.x - b.x) / bd;
+                    var sy = (c.y - om.y) / (od || 1) + (c.y - b.y) / bd;
+                    c.want = Math.atan2(sy, sx);
+                    c.moveMul = 0.6;
+                }
+            }
+        }
+    }
+
     /* Swarm decisions. Lings and banes chained within allyRadius of each other form
      * one swarm, and the whole swarm attacks together when its strength (ling = 1,
      * bane = 2) is at least attackGroupSize (capped at maxLings, so it is always
@@ -842,6 +1142,10 @@ var Swarm = (function () {
             /* only start steering once fully on-screen */
             if (!c.entered && c.x >= 0 && c.x <= W && c.y >= 0 && c.y <= H) c.entered = true;
             if (c.flashT > 0) c.flashT -= dt;
+            if (c.stimT > 0) c.stimT -= dt;
+            if (c.stimCd > 0) c.stimCd -= dt;
+            if (c.kitePhase === "run") c.runT += dt; else c.shootT += dt;
+            var skill = marineSkill();
             c.retarget -= dt;
             if (c.deployT > 0) {
                 /* marching in: head straight for the deploy point at entry speed
@@ -851,18 +1155,28 @@ var Swarm = (function () {
                 c.want = Math.atan2(ddy, ddx);
                 c.moveMul = MARINE_ENTRY_SPEED;
                 if (ddx * ddx + ddy * ddy < 64 || c.deployT <= 0) { c.deployT = 0; c.moveMul = 1; c.retarget = 0; }
+            } else if (c.entered && skill <= 0) {
+                c.moveMul = 0;   /* skill 0: stand there and take it */
+            } else if (c.entered && c.combat) {
+                marineCombatSteer(c, skill);   /* every frame: kiting needs crisp turns */
             } else if (c.retarget <= 0) {
-                c.retarget = 0.3;
+                c.retarget = lerp(0.5, 0.1, skill);
                 if (c.entered) {
                     if (MARINE_TACTICS) {
                         marineTacticsSteer(c);
                     } else {
                         marineClassicSteer(c);
                     }
+                    /* a lone marine heads back to the main marine mob */
+                    if (c.regroupTo) { marineSteerToward(c, c.regroupTo.x, c.regroupTo.y, false); c.moveMul = 1; }
                 }
             }
-            turnToward(c, MARINE_TURN, dt);
-            var mv = c.speed * TERRAN_SPEED * SETTINGS.unitSpeed * c.moveMul * dt;
+            turnToward(c, c.deployT > 0 ? MARINE_TURN : marineTurnRate(skill), dt);
+            /* quick feet only where they help: kiting and running back to the mob */
+            var feet = c.deployT > 0 ? 1 : marineFootwork(skill);
+            if (!((c.combat && c.kitePhase === "run") || c.regroupTo)) feet = Math.min(1, feet);
+            var mv = c.speed * TERRAN_SPEED * SETTINGS.unitSpeed * c.moveMul * feet *
+                     (c.stimT > 0 ? STIM_SPEED_MULT : 1) * dt;
             c.x += Math.cos(c.heading) * mv;
             c.y += Math.sin(c.heading) * mv;
             /* reflect only when moving outward, so marines can walk in from off-screen */
@@ -872,7 +1186,9 @@ var Swarm = (function () {
             if (c.y > H - 18 && Math.sin(c.heading) > 0) { c.y = H - 18; c.heading = c.want = -c.heading; }
             /* re-aim at the closest ling, but only every AIM_T (anti-jitter) */
             c.aimT -= dt;
-            if (c.aimT <= 0) {
+            if (c.combat && c.kitePhase === "run") {
+                c.aim = c.heading;   /* running: face where we're going, gun down */
+            } else if (c.aimT <= 0) {
                 c.aimT = AIM_T;
                 var tgt = nearestZerg(c.x, c.y);
                 c.aim = tgt ? Math.atan2(tgt.y - c.y, tgt.x - c.x) : c.heading;
@@ -880,6 +1196,17 @@ var Swarm = (function () {
         } else {
             /* ling / bane: only pick a direction every RETARGET_T (anti-jitter) */
             c.age += dt;
+            if (c.kind === "ling") {
+                /* attack burst: every ling that joins an attack sprints for
+                 * lingAttackBoostTime s, then lingAttackBoostCooldown s before the next */
+                if (c.boostT > 0) c.boostT -= dt;
+                else if (c.boostCd > 0) c.boostCd -= dt;
+                if (c.attacking && !c.wasAttacking && c.boostT <= 0 && c.boostCd <= 0) {
+                    c.boostT = LING_BOOST_TIME;
+                    c.boostCd = LING_BOOST_CD;
+                }
+                c.wasAttacking = c.attacking;
+            }
             c.retarget -= dt;
             if (c.retarget <= 0) {
                 c.retarget = RETARGET_T;
@@ -923,8 +1250,9 @@ var Swarm = (function () {
                 }
             }
             turnToward(c, c.fleeing ? 0.75 : ZERG_TURN, dt);
-            c.x += Math.cos(c.heading) * c.speed * ZERG_SPEED * SETTINGS.unitSpeed * dt;
-            c.y += Math.sin(c.heading) * c.speed * ZERG_SPEED * SETTINGS.unitSpeed * dt;
+            var zv = zergMoveSpeed(c) * SETTINGS.unitSpeed;
+            c.x += Math.cos(c.heading) * zv * dt;
+            c.y += Math.sin(c.heading) * zv * dt;
             if (c.x < 18) { c.x = 18; c.heading = c.want = Math.PI - c.heading; }
             if (c.x > W - 18) { c.x = W - 18; c.heading = c.want = Math.PI - c.heading; }
             if (c.y < 18) { c.y = 18; c.heading = c.want = -c.heading; }
@@ -964,6 +1292,12 @@ var Swarm = (function () {
         }
         if (!img) return;
         var hh = c.w * img.height / img.width;
+        if (c.kind === "marine" && c.stimT > 0) {
+            cc.fillStyle = "rgba(255,40,40," + (0.18 + 0.12 * Math.sin(c.stimT * 20)).toFixed(3) + ")";
+            cc.beginPath();
+            cc.arc(c.x, c.y, c.w * 0.42, 0, 6.283);
+            cc.fill();
+        }
         cc.save();
         cc.translate(c.x, c.y);
         if (c.kind !== "egg") {
@@ -1271,6 +1605,7 @@ var Swarm = (function () {
 
         /* swarm-level attack decisions, then move everyone */
         updateSwarm();
+        marineController(dt);
         for (var i = 0; i < units.length; i++) step(units[i], dt);
 
         /* marines shoot the closest zerg (ling or bane) within range. Eggs are never
@@ -1279,7 +1614,16 @@ var Swarm = (function () {
         for (var mi = 0; mi < units.length; mi++) {
             var mc = units[mi];
             if (mc.kind !== "marine" || mc.dead) continue;
+            if (mc.combat && mc.kitePhase === "run") {
+                mc.shootTarget = null;
+                if (mc.shootCd > 0) mc.shootCd -= dt;
+                continue;
+            }
             var tgt = nearestZerg(mc.x, mc.y);
+            if (marineSkill() >= 0.4) {
+                var pb = nearestKind(mc.x, mc.y, "bane");   /* banes first: they kill squads */
+                if (pb && dist(pb, mc.x, mc.y) < MARINE_RANGE) tgt = pb;
+            }
             if (tgt) {
                 var drx = tgt.x - mc.x, dry = tgt.y - mc.y;
                 if (drx * drx + dry * dry >= MARINE_RANGE * MARINE_RANGE) tgt = null;
@@ -1297,9 +1641,12 @@ var Swarm = (function () {
                 if (mc.shootCd <= 0) {
                     mc.shootCd = SHOOT_T;
                     var wasAlive = tgt.hp > 0;
-                    tgt.hp -= (tgt.kind === "egg") ? SHOOT_DMG * EGG_DMG_MULT : SHOOT_DMG;
+                    /* green marines miss: up to 60% at skill 0, none from half skill up */
+                    var miss = Math.max(0, 0.6 * (1 - marineSkill() / 0.5));
+                    if (Math.random() >= miss) tgt.hp -= (tgt.kind === "egg") ? SHOOT_DMG * EGG_DMG_MULT : SHOOT_DMG;
                     if (wasAlive && tgt.hp <= 0 && tgt.kind === "ling") mc.kills++;
                     mc.flashT = 0.1;
+                    mc.aim = Math.atan2(tgt.y - mc.y, tgt.x - mc.x);
                     mc.hitX = tgt.x + rand(-tgt.w * 0.3, tgt.w * 0.3);
                     mc.hitY = tgt.y + rand(-tgt.w * 0.3, tgt.w * 0.3);
                     sound("marineShoot");
@@ -1318,7 +1665,8 @@ var Swarm = (function () {
                 if (hc.healCd <= 0) {
                     hc.healCd = MARINE_HEAL_T;
                     var maxHp = (hc.kind === "marine") ? MARINE_HP : (hc.kind === "bane") ? BANE_HP : LING_HP;
-                    hc.hp = Math.min(maxHp, hc.hp + maxHp * MARINE_HEAL_PCT);
+                    var heal = maxHp * MARINE_HEAL_PCT * ((hc.kind === "marine" && hc.stimT > 0) ? STIM_REGEN_MULT : 1);
+                    hc.hp = Math.min(maxHp, hc.hp + heal);
                 }
             }
         }
