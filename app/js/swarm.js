@@ -97,7 +97,7 @@ var Swarm = (function () {
         marineKiteFrac: 0.6,    /* marines back off from zerg closer than this x range */
         marineRangeMult: 3,      /* marine weapon range = this * marineW */
         allyRadius: 45,          /* lings/banes this close to each other form one swarm */
-        attackGroupSize: 10,     /* swarm size needed to attack (capped at maxLings) */
+        attackGroupSize: 14,     /* swarm size needed to attack (capped at maxLings) */
         marineScanRadius: 140,   /* idle lings keep this far from marines (> marine range) */
         marineGroupRadius: 60,   /* radius around a marine used to count its group */
         attackOdds: 1.5,         /* swarm strength needed per marine in the target group */

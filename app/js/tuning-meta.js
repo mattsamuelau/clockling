@@ -36,7 +36,7 @@ var TUNING_META = {
         lingBiteInterval: { class: "Visible", default: 0.2, meaning: "Seconds between bites" },
         baneSplashDamage: { class: "Visible", default: 90, meaning: "Baneling blast damage" },
         baneSplashR: { class: "Visible", default: 61, meaning: "Baneling blast radius (px)" },
-        attackGroupSize: { class: "Visible", default: 10, meaning: "Minimum swarm strength (ling 1, bane 2) to attack; capped at maxLings" },
+        attackGroupSize: { class: "Visible", default: 14, meaning: "Minimum swarm strength (ling 1, bane 2) to attack; capped at maxLings" },
         berserkBanes: { class: "Visible", default: 2, meaning: "Banelings alive needed to trigger bane berserk" },
         berserkUntilDeath: { class: "Visible", default: false, meaning: "On: berserk never retreats; off: cancels when outnumbered" },
         attackOdds: { class: "Visible", default: 1.5, meaning: "Swarm strength (ling 1, bane 2) needed per marine in the target group" },

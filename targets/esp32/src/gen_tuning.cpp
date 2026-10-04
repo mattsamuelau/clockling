@@ -57,7 +57,7 @@ const TMeta TMETA[T_COUNT] = {
   {"marineKiteFrac", 0.6f, 0, 0, 8, "Marines back off from zerg closer than this fraction of their range", nullptr},
   {"marineRangeMult", 3.0f, 0, 0, 6, "Weapon range multiplier", nullptr},
   {"allyRadius", 34.0f, 0, 0, 3, "Lings/banes this close to each other count as one swarm", nullptr},
-  {"attackGroupSize", 10.0f, 0, 0, 3, "Minimum swarm strength (ling 1, bane 2) to attack; capped at maxLings", nullptr},
+  {"attackGroupSize", 14.0f, 0, 0, 3, "Minimum swarm strength (ling 1, bane 2) to attack; capped at maxLings", nullptr},
   {"marineScanRadius", 105.0f, 0, 0, 3, "Lings flee marines inside this radius (never less than 1.25x marine range)", nullptr},
   {"marineGroupRadius", 45.0f, 0, 0, 3, "Radius around a marine used to count its group", nullptr},
   {"attackOdds", 1.5f, 0, 0, 3, "Swarm strength (ling 1, bane 2) needed per marine in the target group", nullptr},

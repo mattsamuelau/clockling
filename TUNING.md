@@ -92,7 +92,7 @@ Settings are grouped into three tiers:
 | `lingBiteInterval` | 0.2 | Seconds between bites. | Visible |
 | `baneSplashDamage` | 90 | Damage a baneling deals to every marine in blast radius. | Visible |
 | `baneSplashR` | 61 | Baneling blast radius (px). | Visible |
-| `attackGroupSize` | 10 | Minimum swarm strength (ling 1, bane 2) to attack; capped at `maxLings`. | Visible |
+| `attackGroupSize` | 14 | Minimum swarm strength (ling 1, bane 2) to attack; capped at `maxLings`. | Visible |
 | `berserkBanes` | 2 | Banelings alive needed to trigger bane berserk. | Visible |
 | `berserkUntilDeath` | false | On: berserk never retreats; off: cancels when outnumbered. | Visible |
 | `attackOdds` | 1.5 | Swarm strength (ling 1, bane 2) needed per marine in the target group. | Visible |
