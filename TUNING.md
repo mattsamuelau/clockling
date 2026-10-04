@@ -1,6 +1,6 @@
 # Settings & tuning reference
 
-Two files hold every default, shared by the web app and the ESP32 firmware:
+Two files hold the web defaults and the ESP32 base defaults:
 
 - **`app/js/swarm.js`** - `var TUNING = { ... }`: the battle rules and balance (this file).
 - **`app/js/settings.js`** - `var SETTINGS = { ... }`: clock, display and battle options.
@@ -12,14 +12,19 @@ How values are layered:
 - **Web (`clockling.html`)**: defaults, then what you saved in this browser (localStorage),
   then a shared link's `#s=...` settings. Change anything in the settings drawer and it
   applies live and saves automatically. *Reset all* returns to the defaults.
-- **ESP32**: defaults generated from these files (see `targets/esp32/tools/gen_assets.py`,
-  which scales sizes and radii by 0.75 for the 240x320 panel), then values saved on the
-  device (NVS) from its settings page at `http://clockling.local`.
+- **ESP32**: defaults generated from these files with target-specific overrides (see
+  `targets/esp32/tools/gen_assets.py`, which scales sizes and radii by 0.75 for the
+  240x320 panel), then values saved on the device (NVS) from its settings page at
+  `http://clockling.local`.
 - **Testing**: `?tun_<key>=<number>` in the URL overrides a TUNING value at load (used by
   headless test harnesses).
 
 **Visibility classes**: **Visible** keys are shown up front; **Advanced** ones sit in the
 collapsible advanced section. All are editable and revertable.
+
+Tables below list web defaults. ESP32 retains its prior values for `maxLings` (10),
+`maxMarines` (7), `eggHatchMult` (1), `clockBehind` (false), and `gameSpeed` (1), as set
+in `targets/esp32/tools/gen_assets.py`.
 
 ## Parameter tiers
 
@@ -58,9 +63,9 @@ Settings are grouped into three tiers:
 
 | Key | Default | Meaning | Class |
 |---|---|---|---|
-| `maxLings` | 10 | Max zerglings on screen at once. | Visible |
+| `maxLings` | 14 | Max zerglings on screen at once. | Visible |
 | `maxBanes` | 2 | Max banelings on screen at once. | Visible |
-| `maxMarines` | 7 | Max marines on screen at once. | Visible |
+| `maxMarines` | 6 | Max marines on screen at once. | Visible |
 
 ## Movement
 
@@ -77,7 +82,7 @@ Settings are grouped into three tiers:
 | `respawnBatch` | 4 | Eggs spawned per refill batch. | Visible |
 | `eggTimeMin` | 8 | Min seconds until an egg hatches. | Visible |
 | `eggTimeMax` | 10 | Max seconds until an egg hatches. | Visible |
-| `eggHatchMult` | 1 | When an egg hatches, one other egg speeds up by this much. | Advanced |
+| `eggHatchMult` | 1.5 | When an egg hatches, one other egg speeds up by this much. | Advanced |
 | `morphAge` | 4 | A ling must live this long before it can morph into a baneling egg. | Visible |
 | `morphCooldown` | 2 | Seconds between successful morphs. | Visible |
 | `morphChancePerSec` | 1 | Chance per second an eligible ling starts morphing. | Visible |
@@ -157,17 +162,17 @@ Settings are grouped into three tiers:
 | `hour24` | true | 24-hour time (off = 12-hour). | both |
 | `showSeconds` | false | Show seconds. | both |
 | `clockPosition` | 0 | 0 top, 1 middle, 2 bottom, 3 top left, 4 top right, 5 bottom left, 6 bottom right. | both |
-| `clockBehind` | false | Draw the clock behind the units instead of on top. | both |
-| `clockScale` | 1 | Clock size multiplier. | web |
+| `clockBehind` | true | Draw the clock behind the units instead of on top. | both |
+| `clockScale` | 0.55 | Clock size multiplier. | web |
 | `timeZone` | auto | IANA zone (e.g. `Europe/London`) or `auto`. The ESP32 has its own POSIX TZ setting. | web |
-| `gameSpeed` | 1 | Time multiplier (the Time slider). | both |
+| `gameSpeed` | 1.5 | Speed multiplier (the Speed slider). | both |
 | `unitScale` | 1 | Population multiplier: max units, wave sizes, spawn rate (the Units slider). | both |
 | `unitCount` | 10 | Starting zerglings. | both |
 | `unitSpeed` | 1.0 | Movement speed multiplier for every unit. | both |
 | `showHealthBars` | true | Show unit health bars. | both |
 | `showKills` | true | One yellow mark per zergling a marine has killed. | web |
 | `showScore` | false | Zerg vs terran supply bar along the top. | web |
-| `fieldSize` | 320 | Battlefield short side in logical px (Small 240, Medium 320, Large 480, Huge 640). Smaller = bigger units. | web |
+| `fieldSize` | 1280 | Battlefield short side in logical px (Small 480, Medium 640, Large 960, Huge 1280). Smaller = bigger units. | web |
 | `landscape` | true | Horizontal 320x240 panel (off = vertical 240x320). The web app always fills its window. | ESP32 |
 
 ESP32-only device settings (`brightness`, `fpsCap`) are defined in `targets/esp32/tools/gen_assets.py`.

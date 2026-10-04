@@ -77,7 +77,7 @@ const TMeta TMETA[T_COUNT] = {
   {"showSeconds", 0.0f, 1, 0, 0, "Show seconds", nullptr},
   {"clockPosition", 0.0f, 0, 0, 0, "Where the clock sits", "Top|Middle|Bottom|Top left|Top right|Bottom left|Bottom right"},
   {"clockBehind", 0.0f, 1, 0, 0, "Draw the clock behind the units", nullptr},
-  {"gameSpeed", 1.0f, 0, 0, 1, "Time multiplier", nullptr},
+  {"gameSpeed", 1.0f, 0, 0, 1, "Speed multiplier", nullptr},
   {"unitScale", 1.0f, 0, 0, 1, "Unit multiplier (population, waves, spawn rate)", nullptr},
   {"unitCount", 10.0f, 0, 1, 1, "Starting zerglings", nullptr},
   {"unitSpeed", 1.0f, 0, 1, 1, "Movement speed multiplier for every unit", nullptr},

@@ -4,7 +4,7 @@ import os
 import re
 
 vals = {
-    "maxLings": 10, "maxBanes": 2, "maxMarines": 7,
+    "maxLings": 14, "maxBanes": 2, "maxMarines": 6,
     "zergSpeed": 1.2, "terranSpeed": 1.2,
     "marineSpawnRateMult": 1.5,
     "marineWaveLo": 30, "marineWaveHi": 32,
@@ -19,7 +19,7 @@ vals = {
     "marineHealPct": 0.10, "marineHealInterval": 0.5,
     "marineSplatScale": 1.4,
     "respawnInterval": 2, "respawnBatch": 4,
-    "eggTimeMin": 8, "eggTimeMax": 10, "eggHatchMult": 1,
+    "eggTimeMin": 8, "eggTimeMax": 10, "eggHatchMult": 1.5,
     "lingHp": 100, "baneHp": 140,
     "lingBiteDamage": 10, "lingBiteInterval": 0.2,
     "baneSplashDamage": 90, "baneSplashR": 61, "baneSplatScale": 2.5,
