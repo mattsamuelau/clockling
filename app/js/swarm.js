@@ -1775,7 +1775,23 @@ var Swarm = (function () {
                  * lingAttackBoostTime s, then lingAttackBoostCooldown s before the next */
                 if (c.boostT > 0) c.boostT -= dt;
                 else if (c.boostCd > 0) c.boostCd -= dt;
-                if (c.attacking && !c.wasAttacking && c.boostT <= 0 && c.boostCd <= 0) {
+                c.boostWait = false;
+                if (zergSkill() >= 0.5) {
+                    /* Overmind: save the sprint for the run into the marines - it fires
+                     * once the ling is close enough for the burst to carry it through
+                     * their fire, and a ling just outside range waits for a sprint that's
+                     * almost ready rather than walking in slow */
+                    if (c.attacking && c.boostT <= 0) {
+                        var bm = nearestMarine(c.x, c.y), bmd = bm ? dist(bm, c.x, c.y) : 1e9;
+                        var sprint = c.speed * ZERG_SPEED * LING_BOOST_MULT * LING_BOOST_TIME * 0.8;
+                        if (c.boostCd <= 0 && bmd < Math.min(sprint, MARINE_RANGE * 1.4)) {
+                            c.boostT = LING_BOOST_TIME;
+                            c.boostCd = LING_BOOST_CD;
+                        } else if (c.boostCd > 0 && c.boostCd < 2.5 && bmd > MARINE_RANGE * 1.05 && bmd < MARINE_RANGE * 2) {
+                            c.boostWait = true;
+                        }
+                    }
+                } else if (c.attacking && !c.wasAttacking && c.boostT <= 0 && c.boostCd <= 0) {
                     c.boostT = LING_BOOST_TIME;
                     c.boostCd = LING_BOOST_CD;
                 }
@@ -1858,7 +1874,7 @@ var Swarm = (function () {
                 }
             }
             turnToward(c, c.fleeing ? 0.75 : ZERG_TURN, dt);
-            var zv = zergMoveSpeed(c) * SETTINGS.unitSpeed;
+            var zv = zergMoveSpeed(c) * SETTINGS.unitSpeed * (c.boostWait ? 0.25 : 1);   /* waiting on the sprint */
             c.x += Math.cos(c.heading) * zv * dt;
             c.y += Math.sin(c.heading) * zv * dt;
             if (c.x < 18) { c.x = 18; c.heading = c.want = Math.PI - c.heading; }
