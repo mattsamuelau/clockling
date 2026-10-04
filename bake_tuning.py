@@ -20,6 +20,7 @@ vals = {
     "marineSplatScale": 1.4,
     "respawnInterval": 1.5, "respawnBatch": 8,
     "eggTimeMin": 7, "eggTimeMax": 9, "eggHatchMult": 1.5,
+    "eggHp": 100, "eggDamageMult": 0.001,
     "lingHp": 100, "baneHp": 140,
     "lingBiteDamage": 10, "lingBiteInterval": 0.2,
     "baneSplashDamage": 90, "baneSplashR": 61, "baneSplatScale": 2.5,

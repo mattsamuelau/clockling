@@ -507,6 +507,8 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         switchRow(b, "showHealthBars", "Health bars");
         switchRow(b, "showKills", "Kill marks", "One mark per zergling a marine has killed");
         switchRow(b, "showScore", "Score bar", "Zerg vs terran supply along the top");
+        switchRow(b, "soundOn", "Sound effects");
+        sliderRow(b, "soundVolume", "Volume", function (v) { return Math.round(v) + "%"; });
         var restart = el("button", "btn block"); restart.textContent = "Restart battle";
         restart.addEventListener("click", function () { Swarm.restart(); toast("Battle restarted"); });
         b.appendChild(restart);
@@ -530,7 +532,8 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         var host = $("advGroups");
         host.innerHTML = "";
         var shown = { showClock: 1, hour24: 1, showSeconds: 1, clockPosition: 1, clockBehind: 1, clockScale: 1, timeZone: 1,
-                      gameSpeed: 1, unitScale: 1, fieldSize: 1, showHealthBars: 1, showKills: 1, showScore: 1 };
+                      gameSpeed: 1, unitScale: 1, fieldSize: 1, showHealthBars: 1, showKills: 1, showScore: 1,
+                      soundOn: 1, soundVolume: 1 };
         Object.keys(META.groups).forEach(function (g) {
             var keys = META.groups[g].filter(function (k) {
                 if (HIDDEN_TUNING[k] || shown[k]) return false;
@@ -700,6 +703,37 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
     Swarm.setGameSpeed(SETTINGS.gameSpeed);
     Swarm.setUnitScale(SETTINGS.unitScale);
     Swarm.init({ canvas: "swarm", assets: "app/images/" });
+
+    /* sounds: sim events -> app/sounds/*. Files are optional: a missing one is
+     * detected on first play and skipped from then on. */
+    var SOUNDS = {
+        lingChill:   { file: "ling_chill.wav",   vol: 0.30, gap: 1200 },
+        lingAttack:  { file: "ling_attack.wav",  vol: 0.50, gap: 400 },
+        lingDie:     { file: "ling_die.wav",     vol: 0.45, gap: 150 },
+        baneDie:     { file: "bane_die.wav",     vol: 0.65, gap: 200 },
+        marineShoot: { file: "marine_shoot.wav", vol: 0.25, gap: 120 },
+        marineDie:   { file: "marine_die.wav",   vol: 0.50, gap: 200 },
+        marineVoice: { file: "marine_voice.wav", vol: 0.60, gap: 1200 }
+    };
+    var soundPool = {}, soundLast = {};
+    function playSound(name) {
+        if (!SETTINGS.soundOn) return;
+        var s = SOUNDS[name];
+        if (!s || s.missing) return;
+        var now = Date.now();
+        if (soundLast[name] && now - soundLast[name] < s.gap) return;
+        soundLast[name] = now;
+        if (!soundPool[name]) {
+            try { soundPool[name] = new Audio("app/sounds/" + s.file); }
+            catch (e) { s.missing = true; return; }
+        }
+        var a = soundPool[name];
+        a.volume = Math.max(0, Math.min(1, s.vol * SETTINGS.soundVolume / 100));
+        a.currentTime = 0;
+        var p = a.play();
+        if (p && p.catch) p.catch(function () { s.missing = true; soundPool[name] = null; });
+    }
+    Swarm.setSoundHandler(playSound);
     layout();
     applyClockLayout();
     tick();

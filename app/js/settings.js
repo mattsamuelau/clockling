@@ -24,6 +24,10 @@ var SETTINGS = {
     showScore: false,      /* supply bar + numbers along the top */
     fieldSize: 1280,       /* web only: battlefield short side in logical px (smaller = bigger units) */
 
+    /* audio (web only) */
+    soundOn: true,
+    soundVolume: 70,       /* percent */
+
     /* device */
     landscape: true        /* ESP32 only: horizontal 320x240 panel (off = vertical 240x320) */
 };

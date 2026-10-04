@@ -23,6 +23,7 @@ var Swarm = (function () {
     var lastT = 0;
     var respawnLeftLings = 0;
     var respawnTimer = 0;
+    var chillT = 0;              /* web: occasional idle zerg chatter */
     var marineTimer = 3;
     var lastMarineCount = 0;
     var morphCooldown = 0;
@@ -73,6 +74,8 @@ var Swarm = (function () {
         eggTimeMin: 7,             /* min seconds until an egg hatches */
         eggTimeMax: 9,            /* max seconds until an egg hatches */
         eggHatchMult: 1.5,         /* when an egg hatches, one other egg speeds up this much */
+        eggHp: 100,               /* egg hit points (eggs act as a tanky shield) */
+        eggDamageMult: 0.001,     /* fraction of normal damage an egg takes per hit (0.001 = 0.1%) */
         splatLife: 1.21,
         splatBase: 7,           /* splat start radius (grows only 20%) */
         splatFadeStart: 0.6,    /* fraction of splat life before it starts fading */
@@ -136,7 +139,7 @@ var Swarm = (function () {
 
     /* cached copies of TUNING, refreshed by computeTuning() whenever settings change */
     var MAX_LINGS, MAX_BANES, MAX_MARINES, LING_W, BANE_W, MARINE_W;
-    var EGG_W, LING_BUMP, BANE_BUMP, MARINE_BUMP, RESPAWN_T, RESPAWN_BATCH;
+    var EGG_W, EGG_HP, EGG_DMG_MULT, LING_BUMP, BANE_BUMP, MARINE_BUMP, RESPAWN_T, RESPAWN_BATCH;
     var MARINE_LO, MARINE_HI, MARINE_LO2, MARINE_HI2, MARINE_INSET, SHOOT_DMG;
     var SHOOT_T, BITE_DMG, BITE_T, LING_HP, MARINE_HP, MARINE_HEAL_PCT;
     var MARINE_HEAL_T, MARINE_GROUP_W, MARINE_AWAY_W, MARINE_TURN, MARINE_FLEE_PCT, MARINE_KITE_FRAC;
@@ -158,6 +161,8 @@ var Swarm = (function () {
         BANE_W = TUNING.baneW;
         MARINE_W = TUNING.marineW;
         EGG_W = TUNING.eggW;
+        EGG_HP = TUNING.eggHp;
+        EGG_DMG_MULT = TUNING.eggDamageMult;
         LING_BUMP = TUNING.lingBump;
         BANE_BUMP = TUNING.baneBump;
         MARINE_BUMP = TUNING.marineBump;
@@ -239,6 +244,13 @@ var Swarm = (function () {
 
     function rand(a, b) { return a + Math.random() * (b - a); }
 
+    /* sounds: the page passes a handler via setSoundHandler(); the sim just names
+     * events (lingChill, lingAttack, lingDie, baneDie, marineShoot, marineDie,
+     * marineVoice). No handler = silent. */
+    var soundFn = null;
+    function sound(name) { if (soundFn) soundFn(name); }
+    function setSoundHandler(fn) { soundFn = fn; }
+
     function loadSet(urls, target, done) {
         var left = urls.length;
         for (var i = 0; i < urls.length; i++) {
@@ -297,6 +309,7 @@ var Swarm = (function () {
         } else if (kind === "egg") {
             c.w = EGG_W; c.bumpR = 12; c.speed = 0; c.t = 0; c.hatchMult = 1;
             c.hatchT = rand(EGG_TIME_MIN, EGG_TIME_MAX);
+            c.hp = EGG_HP;
             c.splatCol = BANE_SPLAT; c.splatScale = 1; /* normal green egg-splat, same as lings */
         }
         return c;
@@ -343,6 +356,18 @@ var Swarm = (function () {
         for (var i = 0; i < units.length; i++) {
             var c = units[i];
             if ((c.kind !== "ling" && c.kind !== "bane") || c.dead) continue;
+            var dx = c.x - x, dy = c.y - y;
+            var d2 = dx * dx + dy * dy;
+            if (d2 < bd) { bd = d2; best = c; }
+        }
+        return best;
+    }
+
+    function nearestEgg(x, y) {
+        var best = null, bd = 1e9;
+        for (var i = 0; i < units.length; i++) {
+            var c = units[i];
+            if (c.kind !== "egg" || c.dead) continue;
             var dx = c.x - x, dy = c.y - y;
             var d2 = dx * dx + dy * dy;
             if (d2 < bd) { bd = d2; best = c; }
@@ -537,6 +562,8 @@ var Swarm = (function () {
         mm.deployY = Math.max(20, Math.min(H - 20, mm.y + ny * dd));
         mm.deployT = 3;
         units.push(mm);
+        /* occasional arrival voiceline */
+        if (Math.random() < 0.25) sound("marineVoice");
     }
 
     /* the marine quadrant with the most marines, plus the centroid inside it */
@@ -815,6 +842,7 @@ var Swarm = (function () {
                          (committed && power >= need / 2 && power >= odds / 2) ||
                          berserkBane;
             }
+            if (attack && !committed) sound("lingAttack");
             for (i = 0; i < zs.length; i++) if (zs[i].cluster === k) zs[i].attacking = attack;
         }
     }
@@ -963,14 +991,17 @@ var Swarm = (function () {
         cc.drawImage(img, -c.w / 2, -hh / 2, c.w, hh);
         cc.restore();
 
-        /* health bar under every non-egg unit (showHealthBars) */
-        if (c.kind !== "egg" && SETTINGS.showHealthBars !== false) {
+        /* health bar under every unit, including eggs (same bar as a ling; eggs
+         * take eggDamageMult of each hit, so they stay green for a long time) */
+        if (SETTINGS.showHealthBars !== false) {
             var hp = (typeof c.hp === "number") ? c.hp : 100;
+            var maxHp = (c.kind === "egg") ? EGG_HP :
+                (c.kind === "marine") ? MARINE_HP : (c.kind === "bane") ? BANE_HP : LING_HP;
             var bw = 30, bh = 2;   /* all health bars the same width (2 px tall, as on the ESP32) */
             var by = c.y + hh / 2 + 3;
             cc.fillStyle = "rgba(0,0,0,0.55)";
             cc.fillRect(c.x - bw / 2, by, bw, bh);
-            var frac = Math.max(0, Math.min(1, hp / 100));
+            var frac = Math.max(0, Math.min(1, hp / maxHp));
             cc.fillStyle = frac > 0.5 ? "#4cff4c" : (frac > 0.25 ? "#ffd23e" : "#ff4c4c");
             cc.fillRect(c.x - bw / 2, by, bw * frac, bh);
             /* marine kill stripes: one 1x2px yellow stripe per ling killed */
@@ -1043,6 +1074,7 @@ var Swarm = (function () {
         c.dead = true;
         if (c.kind === "ling") {
             respawnLeftLings++;
+            sound("lingDie");
             /* corpse: freeze the frame, show only the bottom half, fade out (same as marine) */
             var lang = c.heading;
             var lfd = c.faceDir;
@@ -1053,6 +1085,7 @@ var Swarm = (function () {
                 rot: lrot, mirror: lmirror, life: CORPSE_LIFE, max: CORPSE_LIFE
             });
         } else if (c.kind === "bane") {
+            sound("baneDie");
             /* splash: damage EVERY marine in blast range, not just the touched one */
             for (var i = 0; i < units.length; i++) {
                 var m = units[i];
@@ -1061,6 +1094,7 @@ var Swarm = (function () {
                 if (dx * dx + dy * dy < BANE_SPLASH_R * BANE_SPLASH_R) m.hp -= BANE_SPLASH_DMG;
             }
         } else if (c.kind === "marine") {
+            sound("marineDie");
             /* corpse: freeze the frame, show only the bottom half, fade out */
             var ang = (typeof c.aim === "number") ? c.aim : c.heading;
             var fd = c.faceDir;
@@ -1192,6 +1226,7 @@ var Swarm = (function () {
                     l2.hatchKind = "bane";
                     l2.t = 0;
                     l2.hatchT = rand(EGG_TIME_MIN, EGG_TIME_MAX);
+                    l2.hp = EGG_HP;
                     l2.w = EGG_W;
                     l2.splatCol = BANE_SPLAT;
                     l2.splatScale = 1; /* hatch uses the normal green egg-splat; big splat is death-only */
@@ -1226,31 +1261,51 @@ var Swarm = (function () {
             }
         }
 
+        /* occasional idle zerg chatter (web sound) */
+        chillT -= dt;
+        if (chillT <= 0) {
+            chillT = rand(3.5, 8);
+            var hasLing = false;
+            for (var ch = 0; ch < units.length; ch++) {
+                if (units[ch].kind === "ling" && !units[ch].dead) { hasLing = true; break; }
+            }
+            if (hasLing) sound("lingChill");
+        }
+
         /* swarm-level attack decisions, then move everyone */
         updateSwarm();
         for (var i = 0; i < units.length; i++) step(units[i], dt);
 
-        /* marines shoot the closest zerg (ling or bane) within range */
+        /* marines shoot the closest zerg (ling or bane) within range. Eggs are never
+         * sought out, but one already inside weapon range gets shot while no zerg is
+         * in range - and shrugs off eggDamageMult of the damage (a tanky shield). */
         for (var mi = 0; mi < units.length; mi++) {
             var mc = units[mi];
             if (mc.kind !== "marine" || mc.dead) continue;
             var tgt = nearestZerg(mc.x, mc.y);
             if (tgt) {
                 var drx = tgt.x - mc.x, dry = tgt.y - mc.y;
-                if (drx * drx + dry * dry < MARINE_RANGE * MARINE_RANGE) {
-                    mc.shootTarget = tgt;
-                    mc.shootCd -= dt;
-                    if (mc.shootCd <= 0) {
-                        mc.shootCd = SHOOT_T;
-                        var wasAlive = tgt.hp > 0;
-                        tgt.hp -= SHOOT_DMG;
-                        if (wasAlive && tgt.hp <= 0 && tgt.kind === "ling") mc.kills++;
-                        mc.flashT = 0.1;
-                        mc.hitX = tgt.x + rand(-tgt.w * 0.3, tgt.w * 0.3);
-                        mc.hitY = tgt.y + rand(-tgt.w * 0.3, tgt.w * 0.3);
-                    }
-                } else {
-                    mc.shootTarget = null;
+                if (drx * drx + dry * dry >= MARINE_RANGE * MARINE_RANGE) tgt = null;
+            }
+            if (!tgt) {
+                var egt = nearestEgg(mc.x, mc.y);
+                if (egt) {
+                    var ex = egt.x - mc.x, ey = egt.y - mc.y;
+                    if (ex * ex + ey * ey < MARINE_RANGE * MARINE_RANGE) tgt = egt;
+                }
+            }
+            if (tgt) {
+                mc.shootTarget = tgt;
+                mc.shootCd -= dt;
+                if (mc.shootCd <= 0) {
+                    mc.shootCd = SHOOT_T;
+                    var wasAlive = tgt.hp > 0;
+                    tgt.hp -= (tgt.kind === "egg") ? SHOOT_DMG * EGG_DMG_MULT : SHOOT_DMG;
+                    if (wasAlive && tgt.hp <= 0 && tgt.kind === "ling") mc.kills++;
+                    mc.flashT = 0.1;
+                    mc.hitX = tgt.x + rand(-tgt.w * 0.3, tgt.w * 0.3);
+                    mc.hitY = tgt.y + rand(-tgt.w * 0.3, tgt.w * 0.3);
+                    sound("marineShoot");
                 }
             } else {
                 mc.shootTarget = null;
@@ -1319,6 +1374,12 @@ var Swarm = (function () {
         for (var bj = 0; bj < units.length; bj++) {
             var b3 = units[bj];
             if (b3.kind === "bane" && !b3.dead && b3.hp <= 0) killUnit(b3);
+        }
+
+        /* eggs die at 0 hp: no hatch, no respawn refund */
+        for (var ej = 0; ej < units.length; ej++) {
+            var e3 = units[ej];
+            if (e3.kind === "egg" && !e3.dead && e3.hp <= 0) killUnit(e3);
         }
 
         /* bump separation: units push apart. Zerg bounce off marines at 50%
@@ -1525,5 +1586,6 @@ var Swarm = (function () {
 
     return { init: init, start: start, stop: stop, restart: restart, setCount: setCount, killNear: killNear,
              setGameSpeed: setGameSpeed, setUnitScale: setUnitScale, setTuning: setTuning, resize: resize,
+             setSoundHandler: setSoundHandler,
              TUNING: TUNING, debugUnits: function () { return units; } };
 })();

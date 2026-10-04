@@ -97,6 +97,8 @@ def gen_tuning():
         if m is None:
             print("warning: TUNING key %s has no tuning-meta entry" % k, file=sys.stderr)
             m = {"class": "Advanced", "meaning": k}
+        elif m.get("only") == "web":
+            continue   # web-only tuning keys (e.g. the egg shield): not on the firmware
         elif m.get("default") != v and k not in SCALED and k not in ESP32_DEFAULTS:
             print("note: %s default differs (swarm.js=%s, tuning-meta=%s); using swarm.js"
                   % (k, v, m.get("default")), file=sys.stderr)
