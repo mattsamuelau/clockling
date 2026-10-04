@@ -14,15 +14,15 @@ var TUNING_META = {
 
         /* Max units */
         maxLings: { class: "Visible", default: 30, meaning: "Max zerglings on screen" },
-        maxBanes: { class: "Visible", default: 8, meaning: "Max banelings on screen" },
-        maxMarines: { class: "Visible", default: 10, meaning: "Max marines on screen" },
+        maxBanes: { class: "Visible", default: 4, meaning: "Max banelings on screen" },
+        maxMarines: { class: "Visible", default: 8, meaning: "Max marines on screen" },
 
         /* Movement */
         zergSpeed: { class: "Visible", default: 1.2, meaning: "Zerg base speed multiplier" },
         terranSpeed: { class: "Visible", default: 1.35, meaning: "Terran base speed multiplier" },
 
         /* Zerg (zerglings, banelings, eggs) */
-        respawnInterval: { class: "Visible", default: 1, meaning: "Seconds between ling-egg refill batches" },
+        respawnInterval: { class: "Visible", default: 17, meaning: "Seconds between ling-egg refill batches" },
         blueShellWait: { class: "Visible", default: 22, meaning: "Blue shell: REAL seconds of downtime after a wipe before the massive comeback (+-33%: about 15-30 s at the default)", only: "web", min: 10, max: 300, step: 5 },
         blueShellTrickles: { class: "Visible", default: 4, meaning: "Blue shell: up to this many small trickles (2-4 units each, at random moments) of the beaten side during its wait", only: "web", min: 0, max: 10, step: 1 },
         ddayMin: { class: "Visible", default: 3, meaning: "Blue shell D-day: the terran comeback after a wipe is at least this many times a normal wave (from both sides)", only: "web", min: 1, max: 10, step: 0.5 },
@@ -34,11 +34,11 @@ var TUNING_META = {
         growthRate: { class: "Visible", default: 0.5, meaning: "Growth mode: caps grow by this share of their base per minute", only: "web", min: 0.05, max: 2, step: 0.05 },
         growthEvery: { class: "Visible", default: 90, meaning: "Growth mode: real seconds between growth spurts (caps step up by growthRate x this / 60 each time)", only: "web", min: 10, max: 600, step: 10 },
         growthMax: { class: "Visible", default: 1.6, meaning: "Growth mode: caps stop growing at this multiple of their base", only: "web", min: 1, max: 20, step: 0.5 },
-        zergWaveLo: { class: "Visible", default: 20, meaning: "Min seconds after the zerg are wiped out (no lings, banes or eggs) before eggs come back", only: "web" },
-        zergWaveHi: { class: "Visible", default: 25, meaning: "Max seconds after the zerg are wiped out before eggs come back", only: "web" },
-        respawnBatch: { class: "Visible", default: 8, meaning: "Eggs spawned per refill batch" },
-        eggTimeMin: { class: "Visible", default: 7, meaning: "Min seconds until an egg hatches" },
-        eggTimeMax: { class: "Visible", default: 9, meaning: "Max seconds until an egg hatches" },
+        zergWaveLo: { class: "Visible", default: 25, meaning: "Min seconds after the zerg are wiped out (no lings, banes or eggs) before eggs come back", only: "web" },
+        zergWaveHi: { class: "Visible", default: 35, meaning: "Max seconds after the zerg are wiped out before eggs come back", only: "web" },
+        respawnBatch: { class: "Visible", default: 10, meaning: "Eggs spawned per refill batch" },
+        eggTimeMin: { class: "Visible", default: 40, meaning: "Min seconds until an egg hatches" },
+        eggTimeMax: { class: "Visible", default: 60, meaning: "Max seconds until an egg hatches" },
         eggHatchMult: { class: "Advanced", default: 1.5, meaning: "Egg hatch acceleration multiplier" },
         eggHp: { class: "Visible", default: 100, meaning: "Egg hit points (eggs act as a tanky shield)", only: "web" },
         eggDamageMult: { class: "Visible", default: 0.1, meaning: "Fraction of normal damage an egg takes per hit (0.1 = 10%: about 40 shots)", only: "web", min: 0.0001, max: 1, step: 0.0005 },
@@ -69,7 +69,7 @@ var TUNING_META = {
         ovReinforceGap: { class: "Visible", default: 12, meaning: "ovAllIn: only push in a gap - at least half the current marine reinforcement cycle (capped at this many game-seconds) still to go", only: "web", min: 0, max: 60, step: 1 },
         ovWallPress: { class: "Visible", default: true, meaning: "Overmind: the big push comes in from the open side of the map so the marines get pressed back against their wall", only: "web" },
         ovMuster: { class: "Visible", default: 6, meaning: "Overmind (zergSkill 30%+): seconds a newborn ling gathers with its friends before it joins attacks; after that it only reinforces a fight as a pack of 5+", only: "web", min: 0, max: 30, step: 1 },
-        ovBaneRatio: { class: "Visible", default: 0.25, meaning: "Overmind (zergSkill 50%+): banes needed per ling before any attack (0.25 = the 1:4 golden ratio; capped by the bane cap)", only: "web", min: 0, max: 1, step: 0.05 },
+        ovBaneRatio: { class: "Visible", default: 0.5, meaning: "Overmind (zergSkill 50%+): banes needed per ling before any attack (0.25 = the 1:4 golden ratio; capped by the bane cap)", only: "web", min: 0, max: 1, step: 0.05 },
         ovBaneShare: { class: "Visible", default: 0.7, meaning: "Overmind (zergSkill 50%+): a swarm won't start an attack until this share of the bane cap has hatched (0 = don't wait); morphs speed up while it waits", only: "web", min: 0, max: 1, step: 0.05 },
         ovBaneVanguard: { class: "Visible", default: 0.5, meaning: "Overmind: share of a committing swarm's banes that lead at ling pace to break the marine line (the rest hold in the pack for a clump)", only: "web", min: 0, max: 1, step: 0.05 },
         ovEncircle: { class: "Visible", default: false, meaning: "(experimental) Overmind (zergSkill 50%+): attacking lings that can't reach a marine run round the outside to the far side and close the ring - encircled marines can't kite", only: "web" },

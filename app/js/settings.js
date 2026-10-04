@@ -15,15 +15,15 @@ var SETTINGS = {
     timeZone: "auto",      /* web only: IANA zone (e.g. "Europe/London") or "auto" = this device */
 
     /* battle */
-    gameSpeed: 5,        /* speed multiplier */
-    unitScale: 2,          /* population multiplier (max units, wave sizes, spawn rate) */
+    gameSpeed: 3.5,        /* speed multiplier */
+    unitScale: 4,          /* population multiplier (max units, wave sizes, spawn rate) */
     marineSkill: 1,      /* web only: marine AI skill 0 (stand and die) .. 1 (elite kiting) */
-    zergSkill: 0.75,        /* web only: Overmind skill 0 (pile in) .. 1 (gather, surround, timed banes) */
+    zergSkill: 0.6,        /* web only: Overmind skill 0 (pile in) .. 1 (gather, surround, timed banes) */
     zergBrain: 0,          /* web only: Overmind brain 0 Default, 1 Trained (app/js/brains.js) */
     terranBrain: 0,        /* web only: Commander brain 0 Default, 1 Trained */
     unitCount: 10,         /* starting lings */
     unitSpeed: 1.0,        /* movement speed multiplier for every unit */
-    unlockMultipliers: true, /* web only: Speed / Units become free number boxes instead of sliders */
+    unlockMultipliers: false, /* web only: Speed / Units become free number boxes instead of sliders */
     blueShell: true,       /* web only: wipes cost ~a minute, comebacks are huge, the loser's waves grow (blueShellWait / Boost / Dom) */
     growthMode: true,     /* web only: caps keep growing until a side is wiped out, then reset (growthRate / growthMax) */
     showHealthBars: true,

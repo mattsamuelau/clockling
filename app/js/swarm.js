@@ -2219,8 +2219,6 @@ var Swarm = (function () {
                     if (allInOn) { attack = true; stalk = false; }
                     else if (attack && !committed && !(cornered && wallPinned)) { attack = false; stalk = false; }
                 }
-                /* opening: no zerg attacks in the first 90 real seconds (a wall fight excepted) */
-                if (attack && !committed && simT / Math.max(1, gameSpeed) < 90 && !(cornered && wallPinned)) { attack = false; stalk = false; }
                 if (ZERG_SMARTS && attack && !committed && !berserkBane && !cornered) {
                     /* against a wall is cornered whatever the brain says (min 12% of the field) */
                     var md = Math.sqrt(dmx * dmx + dmy * dmy), cd = Math.max(ZERG_CORNER, 0.12) * Math.min(W, H);
@@ -2281,6 +2279,10 @@ var Swarm = (function () {
 
     function step(c, dt) {
         if (c.kind === "egg") {
+            if (c.frozen) {
+                if (zergWipeT > 0) return;   /* frozen through the downtime */
+                c.frozen = false;
+            }
             if (c.dormant) {
                 if (countKind("marine") === 0) return;   /* waiting for the terrans */
                 c.dormant = false;
@@ -2922,11 +2924,15 @@ var Swarm = (function () {
         /* zerg wiped out (no lings, banes or eggs): the brood comes back only after
          * zergWaveLo..Hi s, like a marine wave after a wipe. While any zerg live,
          * lost lings refill every respawnInterval s. */
-        var zergAlive = countKind("ling") + countKind("bane") + countKind("egg") > 0;
+        /* blue shell: the zerg are wiped once every ling and bane is dead - leftover
+         * eggs freeze for the downtime and hatch with the comeback brood (otherwise
+         * slow eggs always on the board mean terran can never finish them) */
+        var zergAlive = countKind("ling") + countKind("bane") + (SETTINGS.blueShell ? 0 : countKind("egg")) > 0;
         /* blueShellWait is in REAL seconds (whatever the speed): x gameSpeed in game time */
         var shell = !!SETTINGS.blueShell, shellWait = (+TUNING.blueShellWait || 60) * Math.max(1, gameSpeed), shellBoost = +TUNING.blueShellBoost || 0;
         if (zergWasAlive && !zergAlive && !zergComeback) {
             zergWipeT = shell ? shellWait * rand(0.67, 1.33) : rand(TUNING.zergWaveLo || 0, TUNING.zergWaveHi || 0);
+            if (shell) for (var fe = 0; fe < units.length; fe++) if (units[fe].kind === "egg" && !units[fe].dead) units[fe].frozen = true;
             if (shell) { zergComeback = true; trickleZ = trickleTimes(zergWipeT); }
             victory("terran");
         }

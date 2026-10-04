@@ -80,7 +80,7 @@ both.
 | `ovBaneClump` | 2 | Overmind: marines that must stand inside a bane's splash before it rolls in. | Visible |
 | `ovBaneMaxHold` | 6 | Overmind: longest a bane waits in the pack (s). | Visible |
 | `ovFrontMorph` | 0.3 | Overmind: how strongly morphs pick lings at the front line / near the terran spawn (x zergSkill; 0 = oldest lings). | Visible |
-| `ovBaneRatio` | 0.25 | Overmind (zergSkill 50%+): banes needed per ling before any attack (0.25 = the 1:4 golden ratio; capped by the bane cap). | Visible |
+| `ovBaneRatio` | 0.5 | Overmind (zergSkill 50%+): banes needed per ling before any attack (0.25 = the 1:4 golden ratio; capped by the bane cap). | Visible |
 | `ovAllIn` | true | Overmind (zergSkill 50%+): save it all up - no new attack until the swarm is at ovAllInFrac of its cap with banes in, in a gap between marine reinforcements; then everything goes at once (a wall fight is the only exception). | Visible |
 | `ovAllInFrac` | 0.9 | ovAllIn: share of the full zerg cap (lings + banes) to build before the big push. | Visible |
 | `ovReinforceGap` | 12 | ovAllIn: only push in a gap - at least half the current marine reinforcement cycle (capped at this many game-seconds) still to go. | Visible |
@@ -111,7 +111,7 @@ both.
 | Key | Default | Meaning | Class |
 |---|---|---|---|
 | `maxLings` | 30 | Max zerglings on screen. | Visible |
-| `maxBanes` | 8 | Max banelings on screen. | Visible |
+| `maxBanes` | 4 | Max banelings on screen. | Visible |
 | `lingHp` | 125 | Zergling hit points. | Visible |
 | `baneHp` | 200 | Baneling hit points. | Visible |
 | `lingBiteDamage` | 10 | Damage per zergling bite. | Visible |
@@ -138,12 +138,12 @@ both.
 | `growthRate` | 0.5 | Growth mode: caps grow by this share of their base per minute. | Visible |
 | `growthEvery` | 90 | Growth mode: real seconds between growth spurts (caps step up by growthRate x this / 60 each time). | Visible |
 | `growthMax` | 1.6 | Growth mode: caps stop growing at this multiple of their base. | Visible |
-| `respawnInterval` | 1 | Seconds between ling-egg refill batches. | Visible |
-| `zergWaveLo` | 20 | Min seconds after the zerg are wiped out (no lings, banes or eggs) before eggs come back. | Visible |
-| `zergWaveHi` | 25 | Max seconds after the zerg are wiped out before eggs come back. | Visible |
-| `respawnBatch` | 8 | Eggs spawned per refill batch. | Visible |
-| `eggTimeMin` | 7 | Min seconds until an egg hatches. | Visible |
-| `eggTimeMax` | 9 | Max seconds until an egg hatches. | Visible |
+| `respawnInterval` | 17 | Seconds between ling-egg refill batches. | Visible |
+| `zergWaveLo` | 25 | Min seconds after the zerg are wiped out (no lings, banes or eggs) before eggs come back. | Visible |
+| `zergWaveHi` | 35 | Max seconds after the zerg are wiped out before eggs come back. | Visible |
+| `respawnBatch` | 10 | Eggs spawned per refill batch. | Visible |
+| `eggTimeMin` | 40 | Min seconds until an egg hatches. | Visible |
+| `eggTimeMax` | 60 | Max seconds until an egg hatches. | Visible |
 | `eggHatchMult` | 1.5 | Egg hatch acceleration multiplier. | Advanced |
 | `eggHp` | 100 | Egg hit points (eggs act as a tanky shield). | Visible |
 | `eggDamageMult` | 0.1 | Fraction of normal damage an egg takes per hit (0.1 = 10%: about 40 shots). | Visible |
@@ -159,7 +159,7 @@ both.
 
 | Key | Default | Meaning | Class |
 |---|---|---|---|
-| `maxMarines` | 10 | Max marines on screen. | Visible |
+| `maxMarines` | 8 | Max marines on screen. | Visible |
 | `marineHp` | 120 | Marine hit points. | Visible |
 | `marineShootDamage` | 25 | Damage per marine shot. | Visible |
 | `marineShootInterval` | 0.36 | Seconds between shots. | Visible |
@@ -280,15 +280,15 @@ both.
 | `clockBehind` | true | Draw the clock behind the units. | both |
 | `clockScale` | 0.55 | Clock size. | web |
 | `timeZone` | auto | Time zone (auto = this device). | web |
-| `gameSpeed` | 5 | Speed multiplier. | both |
-| `unitScale` | 2 | Unit multiplier (population, waves, spawn rate). | both |
+| `gameSpeed` | 3.5 | Speed multiplier. | both |
+| `unitScale` | 4 | Unit multiplier (population, waves, spawn rate). | both |
 | `marineSkill` | 1 | Marine smarts: 0 = stand and die, 1 = one marine can dance around a swarm. | web |
-| `zergSkill` | 0.75 | Overmind smarts: 0 = every swarm piles in, 1 = backup gathers, lings surround, banes wait for a clump. | web |
+| `zergSkill` | 0 | Overmind smarts: 0 = every swarm piles in, 1 = backup gathers, lings surround, banes wait for a clump. | web |
 | `zergBrain` | 0 | Overmind brain: Default = the tuning panel, Trained = the self-play champion (tools/sim/train.js). | web |
 | `terranBrain` | 0 | Commander brain: Default = the tuning panel, Trained = the self-play champion (tools/sim/train.js). | web |
 | `unitCount` | 10 | Starting zerglings. | both |
 | `unitSpeed` | 1 | Movement speed multiplier for every unit. | both |
-| `unlockMultipliers` | true | Unlock speed & units: type any Speed / Units multiplier (up to 50x) instead of using the sliders. | web |
+| `unlockMultipliers` | false | Unlock speed & units: type any Speed / Units multiplier (up to 50x) instead of using the sliders. | web |
 | `blueShell` | true | Blue shell: a wiped side sits out ~a minute then comes back huge, the losing side's reinforcements come less often but bigger, and with the terrans gone the zerg lay dormant eggs all over the map. | web |
 | `growthMode` | true | Growth mode: both sides keep getting reinforcements beyond the caps until one wipes the other off the board, then caps reset. | web |
 | `showHealthBars` | true | Show unit health bars. | both |

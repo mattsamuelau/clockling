@@ -1,0 +1,33 @@
+name: Apply share link
+# Paste a Clockling share link (the URL from the Share button) and its settings
+# become the repo defaults + the Balanced preset, committed to main.
+on:
+  workflow_dispatch:
+    inputs:
+      link:
+        description: "Clockling share link (…/clockling.html#s=…)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Bake the link into the defaults
+        env:
+          LINK: ${{ inputs.link }}
+        run: python tools/apply_link.py "$LINK"
+      - name: Commit to main
+        run: |
+          if git diff --quiet; then echo "nothing changed"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898699+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Apply share link as the defaults"
+          git push
