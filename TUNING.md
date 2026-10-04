@@ -24,7 +24,8 @@ collapsible advanced section. All are editable and revertable.
 
 Tables below list web defaults. ESP32 retains its prior values for `maxLings` (10),
 `maxMarines` (7), `eggHatchMult` (1), `clockBehind` (false), and `gameSpeed` (1), as set
-in `targets/esp32/tools/gen_assets.py`.
+in `targets/esp32/tools/gen_assets.py`. The egg-shield keys (`eggHp`, `eggDamageMult`)
+and the sound settings (`soundOn`, `soundVolume`) are web-only.
 
 ## Parameter tiers
 
@@ -83,6 +84,8 @@ Settings are grouped into three tiers:
 | `eggTimeMin` | 7 | Min seconds until an egg hatches. | Visible |
 | `eggTimeMax` | 9 | Max seconds until an egg hatches. | Visible |
 | `eggHatchMult` | 1.5 | When an egg hatches, one other egg speeds up by this much. | Advanced |
+| `eggHp` | 100 | Egg hit points (web only). | Visible |
+| `eggDamageMult` | 0.001 | Fraction of normal damage an egg takes per hit (0.001 = 0.1%). Eggs are a tanky shield that marines shoot only when one is already in range (web only). | Visible |
 | `morphAge` | 4 | A ling must live this long before it can morph into a baneling egg. | Visible |
 | `morphCooldown` | 2 | Seconds between successful morphs. | Visible |
 | `morphChancePerSec` | 1 | Chance per second an eligible ling starts morphing. | Visible |
@@ -173,6 +176,8 @@ Settings are grouped into three tiers:
 | `showKills` | true | One yellow mark per zergling a marine has killed. | web |
 | `showScore` | false | Zerg vs terran supply bar along the top. | web |
 | `fieldSize` | 1280 | Battlefield short side in logical px (Small 480, Medium 640, Large 960, Huge 1280). Smaller = bigger units. | web |
+| `soundOn` | true | Play sound effects (lings, banes, marines). | web |
+| `soundVolume` | 70 | Sound volume percent. | web |
 | `landscape` | true | Horizontal 320x240 panel (off = vertical 240x320). The web app always fills its window. | ESP32 |
 
 ESP32-only device settings (`brightness`, `fpsCap`) are defined in `targets/esp32/tools/gen_assets.py`.
