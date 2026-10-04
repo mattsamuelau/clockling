@@ -162,6 +162,7 @@ both.
 | `stimHpCost` | 0.5 | Share of current HP a stimpack costs. | Visible |
 | `stimRegenMult` | 0.1 | HP regen multiplier after a stim (for stimRegenTime). | Visible |
 | `stimRegenTime` | 10 | Seconds of slowed regen from the moment a marine stims. | Visible |
+| `stimFxTime` | 5 | Seconds the green stim glow shows (never shorter than the stim). | Visible |
 | `stimGroupMax` | 3 | Only marine groups this small (or smaller) stim to escape. | Visible |
 | `stimRegroupDist` | 0.3 | Lone marines farther than this from the main mob (x board short side) stim back to it. | Visible |
 | `marineKiteSpeed` | 0.5 | Speed multiplier while kiting / running back to the mob (on top of skill footwork and stim). | Visible |

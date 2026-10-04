@@ -263,10 +263,10 @@ var Swarm = (function () {
             c.faceDir = -1; c.face = -1; c.w = MARINE_W; c.bumpR = MARINE_BUMP;
             c.speed = rand(16, 24); c.splatCol = MARINE_SPLAT; c.hp = MARINE_HP;
             c.splatScale = TUNING.marineSplatScale;
-            c.shootCd = SHOOT_T; c.aim = c.heading; c.drawAng = 0; c.walkSide = 0; c.leanBias = rand(-1, 1); c.healCd = 0; c.entered = false; c.shootTarget = null;
+            c.shootCd = SHOOT_T; c.aim = c.heading; c.drawAng = 0; c.walkSide = 0; c.tiltAng = 0; c.wasIdle = true; c.leanBias = rand(-1, 1); c.healCd = 0; c.entered = false; c.shootTarget = null;
             c.flashT = 0; c.hitX = 0; c.hitY = 0; c.kills = 0;
             c.deployT = 0; c.deployX = 0; c.deployY = 0;
-            c.stimT = 0; c.stimCd = 0; c.stimRegenT = 0; c.combat = false; c.kitePhase = "shoot"; c.runT = 0; c.shootT = 0;
+            c.stimT = 0; c.stimCd = 0; c.stimRegenT = 0; c.stimFxT = 0; c.stimFxAge = 0; c.combat = false; c.kitePhase = "shoot"; c.runT = 0; c.shootT = 0;
             c.runDir = null; c.regroupTo = null;
         } else if (kind === "egg") {
             c.w = EGG_W; c.bumpR = 12; c.speed = 0; c.t = 0; c.hatchMult = 1;
@@ -836,7 +836,9 @@ var Swarm = (function () {
         m.hp -= m.hp * STIM_HP_COST;
         m.stimT = STIM_DURATION;
         m.stimCd = STIM_COOLDOWN;
-        m.stimRegenT = Math.max(STIM_DURATION, STIM_REGEN_TIME);   /* slow healing outlasts the stim */
+        m.stimRegenT = Math.max(STIM_DURATION, STIM_REGEN_TIME);
+        m.stimFxT = Math.max(STIM_DURATION, TUNING.stimFxTime || 0);   /* the look outlasts the stim */
+        m.stimFxAge = 0;   /* slow healing outlasts the stim */
         stats.stims++;
         return true;
     }
@@ -1149,6 +1151,7 @@ var Swarm = (function () {
             if (c.stimT > 0) c.stimT -= dt;
             if (c.stimCd > 0) c.stimCd -= dt;
             if (c.stimRegenT > 0) c.stimRegenT -= dt;
+            if (c.stimFxT > 0) { c.stimFxT -= dt; c.stimFxAge += dt; }
             if (c.kitePhase === "run") c.runT += dt; else c.shootT += dt;
             var skill = marineSkill();
             c.retarget -= dt;
@@ -1204,21 +1207,38 @@ var Swarm = (function () {
              * walk, leaning up to marineWalkTilt degrees with the slope of the walk
              * (plus a small personal lean), so marines never walk on their heads */
             var firing = !!c.shootTarget || c.flashT > 0;
-            var wantAng;
             if (firing) {
-                wantAng = c.aim;
+                var da = c.aim - c.drawAng;
+                while (da > Math.PI) da -= 6.283;
+                while (da < -Math.PI) da += 6.283;
+                c.drawAng += da * (1 - Math.exp(-dt * 18));
             } else {
-                var ch = Math.cos(c.heading);
-                if (ch > 0.2) c.walkSide = 0;              /* hysteresis: walking straight up/down keeps the side */
-                else if (ch < -0.2) c.walkSide = Math.PI;
+                if (!c.wasIdle) {
+                    /* just stopped firing: keep the side the gun is on, ease the lean down */
+                    c.walkSide = Math.cos(c.drawAng) >= 0 ? 0 : Math.PI;
+                    c.tiltAng = Math.atan2(Math.sin(c.walkSide ? Math.PI - c.drawAng : c.drawAng),
+                                           Math.cos(c.walkSide ? Math.PI - c.drawAng : c.drawAng));
+                }
+                /* face and lean like the neighbours: average walk direction of the
+                 * marines around us (self included), so a squad looks the same way */
+                var nc = 0, ns = 0, gr2 = MARINE_GROUP_RADIUS * MARINE_GROUP_RADIUS;
+                for (var ni = 0; ni < units.length; ni++) {
+                    var nb = units[ni];
+                    if (nb.kind !== "marine" || nb.dead) continue;
+                    var ndx = nb.x - c.x, ndy = nb.y - c.y;
+                    if (ndx * ndx + ndy * ndy > gr2) continue;
+                    nc += Math.cos(nb.heading); ns += Math.sin(nb.heading);
+                }
+                var nl = Math.sqrt(nc * nc + ns * ns) || 1;
+                nc /= nl; ns /= nl;
+                if (nc > 0.2) c.walkSide = 0;                /* hysteresis: straight up/down keeps the side */
+                else if (nc < -0.2) c.walkSide = Math.PI;    /* side flips are an instant mirror, never a roll */
                 var maxTilt = (TUNING.marineWalkTilt || 0) * Math.PI / 180;
-                var tilt = Math.max(-maxTilt, Math.min(maxTilt, Math.sin(c.heading) * maxTilt * 1.2 + c.leanBias * maxTilt * 0.25));
-                wantAng = c.walkSide ? Math.PI - tilt : tilt;
+                var wantTilt = Math.max(-maxTilt, Math.min(maxTilt, ns * maxTilt * 1.2 + c.leanBias * maxTilt * 0.25));
+                c.tiltAng += (wantTilt - c.tiltAng) * (1 - Math.exp(-dt * 4));
+                c.drawAng = c.walkSide ? Math.PI - c.tiltAng : c.tiltAng;
             }
-            var da = wantAng - c.drawAng;
-            while (da > Math.PI) da -= 6.283;
-            while (da < -Math.PI) da += 6.283;
-            c.drawAng += da * (1 - Math.exp(-dt * (firing ? 18 : 4)));
+            c.wasIdle = !firing;
         } else {
             /* ling / bane: only pick a direction every RETARGET_T (anti-jitter) */
             c.age += dt;
@@ -1318,10 +1338,18 @@ var Swarm = (function () {
         }
         if (!img) return;
         var hh = c.w * img.height / img.width;
-        if (c.kind === "marine" && c.stimT > 0) {
-            cc.fillStyle = "rgba(255,40,40," + (0.18 + 0.12 * Math.sin(c.stimT * 20)).toFixed(3) + ")";
+        /* stim fx (under the sprite): a soft green glow that outlasts the stim
+         * (stimFxTime) and fades out over its last second */
+        var stimFx = c.kind === "marine" && c.stimFxT > 0;
+        var fxA = stimFx ? Math.min(1, c.stimFxT) * (0.75 + 0.25 * Math.sin(c.stimFxAge * 9)) : 0;
+        if (stimFx) {
+            var gr = c.w * 0.3;
+            var glow = cc.createRadialGradient(c.x, c.y, 0, c.x, c.y, gr);
+            glow.addColorStop(0, "rgba(150,255,90," + (0.45 * fxA).toFixed(3) + ")");
+            glow.addColorStop(1, "rgba(150,255,90,0)");
+            cc.fillStyle = glow;
             cc.beginPath();
-            cc.arc(c.x, c.y, c.w * 0.42, 0, 6.283);
+            cc.arc(c.x, c.y, gr, 0, 6.283);
             cc.fill();
         }
         cc.save();
@@ -1338,6 +1366,26 @@ var Swarm = (function () {
         }
         cc.drawImage(img, -c.w / 2, -hh / 2, c.w, hh);
         cc.restore();
+        /* stim fx (over the sprite): two tiny glowing "+" drifting up and fading */
+        if (stimFx) {
+            cc.save();
+            cc.strokeStyle = "#a6ff6e";
+            cc.shadowColor = "rgba(150,255,90,0.9)";
+            cc.shadowBlur = 4;
+            cc.lineWidth = 1.2;
+            for (var pi = 0; pi < 2; pi++) {
+                var ph = (c.stimFxAge * 0.7 + pi * 0.5) % 1;          /* 0..1 rise cycle */
+                var px = c.x + (pi ? 0.22 : -0.18) * c.w;
+                var py = c.y - c.w * 0.15 - ph * c.w * 0.35;
+                var ps = 2.2;
+                cc.globalAlpha = fxA * Math.sin(ph * Math.PI);
+                cc.beginPath();
+                cc.moveTo(px - ps, py); cc.lineTo(px + ps, py);
+                cc.moveTo(px, py - ps); cc.lineTo(px, py + ps);
+                cc.stroke();
+            }
+            cc.restore();
+        }
 
         /* health bar under every unit, including eggs (same bar as a ling; eggs
          * take eggDamageMult of each hit, so they stay green for a long time) */
