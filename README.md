@@ -18,10 +18,10 @@
 ### How they relate
 
 ```
-app/js/swarm.js      TUNING defaults + the game rules   <-- source of truth
-app/js/settings.js   SETTINGS defaults (clock, display, battle)
-app/js/tuning-meta.js labels, meanings, groups, options for every key
-app/images/*.png     sprites
+app/js/tuning-meta.js TUNING defaults + labels, meanings, groups, options  <-- source of truth
+app/js/swarm.js       derives its TUNING object from tuning-meta.js; game rules
+app/js/settings.js    SETTINGS defaults (clock, display, battle)
+app/images/*.png      sprites
         |                                   |
         | loaded directly                   | targets/esp32/tools/gen_assets.py
         v                                   v
@@ -33,11 +33,30 @@ app/images/*.png     sprites
                                    sim.cpp (hand-ported rules) + renderer -> firmware
 ```
 
-- **Defaults** start in the JS files. `gen_assets.py` applies ESP32-specific scaling and
-  overrides before generating firmware tables.
+- **Defaults** live in exactly one place each: TUNING in `tuning-meta.js`, SETTINGS in
+  `settings.js`. `gen_assets.py` applies ESP32-specific scaling and overrides before
+  generating firmware tables, and `gen_docs.py` regenerates the tables in `TUNING.md`
+  from the same source - so the docs can't drift.
 - **Rules** are ported by hand. When you change behaviour in `swarm.js`, make the same
   change in `targets/esp32/src/sim.cpp` (the functions have the same names and order).
 - Keys marked `only: "web"` or `only: "esp32"` in `tuning-meta.js` exist on one side only.
+
+## Changing the defaults (export → agent)
+
+Tune everything in the settings drawer, then hand the result to an agent to bake into
+the repo defaults:
+
+1. Settings drawer → **Share / embed** → copy the **Link** (it carries your exact
+   settings as `{s, t}` in the `#s=...` hash).
+2. Agent runs `python bake_tuning.py <link>` (or the raw JSON) - this writes the
+   exported values into `tuning-meta.js` / `settings.js`, then regenerates
+   `TUNING.md` and the ESP32 assets.
+3. Agent commits and pushes. `python bake_tuning.py --check` regenerates without
+   baking and shows what would change.
+
+Manual tweaks work too: edit the `default:` in `tuning-meta.js` or the value in
+`settings.js`, then run `python gen_docs.py` and
+`python targets/esp32/tools/gen_assets.py`.
 
 ## Use it
 
