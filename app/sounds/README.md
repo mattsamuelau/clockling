@@ -15,6 +15,8 @@ Settings &gt; Sound effects.
 | `bane_die.wav` | a baneling explodes and kills marines, or is tapped (a bane dying without kills plays `ling_die.wav`) |
 | `marine_shoot.wav` | a marine fires |
 | `marine_die1..2.wav` | a marine dies (random pick) |
+| `marine_die_ling.wav` | a marine killed by zergling bites (plays with `marine_die`) |
+| `marine_bitten.wav` | zerglings bite a marine while it is shooting |
 | `marine_voice1..2.wav` | idle marine chatter, random line (only while no marine is attacking) |
 | `marine_spawn.wav` | a new marine spawns in (follows Chatter) |
 | `music/*.mp3` | looping background track (see brief below) |
@@ -25,11 +27,11 @@ Names must match exactly - `clockling.html` loads them by name from this folder
 ## Trimming clips
 
 `python trim_sounds.py` opens a small trimmer at http://127.0.0.1:8091. Pick a
-clip, drag Start / End, Play to preview, Save to overwrite the `.wav`. The first
-save of each clip backs the original up to `.sound-src/originals/` (git-ignored);
-"Restore original" puts it back. `build_sounds.py` rebuilds clips from source and
-would undo a trim, so copy the start / duration the Save message prints into its
-`SFX` table.
+clip, drag Start / End, Play to preview, Save to write the trimmed `.wav`. Each
+trim is recorded in `trims.json` (committed) and always cut from the untrimmed
+original in `.sound-src/originals/` (git-ignored), so re-trimming is safe and
+"Restore original" drops it. `build_sounds.py` re-applies `trims.json` after
+rebuilding a clip, so rebuilds keep your trims.
 
 ## Sound design brief
 
@@ -37,7 +39,9 @@ Source clips to compile (trim / convert to wav):
 
 | Purpose | Event | Source |
 |---|---|---|
-| Marine gunfire | `marine_shoot` | YouTube short `hPoYpRRsf0c` - cut a section from the **middle** of the audio |
+| Marine gunfire | `marine_shoot` | YouTube short `hPoYpRRsf0c` - whole clip, trimmed by hand in `trim_sounds.py` |
+| Marine killed by lings | `marine_die_ling` | same short, trimmed by hand |
+| Marine bitten while shooting | `marine_bitten` | same short, trimmed by hand |
 | Marine chatter (idle) | `marine_voice` | myinstants: `marine-good-to-go-50098`, `rock-and-roll-marine-20680` |
 | Marine spawn voiceline | `marine_spawn` | myinstants: `wanna-piece-of-me-boy-marine-64377` |
 | Lings attack / go aggro | `ling_attack` | 101soundboards: `zergling-zzewht03` (62043074) |

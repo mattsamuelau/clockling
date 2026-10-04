@@ -3,11 +3,12 @@
   python trim_sounds.py      ->  opens http://127.0.0.1:8091 in your browser
 
 Pick a clip, drag the Start (and End) slider, hit Play to preview, Save to
-overwrite the .wav. The first save of each clip backs up the original to
-.sound-src/originals/ (git-ignored); "Restore original" puts it back.
+write the trimmed .wav. Trims are recorded in app/sounds/trims.json (committed)
+and always cut from the untrimmed original, kept in .sound-src/originals/
+(git-ignored), so you can re-trim freely; "Restore original" drops the trim.
 
-Note: build_sounds.py rebuilds these files from source and would undo a trim -
-the Save message prints the matching start/duration to copy into its SFX table.
+build_sounds.py re-applies trims.json after rebuilding a clip, so a rebuild
+keeps your trims.
 """
 import array
 import json
@@ -21,6 +22,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SOUNDS = os.path.join(ROOT, "app", "sounds")
 BACKUP = os.path.join(ROOT, ".sound-src", "originals")
+TRIMS = os.path.join(SOUNDS, "trims.json")
 PORT = 8091
 FADE_S = 0.005  # tiny fade at each cut so it doesn't click
 
@@ -35,14 +37,38 @@ def clip_path(name):
     return p
 
 
-def trim(name, start, end):
+def original_path(name):
+    """Untrimmed copy of a clip; made from the current file the first time."""
     p = clip_path(name)
-    with wave.open(p, "rb") as w:
+    bak = os.path.join(BACKUP, os.path.basename(p))
+    if not os.path.exists(bak):
+        os.makedirs(BACKUP, exist_ok=True)
+        shutil.copy2(p, bak)
+    return bak
+
+
+def load_trims():
+    try:
+        with open(TRIMS, encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+
+def save_trims(trims):
+    with open(TRIMS, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(dict(sorted(trims.items())), f, indent=2)
+        f.write("\n")
+
+
+def cut(src, dst, start, end):
+    """Write src[start:end] (seconds) to dst with a tiny fade at each edge."""
+    with wave.open(src, "rb") as w:
         params = w.getparams()
         rate, ch, width = w.getframerate(), w.getnchannels(), w.getsampwidth()
         frames = w.readframes(w.getnframes())
     n = len(frames) // (ch * width)
-    a = max(0, min(n, int(round(start * rate))))
+    a = max(0, min(n - 1, int(round(start * rate))))
     b = max(a + 1, min(n, int(round(end * rate))))
     data = frames[a * ch * width:b * ch * width]
     if width == 2:
@@ -58,22 +84,40 @@ def trim(name, start, end):
         if sys.byteorder == "big":
             s.byteswap()
         data = s.tobytes()
-    os.makedirs(BACKUP, exist_ok=True)
-    bak = os.path.join(BACKUP, os.path.basename(p))
-    if not os.path.exists(bak):
-        shutil.copy2(p, bak)
-    with wave.open(p, "wb") as w:
+    with wave.open(dst, "wb") as w:
         w.setparams(params)
         w.writeframes(data)
     return (b - a) / rate
 
 
+def trim(name, start, end):
+    name = os.path.basename(name)
+    dur = cut(original_path(name), clip_path(name), start, end)
+    trims = load_trims()
+    trims[name] = [round(start, 3), round(end, 3)]
+    save_trims(trims)
+    return dur
+
+
 def restore(name):
-    p = clip_path(name)
-    bak = os.path.join(BACKUP, os.path.basename(p))
-    if not os.path.exists(bak):
-        raise ValueError("no backup - clip was never trimmed here")
-    shutil.copy2(bak, p)
+    name = os.path.basename(name)
+    shutil.copy2(original_path(name), clip_path(name))
+    trims = load_trims()
+    trims.pop(name, None)
+    save_trims(trims)
+
+
+def reapply(name):
+    """Called by build_sounds.py right after it rebuilds a clip: the fresh build
+    becomes the new original, then any recorded trim is cut from it."""
+    name = os.path.basename(name)
+    t = load_trims().get(name)
+    if not t:
+        return None
+    os.makedirs(BACKUP, exist_ok=True)
+    bak = os.path.join(BACKUP, name)
+    shutil.copy2(clip_path(name), bak)
+    return cut(bak, clip_path(name), t[0], t[1])
 
 
 PAGE = r"""<!doctype html><html><head><meta charset="utf-8"><title>Sound Trimmer</title>
@@ -106,21 +150,23 @@ button:hover{background:#3b4250}button.pri{background:var(--acc);color:#000}
 <script>
 const ac = new AudioContext(), cv = document.getElementById("cv"), ctx = cv.getContext("2d");
 const S = document.getElementById("s"), E = document.getElementById("e"), msg = document.getElementById("msg");
-let cur = null, buf = null, src = null, playStart = 0, playOff = 0, playEnd = 0;
+let trims = {}, cur = null, buf = null, src = null, playStart = 0, playOff = 0, playEnd = 0;
 
 async function loadList() {
-  const names = await (await fetch("/list")).json(), L = document.getElementById("list");
-  L.innerHTML = "";
-  names.forEach(n => { const d = document.createElement("div"); d.textContent = n; d.onclick = () => load(n); L.appendChild(d); });
+  const r = await (await fetch("/list")).json(), L = document.getElementById("list");
+  trims = r.trims; L.innerHTML = "";
+  r.names.forEach(n => { const d = document.createElement("div"); d.dataset.n = n; d.textContent = n + (trims[n] ? " ✂" : ""); d.onclick = () => load(n); L.appendChild(d); });
+  if (cur) [...L.children].forEach(d => d.classList.toggle("on", d.dataset.n === cur));
 }
 async function load(n) {
   stop(); cur = n;
-  [...document.querySelectorAll("#list div")].forEach(d => d.classList.toggle("on", d.textContent === n));
+  [...document.querySelectorAll("#list div")].forEach(d => d.classList.toggle("on", d.dataset.n === n));
   document.getElementById("title").textContent = n;
   const ab = await (await fetch("/sounds/" + n + "?t=" + Date.now())).arrayBuffer();
   buf = await ac.decodeAudioData(ab);
-  S.max = E.max = buf.duration.toFixed(2); S.value = 0; E.value = buf.duration.toFixed(2);
-  msg.textContent = buf.duration.toFixed(2) + " s"; draw();
+  const t = trims[n] || [0, buf.duration];
+  S.max = E.max = buf.duration.toFixed(2); S.value = t[0].toFixed(2); E.value = Math.min(t[1], buf.duration).toFixed(2);
+  msg.textContent = "original " + buf.duration.toFixed(2) + " s" + (trims[n] ? ", trimmed to " + t[0].toFixed(2) + " - " + t[1].toFixed(2) + " s" : ""); draw();
 }
 function draw() {
   const w = cv.width = cv.clientWidth * devicePixelRatio, h = cv.height = cv.clientHeight * devicePixelRatio;
@@ -160,12 +206,12 @@ async function post(path, body) {
 }
 document.getElementById("save").onclick = async () => {
   if (!cur) return;
-  try { const t = await post("/trim", { name: cur, start: +S.value, end: +E.value }); await load(cur); msg.textContent = t; }
+  try { const t = await post("/trim", { name: cur, start: +S.value, end: +E.value }); await loadList(); msg.textContent = t; }
   catch (e) { msg.textContent = "error: " + e.message; }
 };
 document.getElementById("restore").onclick = async () => {
   if (!cur) return;
-  try { await post("/restore", { name: cur }); await load(cur); msg.textContent = "restored original (" + buf.duration.toFixed(2) + " s)"; }
+  try { await post("/restore", { name: cur }); await loadList(); await load(cur); msg.textContent = "restored original (" + buf.duration.toFixed(2) + " s)"; }
   catch (e) { msg.textContent = "error: " + e.message; }
 };
 addEventListener("resize", draw);
@@ -189,10 +235,10 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, PAGE, "text/html; charset=utf-8")
         if path == "/list":
             names = sorted(f for f in os.listdir(SOUNDS) if f.endswith(".wav"))
-            return self.send(200, json.dumps(names), "application/json")
+            return self.send(200, json.dumps({"names": names, "trims": load_trims()}), "application/json")
         if path.startswith("/sounds/"):
             try:
-                with open(clip_path(path[8:]), "rb") as f:
+                with open(original_path(path[8:]), "rb") as f:   # page always edits the original
                     return self.send(200, f.read(), "audio/wav")
             except ValueError as e:
                 return self.send(404, str(e))
@@ -203,10 +249,8 @@ class H(BaseHTTPRequestHandler):
             req = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             if self.path == "/trim":
                 dur = trim(req["name"], float(req["start"]), float(req["end"]))
-                stem = req["name"][:-4]
-                return self.send(200, "saved %s: %.2f s (cut %.2f s off the front)\n"
-                                 "build_sounds.py: add %.2f to %s's start, duration %.2f"
-                                 % (req["name"], dur, req["start"], req["start"], stem, dur))
+                return self.send(200, "saved %s: %.2f s (cut %.2f s off the front) - recorded in trims.json"
+                                 % (req["name"], dur, req["start"]))
             if self.path == "/restore":
                 restore(req["name"])
                 return self.send(200, "ok")

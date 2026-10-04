@@ -1511,6 +1511,7 @@ var Swarm = (function () {
                 if (dx * dx + dy * dy < BANE_SPLASH_R * BANE_SPLASH_R) {
                     var hadHp = m.hp > 0;
                     m.hp -= BANE_SPLASH_DMG;
+                    m.lastHitBy = "bane";
                     if (hadHp && m.hp <= 0) baneKills++;
                 }
             }
@@ -1519,6 +1520,7 @@ var Swarm = (function () {
             sound(baneKills > 0 || tapped ? "baneDie" : "lingDie");
         } else if (c.kind === "marine") {
             sound("marineDie");
+            if (c.lastHitBy === "ling") sound("marineDieLing");   /* torn down by zerglings */
             /* corpse: freeze the frame, show only the bottom half, fade out */
             var ang = (typeof c.drawAng === "number") ? c.drawAng : c.heading;
             var fd = c.faceDir;
@@ -1778,6 +1780,8 @@ var Swarm = (function () {
                     if (l2.attackCd <= 0) {
                         l2.attackCd = BITE_T;
                         mt.hp -= BITE_DMG;
+                        mt.lastHitBy = "ling";
+                        if (mt.shootTarget) sound("marineBitten");   /* chewed on mid-volley */
                     }
                 }
             }

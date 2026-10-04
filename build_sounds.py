@@ -18,6 +18,8 @@ import re
 import subprocess
 import sys
 
+import trim_sounds
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(ROOT, ".sound-src")
 OUT = os.path.join(ROOT, "app", "sounds")
@@ -43,7 +45,11 @@ SOURCES = {
 
 # output -> (source, start s, duration s or None for whole clip)
 SFX = {
-    "marine_shoot":  ("yt_gunfire", 7.08, 0.50),   # middle of the short (13.3 s), one burst
+    # whole short (13.3 s) for all three: cut them down with trim_sounds.py
+    # (its trims.json is re-applied after every rebuild)
+    "marine_shoot":    ("yt_gunfire", 0, None),   # marine fires
+    "marine_die_ling": ("yt_gunfire", 0, None),   # a marine killed by zergling bites
+    "marine_bitten":   ("yt_gunfire", 0, None),   # lings biting a marine while it shoots
     "bane_die":      ("yt_bane", 8.00, 1.20),      # middle of the short (16.5 s)
     "ling_attack":   ("sb_zzewht03", 0, None),
     "ling_die":      ("sb_zzedth00", 0, None),
@@ -114,7 +120,8 @@ def build_sfx(name):
     out = os.path.join(OUT, name + ".wav")
     run(["ffmpeg", "-v", "error", "-y", "-ss", str(start)] + (["-t", str(dur)] if dur else []) +
         ["-i", src, "-af", ",".join(af), "-ac", "1", "-ar", "22050", "-c:a", "pcm_s16le", out])
-    print("wrote", os.path.relpath(out, ROOT))
+    trimmed = trim_sounds.reapply(name + ".wav")   # hand trims from trims.json survive a rebuild
+    print("wrote", os.path.relpath(out, ROOT), "(trimmed to %.2f s)" % trimmed if trimmed else "")
 
 
 def build_music(name):
