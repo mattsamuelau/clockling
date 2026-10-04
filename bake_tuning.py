@@ -23,7 +23,7 @@ vals = {
     "lingHp": 100, "baneHp": 140,
     "lingBiteDamage": 10, "lingBiteInterval": 0.2,
     "baneSplashDamage": 90, "baneSplashR": 61, "baneSplatScale": 2.5,
-    "attackGroupSize": 10, "berserkBanes": 2, "attackOdds": 1.5,
+    "attackGroupSize": 14, "berserkBanes": 2, "attackOdds": 1.5,
     "allyRadius": 45, "marineScanRadius": 140, "marineGroupRadius": 60,
     "berserkCatchRadius": 80, "berserkSpeedMult": 1.5, "lingFleeSpeedMult": 1.6,
     "morphAge": 4, "morphCooldown": 2, "morphChancePerSec": 1,
