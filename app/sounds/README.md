@@ -22,6 +22,15 @@ Settings &gt; Sound effects.
 Names must match exactly - `clockling.html` loads them by name from this folder
 (`SOUNDS` lists one or more files per event; a random one plays).
 
+## Trimming clips
+
+`python trim_sounds.py` opens a small trimmer at http://127.0.0.1:8091. Pick a
+clip, drag Start / End, Play to preview, Save to overwrite the `.wav`. The first
+save of each clip backs the original up to `.sound-src/originals/` (git-ignored);
+"Restore original" puts it back. `build_sounds.py` rebuilds clips from source and
+would undo a trim, so copy the start / duration the Save message prints into its
+`SFX` table.
+
 ## Sound design brief
 
 Source clips to compile (trim / convert to wav):
