@@ -3,7 +3,14 @@
 </p>
 
 # Clockling
-Clock display with a live zergling-versus-marine simulation.
+
+**Time on top. Total war underneath.** Clock display with a live zergling-versus-marine
+simulation.
+
+[![Clockling demo](docs/demo.gif)](https://mattsamuelau.github.io/clockling/)
+
+**[Open Clockling in your browser](https://mattsamuelau.github.io/clockling/)** - full
+screen, settings behind the gear, share your setup as a link or embed it anywhere.
 
 | | **Web** - `clockling.html` | **ESP32** - `targets/esp32/` |
 |---|---|---|
@@ -43,16 +50,22 @@ app/images/*.png     sprites
 
 ### Web
 
-1. Open `clockling.html` directly in a browser. This requires no server or Node.js.
-2. Optional local server: in VS Code, run *Terminal > Run Task... > Clockling: run*, or
-   run `node server.js`, then open http://127.0.0.1:8080/clockling.html. If port 8080 is
-   busy, use *Clockling: run on port 8090* or `PORT=8090 node server.js`.
+- **Online**: [mattsamuelau.github.io/clockling](https://mattsamuelau.github.io/clockling/).
+- **Locally**: open `clockling.html` directly in a browser. This requires no server or
+  Node.js.
+- **Optional local server**: in VS Code, run *Terminal > Run Task... > Clockling: run*, or
+  run `node server.js`, then open http://127.0.0.1:8080/clockling.html. If port 8080 is
+  busy, use *Clockling: run on port 8090* or `PORT=8090 node server.js`.
 
 - **Settings**: use the gear button or <kbd>S</kbd>. Main controls are in the drawer;
   rules and balance values are under *Advanced tuning*. Changes apply immediately and
   persist in the browser. Press <kbd>R</kbd> to restart.
-- **Share / embed**: the drawer provides a settings link (`#s=...`) and an iframe snippet.
-  Network links require the local server and a URL using the host PC's IP address.
+- **Share / embed**: the drawer provides
+  - a **link** that carries your exact settings (in the `#s=...` part), so friends see
+    your battle without touching their own saved setup;
+  - an **iframe** snippet for any site that allows embeds (the gear hides until hovered);
+  - a **Markdown** snippet for GitHub READMEs. GitHub won't run live pages inside a
+    README, so it shows the demo GIF and opens your setup when clicked.
 
 ### ESP32
 
@@ -141,7 +154,7 @@ Every key is documented in **[TUNING.md](TUNING.md)**.
 
 ```
 clockling.html            the web app (open this)
-index.html                redirects to clockling.html (so the server root opens it)
+index.html                redirects to clockling.html (GitHub Pages entry)
 server.js                 tiny local web server (node server.js)
 .vscode/tasks.json        VS Code tasks to run it
 app/

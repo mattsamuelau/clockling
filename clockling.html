@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Clockling</title>
 <meta name="description" content="Time on top. Total war underneath. A live zerglings-vs-marines battle with a clock on top.">
+<meta property="og:title" content="Clockling">
+<meta property="og:description" content="Time on top. Total war underneath. A live zerglings-vs-marines battle with a clock on top.">
+<meta property="og:image" content="https://raw.githubusercontent.com/mattsamuelau/clockling/main/docs/screenshot.png">
 <meta name="theme-color" content="#0b0618">
 <link rel="icon" href="app/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -208,7 +211,8 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
             <input type="search" id="advSearch" placeholder="Search settings, e.g. marine range" aria-label="Search settings">
             <div id="advGroups"></div>
         </section>
-        <p class="fine">Tap the battlefield to splat units &middot; <kbd>S</kbd> settings &middot; <kbd>R</kbd> restart</p>
+        <p class="fine">Tap the battlefield to splat units &middot; <kbd>S</kbd> settings &middot; <kbd>R</kbd> restart<br>
+            <a href="https://github.com/mattsamuelau/clockling" target="_blank" rel="noopener">github.com/mattsamuelau/clockling</a></p>
     </div>
     <div class="drawer-foot">
         <button class="btn" id="resetAll">Reset all</button>
@@ -219,7 +223,7 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
 <div id="modal" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
     <div class="sheet">
         <h3 id="shareTitle">Share your Clockling</h3>
-        <p>Links carry your current settings, so whoever opens one sees exactly this battle. They point at wherever this Clockling is running.</p>
+        <p>Links carry your current settings, so whoever opens one sees exactly this battle.</p>
         <div class="field">
             <label for="shareLink">Link</label>
             <div class="copy"><textarea id="shareLink" readonly></textarea><button class="btn" data-copy="shareLink">Copy</button></div>
@@ -229,6 +233,11 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
             <label for="shareEmbed">Embed on a website</label>
             <div class="copy"><textarea id="shareEmbed" readonly></textarea><button class="btn" data-copy="shareEmbed">Copy</button></div>
             <small>Paste into any page that allows iframes (blogs, Notion, dashboards). The settings button hides until hovered.</small>
+        </div>
+        <div class="field">
+            <label for="shareMd">GitHub README / Markdown</label>
+            <div class="copy"><textarea id="shareMd" readonly></textarea><button class="btn" data-copy="shareMd">Copy</button></div>
+            <small>GitHub won't run live pages inside a README, so this shows the animated demo and opens your setup when clicked.</small>
         </div>
         <button class="btn block" id="closeShare">Done</button>
     </div>
@@ -242,6 +251,8 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
 (function () {
     "use strict";
 
+    var PUBLIC_URL = "https://mattsamuelau.github.io/clockling/clockling.html";
+    var DEMO_GIF = "https://raw.githubusercontent.com/mattsamuelau/clockling/main/docs/demo.gif";
     var STORE = "clockling.v2";
     var TUNING = Swarm.TUNING;
     var META = TUNING_META;
@@ -617,8 +628,8 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
 
     function shareUrl(embed) {
         var cfg = { s: diff(SETTINGS, DEF_SETTINGS), t: diff(TUNING, DEF_TUNING, HIDDEN_TUNING) };
-        var base = location.protocol === "file:" ? location.href.split("#")[0] : location.origin + location.pathname;
-        var local = location.protocol === "file:" || /^(localhost|127\.)/.test(location.hostname);
+        var local = location.protocol === "file:" || /^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname);
+        var base = local ? PUBLIC_URL : location.origin + location.pathname;
         var parts = [];
         if (Object.keys(cfg.s).length || Object.keys(cfg.t).length) parts.push("s=" + b64urlEncode(JSON.stringify(cfg)));
         if (embed) parts.push("e=1");
@@ -629,9 +640,10 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         var link = shareUrl(false), emb = shareUrl(true);
         $("shareLink").value = link.url;
         $("shareEmbed").value = '<iframe src="' + emb.url + '" width="480" height="320" style="border:0;border-radius:12px" title="Clockling" loading="lazy"></iframe>';
+        $("shareMd").value = "[![Clockling](" + DEMO_GIF + ")](" + link.url + ")";
         $("shareNote").textContent = link.local
-            ? "This link only opens on this computer. To share on your network, run node server.js and open Clockling via this PC's IP address."
-            : "Anyone who can reach this address can open the link.";
+            ? "You're running locally, so links point at the public site (" + PUBLIC_URL.replace(/^https:\/\//, "") + ")."
+            : "";
         $("modal").classList.add("open");
     });
     $("closeShare").addEventListener("click", function () { $("modal").classList.remove("open"); });
