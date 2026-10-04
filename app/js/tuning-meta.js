@@ -89,34 +89,38 @@ var TUNING_META = {
         splatBase: { class: "Advanced", default: 7, meaning: "Splat start radius (px)" },
         splatFadeStart: { class: "Advanced", default: 0.6, meaning: "Splat fade start fraction" },
         corpseLife: { class: "Advanced", default: 2.2, meaning: "Dead sprite lingers (s)" },
+        goreSplatLife: { class: "Advanced", default: 16.2, meaning: "Gore mode: death splat lingers (s)" },
+        goreCorpseLife: { class: "Advanced", default: 19.2, meaning: "Gore mode: corpse lingers (s)" },
+        baneSplatLifeMult: { class: "Advanced", default: 0.3, meaning: "Green (baneling) splat lifetime x red splat lifetime" },
         marineSplatScale: { class: "Advanced", default: 1.4, meaning: "Marine splat scale" },
         baneSplatScale: { class: "Advanced", default: 2.5, meaning: "Baneling splat scale" },
         retargetInterval: { class: "Advanced", default: 0.5, meaning: "Ling/bane retarget interval (s)" },
         aimInterval: { class: "Advanced", default: 0.3, meaning: "Marine re-aim interval (s)" }
     },
 
-    /* Map of SETTINGS key -> { class, default, meaning } */
+    /* Map of SETTINGS key -> { class, meaning } (defaults live in settings.js) */
     settings: {
-        showClock: { class: "Visible", default: true, meaning: "Show the clock" },
-        hour24: { class: "Visible", default: true, meaning: "24-hour clock (off = 12-hour)" },
-        showSeconds: { class: "Visible", default: false, meaning: "Show seconds" },
-        clockPosition: { class: "Visible", default: 0, meaning: "Where the clock sits",
+        showClock: { class: "Visible", meaning: "Show the clock" },
+        hour24: { class: "Visible", meaning: "24-hour clock (off = 12-hour)" },
+        showSeconds: { class: "Visible", meaning: "Show seconds" },
+        clockPosition: { class: "Visible", meaning: "Where the clock sits",
                          options: ["Top", "Middle", "Bottom", "Top left", "Top right", "Bottom left", "Bottom right"] },
-        clockBehind: { class: "Visible", default: true, meaning: "Draw the clock behind the units" },
-        clockScale: { class: "Visible", default: 0.55, meaning: "Clock size", only: "web", min: 0.5, max: 2, step: 0.05 },
-        timeZone: { class: "Visible", default: "auto", meaning: "Time zone (auto = this device)", only: "web" },
-        gameSpeed: { class: "Visible", default: 1.5, meaning: "Speed multiplier", min: 0.25, max: 5, step: 0.25 },
-        unitScale: { class: "Visible", default: 1, meaning: "Unit multiplier (population, waves, spawn rate)", min: 0.5, max: 5, step: 0.5 },
-        unitCount: { class: "Advanced", default: 10, meaning: "Starting zerglings" },
-        unitSpeed: { class: "Advanced", default: 1.0, meaning: "Movement speed multiplier for every unit" },
-        showHealthBars: { class: "Visible", default: true, meaning: "Show unit health bars" },
-        showKills: { class: "Visible", default: true, meaning: "Marine kill marks (one per ling killed)", only: "web" },
-        showScore: { class: "Visible", default: false, meaning: "Score bar along the top", only: "web" },
-        fieldSize: { class: "Visible", default: 1280, meaning: "Battlefield size (smaller = bigger units)", only: "web",
+        clockBehind: { class: "Visible", meaning: "Draw the clock behind the units" },
+        clockScale: { class: "Visible", meaning: "Clock size", only: "web", min: 0.5, max: 2, step: 0.05 },
+        timeZone: { class: "Visible", meaning: "Time zone (auto = this device)", only: "web" },
+        gameSpeed: { class: "Visible", meaning: "Speed multiplier", min: 0.25, max: 5, step: 0.25 },
+        unitScale: { class: "Visible", meaning: "Unit multiplier (population, waves, spawn rate)", min: 0.5, max: 5, step: 0.5 },
+        unitCount: { class: "Advanced", meaning: "Starting zerglings" },
+        unitSpeed: { class: "Advanced", meaning: "Movement speed multiplier for every unit" },
+        showHealthBars: { class: "Visible", meaning: "Show unit health bars" },
+        showKills: { class: "Visible", meaning: "Marine kill marks (one per ling killed)", only: "web" },
+        showScore: { class: "Visible", meaning: "Score bar along the top", only: "web" },
+        gore: { class: "Visible", meaning: "Gore mode: splats and corpses linger (splat 16.2 s, corpse 19.2 s)" },
+        fieldSize: { class: "Visible", meaning: "Battlefield size (smaller = bigger units)", only: "web",
                      options: { "480": "Small", "640": "Medium", "960": "Large", "1280": "Huge" } },
-        soundOn: { class: "Visible", default: true, meaning: "Play sound effects", only: "web" },
-        soundVolume: { class: "Visible", default: 70, meaning: "Sound volume", only: "web", min: 0, max: 100, step: 5 },
-        landscape: { class: "Visible", default: true, meaning: "Horizontal screen (off = vertical)", only: "esp32" }
+        soundOn: { class: "Visible", meaning: "Play sound effects", only: "web" },
+        soundVolume: { class: "Visible", meaning: "Sound volume", only: "web", min: 0, max: 100, step: 5 },
+        landscape: { class: "Visible", meaning: "Horizontal screen (off = vertical)", only: "esp32" }
     },
 
     /* Groups for UI organization */
@@ -128,10 +132,10 @@ var TUNING_META = {
         "Terran Spawning": ["marineEntrySpeed", "marineEntryDepth", "marineSpawnRateMult", "marineWaveLo", "marineWaveHi", "marineWaveSizeLo", "marineWaveSizeHi", "marineRespawnLo", "marineRespawnHi", "marineRespawnSizeLo", "marineRespawnSizeHi", "marineSpawnGap", "marineSpawnInset"],
         "Terran Behavior": ["marineTactics", "marineKiteFrac", "marineSightMult", "marineFleeHpPct", "marineGroupWeight", "marineAwayWeight", "marineTurnRate", "marineHealPct", "marineHealInterval"],
         "Movement": ["zergSpeed", "terranSpeed"],
-        "Visuals": ["lingW", "baneW", "marineW", "eggW", "lingBump", "baneBump", "marineBump", "splatLife", "splatBase", "splatFadeStart", "corpseLife", "marineSplatScale", "baneSplatScale", "retargetInterval", "aimInterval"],
+        "Visuals": ["lingW", "baneW", "marineW", "eggW", "lingBump", "baneBump", "marineBump", "splatLife", "splatBase", "splatFadeStart", "corpseLife", "goreSplatLife", "goreCorpseLife", "baneSplatLifeMult", "marineSplatScale", "baneSplatScale", "retargetInterval", "aimInterval"],
         "Map": ["mapW", "mapH"],
         "Clock": ["showClock", "hour24", "showSeconds", "clockPosition", "clockBehind", "clockScale", "timeZone"],
-        "Battle": ["gameSpeed", "unitScale", "fieldSize", "showHealthBars", "showKills", "showScore", "unitCount", "unitSpeed"],
+        "Battle": ["gameSpeed", "unitScale", "fieldSize", "showHealthBars", "showKills", "showScore", "gore", "unitCount", "unitSpeed"],
         "Display": ["landscape"]
     }
 };

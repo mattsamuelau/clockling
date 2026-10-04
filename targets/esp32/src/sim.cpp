@@ -741,20 +741,29 @@ static void step(Unit* c, float dt) {
     }
 }
 
+/* gore mode (setting "gore", on by default): splats and corpses linger */
+static float splatLife() { return TUNB(gore) ? TUN(goreSplatLife) : TUN(splatLife); }
+static float corpseLife() { return TUNB(gore) ? TUN(goreCorpseLife) : TUN(corpseLife); }
+
 static void addSplat(float x, float y, uint8_t col, float scale) {
-    if (nSplats >= MAX_SPLATS) return;
+    if (nSplats >= MAX_SPLATS) {   /* full (long gore lifetimes): drop the oldest */
+        memmove(splats, splats + 1, sizeof(Splat) * --nSplats);
+    }
     Splat& s = splats[nSplats++];
-    s.x = x; s.y = y; s.life = s.max = TUN(splatLife);
+    float life = splatLife() * (col == SC_BANE ? TUN(baneSplatLifeMult) : 1.0f);
+    s.x = x; s.y = y; s.life = s.max = life;
     s.col = col; s.seed = (uint8_t)min(3, (int)(random01() * 4));
     s.base = TUN(splatBase) * (scale ? scale : 1);
 }
 
 static void addCorpse(const Unit& c, const SpriteFrame* img) {
-    if (nCorpses >= MAX_CORPSES) return;
+    if (nCorpses >= MAX_CORPSES) {
+        memmove(corpses, corpses + 1, sizeof(Corpse) * --nCorpses);
+    }
     Corpse& co = corpses[nCorpses++];
     co.x = c.x; co.y = c.y; co.w = c.w; co.img = img;
     co.rot = drawAngle(c, &co.mirror);
-    co.life = co.max = TUN(corpseLife);
+    co.life = co.max = corpseLife();
 }
 
 static void killUnit(Unit* c) {
