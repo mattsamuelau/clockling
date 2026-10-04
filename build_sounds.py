@@ -50,6 +50,12 @@ SFX = {
     "marine_shoot":    ("yt_gunfire", 0, None),   # marine fires
     "marine_die_ling": ("yt_gunfire", 0, None),   # a marine killed by zergling bites
     "marine_bitten":   ("yt_gunfire", 0, None),   # lings biting a marine while it shoots
+    # extra ling deaths for variety (ling deaths are constant): whole short, cut each
+    # down differently with trim_sounds.py
+    "ling_die2":       ("yt_gunfire", 0, None),
+    "ling_die3":       ("yt_gunfire", 0, None),
+    "ling_die4":       ("yt_gunfire", 0, None),
+    "ling_die5":       ("yt_gunfire", 0, None),
     "bane_die":      ("yt_bane", 8.00, 1.20),      # middle of the short (16.5 s)
     "ling_attack":   ("sb_zzewht03", 0, None),
     "ling_die":      ("sb_zzedth00", 0, None),

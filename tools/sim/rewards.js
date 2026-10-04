@@ -28,7 +28,7 @@ function rewards(r) {
     var terran = (zergLost - terranLost * 0.5) / 1000 / min * 4
                + control * 3
                + (V.terran - V.zerg) * 3
-               + L.egg * 0.05 / min
+               + L.egg * VAL.egg * 2 / 1000 / min * 4   /* eggs are tanky and the swarm's future: double value */
                - (r.stats.stimDeaths || 0) * 0.3 / min;
     return { zerg: +zerg.toFixed(3), terran: +terran.toFixed(3) };
 }

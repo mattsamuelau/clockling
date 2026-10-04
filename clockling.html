@@ -450,6 +450,15 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         else if (key === "fieldSize" || key === "clockScale") layout();
         else if (key === "musicTrack" || key === "musicVolume") setMusic();
         else if (key === "zergBrain" || key === "terranBrain") Swarm.setTuning({});   /* re-layer the brains */
+        else if (key === "unlockMultipliers") {
+            /* locking again: clamp back into the sliders' range, then redraw the drawer */
+            if (!SETTINGS.unlockMultipliers) Object.keys(UNLOCKABLE).forEach(function (k) {
+                var mm = META.settings[k];
+                SETTINGS[k] = Math.max(mm.min, Math.min(mm.max, SETTINGS[k]));
+            });
+            Swarm.setGameSpeed(SETTINGS.gameSpeed); Swarm.setUnitScale(SETTINGS.unitScale);
+            save(); buildAll();
+        }
         if (/^clock|showClock/.test(key)) applyClockLayout();
         tick();
         save();
@@ -468,7 +477,25 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         return input;
     }
 
+    /* Speed / Units: free number boxes once "Unlock speed & units" is on */
+    var UNLOCKABLE = { gameSpeed: 1, unitScale: 1 };
+    function numberRow(parent, key, title, fmt) {
+        var row = el("div", "row");
+        var l = label(title, "Unlocked: any multiplier, 0.1 - 50");
+        row.appendChild(l);
+        var n = el("input"); n.type = "number"; n.min = 0.1; n.max = 50; n.step = 0.1; n.value = SETTINGS[key];
+        n.setAttribute("aria-label", title);
+        n.style.width = "6em";
+        n.addEventListener("change", function () {
+            var v = Math.max(0.1, Math.min(50, +n.value || 1));
+            n.value = v; SETTINGS[key] = v; changed(key);
+        });
+        row.appendChild(n);
+        parent.appendChild(row);
+        return n;
+    }
     function sliderRow(parent, key, title, fmt) {
+        if (UNLOCKABLE[key] && SETTINGS.unlockMultipliers) return numberRow(parent, key, title, fmt);
         var m = META.settings[key];
         var row = el("div", "row slider");
         var l = label(title);
@@ -551,19 +578,19 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
     /* battle presets: battle settings + zerg/terran tuning go back to their
      * defaults, then the preset's overrides apply and the battle restarts.
      * Clock, sound and display settings are left alone. */
-    var BATTLE_KEYS = ["gameSpeed", "unitScale", "unitSpeed", "growthMode", "marineSkill", "zergSkill", "zergBrain", "terranBrain"];
+    var BATTLE_KEYS = ["gameSpeed", "unitScale", "unitSpeed", "blueShell", "growthMode", "marineSkill", "zergSkill", "zergBrain", "terranBrain"];
     var PRESETS = [
         { name: "Balanced", hint: "Both sides smart: the default fight",
-          s: { gameSpeed: 2.5, unitScale: 2, unitSpeed: 1, growthMode: false, marineSkill: 0.8, zergSkill: 0.8, zergBrain: 0, terranBrain: 0 },
+          s: { gameSpeed: 2.5, unitScale: 2, unitSpeed: 1, blueShell: true, growthMode: false, marineSkill: 0.8, zergSkill: 0.8, zergBrain: 0, terranBrain: 0 },
           t: {} },
         { name: "Terran", hint: "Smart marines kite and split; a basic swarm piles in",
-          s: { gameSpeed: 2.5, unitScale: 2, unitSpeed: 1, growthMode: false, marineSkill: 1, zergSkill: 0.2, zergBrain: 0, terranBrain: 0 },
+          s: { gameSpeed: 2.5, unitScale: 2, unitSpeed: 1, blueShell: true, growthMode: false, marineSkill: 1, zergSkill: 0.2, zergBrain: 0, terranBrain: 0 },
           t: {} },
         { name: "Zerg", hint: "A smart Overmind surrounds and times its banes; basic marines stand and shoot",
-          s: { gameSpeed: 2.5, unitScale: 2, unitSpeed: 1, growthMode: false, marineSkill: 0.2, zergSkill: 1, zergBrain: 0, terranBrain: 0 },
+          s: { gameSpeed: 2.5, unitScale: 2, unitSpeed: 1, blueShell: true, growthMode: false, marineSkill: 0.2, zergSkill: 1, zergBrain: 0, terranBrain: 0 },
           t: {} },
         { name: "Mental", hint: "Max speed, 5x units, growth mode on, both sides smart and the swarm mega-aggro",
-          s: { gameSpeed: 5, unitScale: 5, unitSpeed: 1, growthMode: true, marineSkill: 1, zergSkill: 1, zergBrain: 0, terranBrain: 0 },
+          s: { gameSpeed: 5, unitScale: 5, unitSpeed: 1, blueShell: true, growthMode: true, marineSkill: 1, zergSkill: 1, zergBrain: 0, terranBrain: 0 },
           t: { maxLings: 30, maxBanes: 4, maxMarines: 8, respawnInterval: 1, respawnBatch: 8,
                attackGroupSize: 10, attackOdds: 1.2, zergPatience: 3, zergAllInOdds: 1, zergNoHope: 0.15,
                marineRespawnLo: 4, marineRespawnHi: 6, marineWaveLo: 8, marineWaveHi: 10,
@@ -631,11 +658,14 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
         presetRow(b);
         sliderRow(b, "gameSpeed", "Speed", x);
         sliderRow(b, "unitScale", "Units", x);
+        switchRow(b, "unlockMultipliers", "Unlock speed & units", "Type any multiplier instead of the sliders - it can get mental");
+        switchRow(b, "blueShell", "Blue shell", "Wipes cost a minute, comebacks are huge, the loser's waves grow - tides swing");
         switchRow(b, "growthMode", "Growth mode", "Both sides keep reinforcing until one wipes the other out, then it starts again");
         sliderRow(b, "marineSkill", "Marine skill", function (v) { return Math.round(v * 100) + "%"; });
         sliderRow(b, "zergSkill", "Zerg skill", function (v) { return Math.round(v * 100) + "%"; });
-        selectRow(b, "zergBrain", "Overmind", META.settings.zergBrain.options);
-        selectRow(b, "terranBrain", "Commander", META.settings.terranBrain.options);
+        /* brain pickers only once training has produced a brain for that race */
+        if (typeof BRAINS !== "undefined" && BRAINS.zerg && BRAINS.zerg.Trained) selectRow(b, "zergBrain", "Overmind", META.settings.zergBrain.options);
+        if (typeof BRAINS !== "undefined" && BRAINS.terran && BRAINS.terran.Trained) selectRow(b, "terranBrain", "Commander", META.settings.terranBrain.options);
         segRow(b, "fieldSize", "Battlefield", "Smaller field = bigger units", META.settings.fieldSize.options);
         switchRow(b, "showHealthBars", "Health bars");
         switchRow(b, "showKills", "Kill marks", "One mark per zergling a marine has killed");
@@ -1031,7 +1061,7 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
     var SOUNDS = {
         lingChill:   { files: ["ling_chill.wav"],   vol: 0.30, gap: 2500, chat: true },
         lingAttack:  { files: ["ling_attack.wav"],  vol: 0.50, gap: 400 },
-        lingDie:     { files: ["ling_die.wav"],     vol: 0.45, gap: 150 },
+        lingDie:     { files: ["ling_die.wav", "ling_die2.wav", "ling_die3.wav", "ling_die4.wav", "ling_die5.wav"], vol: 0.45, gap: 150 },
         baneDie:     { files: ["bane_die.wav"],     vol: 0.65, gap: 200 },
         marineShoot: { files: ["marine_shoot.wav"], vol: 0.25, gap: 120 },
         marineDie:   { files: ["marine_die1.wav", "marine_die2.wav"], vol: 0.50, gap: 200 },

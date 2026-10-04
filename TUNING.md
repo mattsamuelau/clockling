@@ -71,12 +71,17 @@ both.
 
 | Key | Default | Meaning | Class |
 |---|---|---|---|
+| `zergGroupMode` | true | Control groups: the swarm moves as up to zergCgMax groups (banes on their own hotkeys), each on one shared move; units in melee still fight alone. Off = every zerg moves alone. | Visible |
+| `zergCgMax` | 6 | zergGroupMode: most control groups the swarm splits into (about a third of them for banes). | Visible |
+| `zergCgSize` | 10 | zergGroupMode: lings per control group. | Visible |
 | `ovJoinRadius` | 2.5 | Overmind (zergSkill 30%+): only zerg within this of the swarm's front (x marine range) count toward an attack; stragglers rally to the front. | Visible |
 | `ovSurround` | 40 | Overmind (zergSkill 50%+): degrees each attacking ling arcs off the straight line so the swarm wraps around the marines. | Visible |
 | `ovBaneHold` | true | Overmind (zergSkill 50%+): banes ride in the pack until lings are biting a clump of marines. | Visible |
 | `ovBaneClump` | 2 | Overmind: marines that must stand inside a bane's splash before it rolls in. | Visible |
 | `ovBaneMaxHold` | 6 | Overmind: longest a bane waits in the pack (s). | Visible |
 | `ovFrontMorph` | 0.8 | Overmind: how strongly morphs pick lings at the front line / near the terran spawn (x zergSkill; 0 = oldest lings). | Visible |
+| `ovMuster` | 6 | Overmind (zergSkill 30%+): seconds a newborn ling gathers with its friends before it joins attacks; after that it only reinforces a fight as a pack of 5+. | Visible |
+| `ovBaneShare` | 0.5 | Overmind (zergSkill 50%+): a swarm won't start an attack until this share of the bane cap has hatched (0 = don't wait); morphs speed up while it waits. | Visible |
 | `ovBaneVanguard` | 0.5 | Overmind: share of a committing swarm's banes that lead at ling pace to break the marine line (the rest hold in the pack for a clump). | Visible |
 | `ovGuardBanes` | true | Overmind (zergSkill 40%+): up to 3 idle lings step between a hunted baneling and its hunter to draw fire, peeling off below half HP. | Visible |
 | `zergNoHope` | 0.35 | A committed swarm fights to the death unless the whole swarm drops below this share of the strength the fight needs (attackOdds x marines). | Visible |
@@ -116,19 +121,24 @@ both.
 
 | Key | Default | Meaning | Class |
 |---|---|---|---|
+| `blueShellWait` | 60 | Blue shell: game seconds a wiped-out side waits before its comeback (+-30%). | Visible |
+| `blueShellPulse` | 25 | Blue shell: game seconds between marine reinforcement pulses while marines are alive (each pulse refills their losses at once). | Visible |
+| `blueShellBoost` | 1 | Blue shell: a comeback can overfill the cap by this much (1 = up to double). | Visible |
+| `blueShellDom` | 2 | Blue shell: how strongly the losing side's waves stretch out and grow while the other side dominates. | Visible |
 | `startArmy` | 0.7 | Both sides open the battle with this share of their caps (lings at a hive on one side, a full marine wave from the far edge), so the action starts at once. | Visible |
 | `growthRate` | 0.25 | Growth mode: caps grow by this share of their base per minute. | Visible |
 | `growthMax` | 6 | Growth mode: caps stop growing at this multiple of their base. | Visible |
-| `respawnInterval` | 1.5 | Seconds between ling-egg refill batches. | Visible |
+| `respawnInterval` | 4 | Seconds between ling-egg refill batches. | Visible |
 | `zergWaveLo` | 20 | Min seconds after the zerg are wiped out (no lings, banes or eggs) before eggs come back. | Visible |
 | `zergWaveHi` | 25 | Max seconds after the zerg are wiped out before eggs come back. | Visible |
-| `respawnBatch` | 8 | Eggs spawned per refill batch. | Visible |
+| `respawnBatch` | 3 | Eggs spawned per refill batch. | Visible |
 | `eggTimeMin` | 7 | Min seconds until an egg hatches. | Visible |
 | `eggTimeMax` | 9 | Max seconds until an egg hatches. | Visible |
 | `eggHatchMult` | 1.5 | Egg hatch acceleration multiplier. | Advanced |
 | `eggHp` | 100 | Egg hit points (eggs act as a tanky shield). | Visible |
 | `eggDamageMult` | 0.1 | Fraction of normal damage an egg takes per hit (0.1 = 10%: about 40 shots). | Visible |
 | `eggOverlap` | 0 | How much a new egg may overlap another (0 = never touch, 1 = may stack). | Visible |
+| `eggSpacing` | 1.5 | New eggs are laid at least this many egg widths apart (before eggOverlap). | Visible |
 | `eggMarineClearance` | 0.4 | Eggs are laid at least this far from any marine (fraction of the board's short side), on the far side from the marines. | Visible |
 | `morphAge` | 4 | Lings must live this long before morphing. | Visible |
 | `morphCooldown` | 2 | Seconds between successful morphs. | Visible |
@@ -183,10 +193,13 @@ both.
 | `stimRegenMult` | 0 | HP regen multiplier after a stim (for stimRegenTime). | Visible |
 | `stimRegenTime` | 20 | Seconds of slowed regen from the moment a marine stims. | Visible |
 | `stimGroupMax` | 3 | Only marine groups this small (or smaller) stim to escape. | Visible |
-| `stimRegroupDist` | 0.3 | Lone marines farther than this from the main mob (x board short side) stim back to it. | Visible |
+| `stimRegroupDist` | 0.15 | Lone marines farther than this from the main mob (x board short side) stim back to it. | Visible |
 | `marineKiteSpeed` | 0.5 | Speed multiplier while kiting / running back to the mob (on top of skill footwork and stim): keeps escapes to short hops. | Visible |
 | `marineUpright` | true | Marines stand upright (feet down) when not firing, facing and leaning with their squad's walk; off = they always face the closest zerg, leaning at most marineMaxTilt. | Visible |
 | `marineWalkTilt` | 25 | marineUpright: max degrees a marine leans from upright while walking (it turns fully to its target when firing). | Visible |
+| `marineGroupMode` | true | Control groups: marines move as up to marineCgMax groups (by proximity), each on one shared move like a human with hotkeys; off = every marine micros alone. | Visible |
+| `marineCgMax` | 5 | marineGroupMode: most control groups the marines split into. | Visible |
+| `marineCgSize` | 6 | marineGroupMode: marines per control group (more marines = more groups, up to marineCgMax). | Visible |
 | `marineMicro` | true | Per-marine micro (50%+ skill), like SC2 bots: stutter-step back while the gun cools down, fire when ready, and split away from banelings. | Visible |
 | `marineBaneHunt` | true | The 1-2 closest healthy marines (60%+ skill) stim forward and shoot a bane that isn't charging - in the open or stuck among them - keeping out of its splash. | Visible |
 | `marineStimAttack` | true | A healthy marine group (3+, 60%+ skill) in a fight it can win stims together and pushes in hard. | Visible |
@@ -256,6 +269,8 @@ both.
 | `terranBrain` | 0 | Commander brain: Default = the tuning panel, Trained = the self-play champion (tools/sim/train.js). | web |
 | `unitCount` | 10 | Starting zerglings. | both |
 | `unitSpeed` | 1 | Movement speed multiplier for every unit. | both |
+| `unlockMultipliers` | false | Unlock speed & units: type any Speed / Units multiplier (up to 50x) instead of using the sliders. | web |
+| `blueShell` | true | Blue shell: a wiped side sits out ~a minute then comes back huge, the losing side's reinforcements come less often but bigger, and with the terrans gone the zerg lay dormant eggs all over the map. | web |
 | `growthMode` | false | Growth mode: both sides keep getting reinforcements beyond the caps until one wipes the other off the board, then caps reset. | web |
 | `showHealthBars` | true | Show unit health bars. | both |
 | `showKills` | true | Marine kill marks (one per ling killed). | web |

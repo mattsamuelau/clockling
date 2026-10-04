@@ -11,7 +11,7 @@ Settings &gt; Sound effects.
 |---|---|
 | `ling_chill.wav` | a zergling chills or hatches from an egg (follows Chatter) |
 | `ling_attack.wav` | lings decide to attack / go aggro |
-| `ling_die.wav` | a zergling dies |
+| `ling_die.wav`, `ling_die2..5.wav` | a zergling dies (random pick; 2-5 are cut from the gunfire short in `trim_sounds.py`) |
 | `bane_die.wav` | a baneling explodes and kills marines, or is tapped (a bane dying without kills plays `ling_die.wav`) |
 | `marine_shoot.wav` | a marine fires |
 | `marine_die1..2.wav` | a marine dies (random pick) |
