@@ -2,7 +2,7 @@
 
   python trim_sounds.py      ->  opens http://127.0.0.1:8091 in your browser
 
-Pick a clip, drag the Start (and End) slider, hit Play to preview, Save to
+Pick a clip, drag the Start (and End) slider and Volume, hit Play to preview, Save to
 write the trimmed .wav. Trims are recorded in app/sounds/trims.json (committed)
 and always cut from the untrimmed original, kept in .sound-src/originals/
 (git-ignored), so you can re-trim freely; "Restore original" drops the trim.
@@ -12,6 +12,7 @@ keeps your trims.
 """
 import array
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -74,10 +75,10 @@ def save_trims(trims):
         f.write("\n")
 
 
-def cut(src, dst, start, end):
-    """Write src[start:end] (seconds) to dst with a fade at each edge."""
+def cut(src, dst, start, end, gain_db=0.0):
+    """Write src[start:end] (seconds) to dst with a fade at each edge, gain_db louder/quieter."""
     if dst.endswith(".mp3"):
-        return cut_music(src, dst, start, end)
+        return cut_music(src, dst, start, end, gain_db)
     with wave.open(src, "rb") as w:
         params = w.getparams()
         rate, ch, width = w.getframerate(), w.getnchannels(), w.getsampwidth()
@@ -90,6 +91,10 @@ def cut(src, dst, start, end):
         s = array.array("h", data)
         if sys.byteorder == "big":
             s.byteswap()
+        if gain_db:
+            k = 10 ** (gain_db / 20.0)
+            for i in range(len(s)):
+                s[i] = max(-32768, min(32767, int(s[i] * k)))
         f = min(int(FADE_S * rate), (b - a) // 2)
         for i in range(f):
             g = i / f
@@ -105,10 +110,10 @@ def cut(src, dst, start, end):
     return (b - a) / rate
 
 
-def cut_music(src, dst, start, end):
+def cut_music(src, dst, start, end, gain_db=0.0):
     """Re-encode like build_sounds.build_music: fade in 1.5 s / out 3 s so the loop seam stays soft."""
     dur = end - start
-    af = "afade=t=in:d=%.3f,afade=t=out:st=%.3f:d=%.3f" % (min(1.5, dur / 4), dur - min(3, dur / 4), min(3, dur / 4))
+    af = "volume=%.2fdB,afade=t=in:d=%.3f,afade=t=out:st=%.3f:d=%.3f" % (gain_db, min(1.5, dur / 4), dur - min(3, dur / 4), min(3, dur / 4))
     tmp = dst + ".tmp.mp3"
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", "%.3f" % start, "-t", "%.3f" % dur, "-i", src,
                     "-af", af, "-ar", "44100", "-ac", "2", "-c:a", "libmp3lame", "-b:a", "96k", tmp], check=True)
@@ -116,13 +121,58 @@ def cut_music(src, dst, start, end):
     return dur
 
 
-def trim(name, start, end):
+def trim(name, start, end, gain_db=0.0):
     name = clip_name(name)
-    dur = cut(original_path(name), clip_path(name), start, end)
+    dur = cut(original_path(name), clip_path(name), start, end, gain_db)
     trims = load_trims()
-    trims[name] = [round(start, 3), round(end, 3)]
+    trims[name] = [round(start, 3), round(end, 3), round(gain_db, 1)]
     save_trims(trims)
     return dur
+
+
+def loudness_db(path, start=0.0, end=None):
+    """Short-term loudness of a wav clip: RMS (dBFS) of its loudest 300 ms window,
+    so silent tails don't make a clip look quiet."""
+    with wave.open(path, "rb") as w:
+        rate, ch, width = w.getframerate(), w.getnchannels(), w.getsampwidth()
+        frames = w.readframes(w.getnframes())
+    if width != 2:
+        return None
+    s = array.array("h", frames)
+    if sys.byteorder == "big":
+        s.byteswap()
+    n = len(s) // ch
+    a = max(0, int(start * rate))
+    b = n if end is None else min(n, int(end * rate))
+    win = max(1, int(0.3 * rate))
+    best = 0.0
+    for w0 in range(a, max(a + 1, b - win + 1), max(1, win // 4)):
+        seg = s[w0 * ch:min(b, w0 + win) * ch]
+        if seg:
+            best = max(best, sum(v * v for v in seg) / len(seg))
+    return 10 * math.log10(best / (32768.0 ** 2)) if best > 0 else None
+
+
+def normalise_all(target_db=-16.0):
+    """Give every sound effect (not music) the same short-term loudness, keeping
+    each clip's trim; the gains land in trims.json like a manual Save."""
+    trims, out = load_trims(), []
+    for name in list_clips():
+        if not name.endswith(".wav"):
+            continue
+        t = trims.get(name)
+        orig = original_path(name)
+        start, end = (t[0], t[1]) if t else (0.0, None)
+        lv = loudness_db(orig, start, end)
+        if lv is None:
+            continue
+        g = max(-18.0, min(6.0, target_db - lv))
+        if end is None:
+            with wave.open(orig, "rb") as w:
+                end = w.getnframes() / w.getframerate()
+        trim(name, start, end, g)
+        out.append("%s %+.1f dB" % (name, g))
+    return out
 
 
 def restore(name):
@@ -143,7 +193,7 @@ def reapply(name):
     bak = os.path.join(BACKUP, name)
     os.makedirs(os.path.dirname(bak), exist_ok=True)
     shutil.copy2(clip_path(name), bak)
-    return cut(bak, clip_path(name), t[0], t[1])
+    return cut(bak, clip_path(name), t[0], t[1], t[2] if len(t) > 2 else 0.0)
 
 
 PAGE = r"""<!doctype html><html><head><meta charset="utf-8"><title>Sound Trimmer</title>
@@ -167,15 +217,17 @@ button:hover{background:#3b4250}button.pri{background:var(--acc);color:#000}
   <canvas id="cv"></canvas>
   <div class="row"><label>Start</label><input id="s" type="range" min="0" step="0.01" value="0"><span class="val" id="sv"></span></div>
   <div class="row"><label>End</label><input id="e" type="range" min="0" step="0.01" value="0"><span class="val" id="ev"></span></div>
+  <div class="row"><label>Volume</label><input id="g" type="range" min="-18" max="6" step="0.5" value="0"><span class="val" id="gv"></span></div>
   <div class="row">
     <button id="play">&#9654; Play trimmed (space)</button><button id="playall">Play whole</button>
     <button class="pri" id="save">Save</button><button id="restore">Restore original</button>
+    <button id="norm" title="Same loudness for every sound effect (music untouched); fine-tune with Volume">Normalise all SFX</button>
   </div>
   <div id="msg"></div>
 </div>
 <script>
 const ac = new AudioContext(), cv = document.getElementById("cv"), ctx = cv.getContext("2d");
-const S = document.getElementById("s"), E = document.getElementById("e"), msg = document.getElementById("msg");
+const S = document.getElementById("s"), E = document.getElementById("e"), G = document.getElementById("g"), msg = document.getElementById("msg");
 let peaks = null, trims = {}, cur = null, buf = null, src = null, playStart = 0, playOff = 0, playEnd = 0;
 
 async function loadList() {
@@ -192,6 +244,7 @@ async function load(n) {
   buf = await ac.decodeAudioData(ab); peaks = null;
   const t = trims[n] || [0, buf.duration];
   S.max = E.max = buf.duration.toFixed(2); S.value = t[0].toFixed(2); E.value = Math.min(t[1], buf.duration).toFixed(2);
+  G.value = t[2] || 0;
   msg.textContent = "original " + buf.duration.toFixed(2) + " s" + (trims[n] ? ", trimmed to " + t[0].toFixed(2) + " - " + t[1].toFixed(2) + " s" : ""); draw();
 }
 function draw() {
@@ -199,6 +252,7 @@ function draw() {
   ctx.clearRect(0, 0, w, h);
   document.getElementById("sv").textContent = (+S.value).toFixed(2) + " s";
   document.getElementById("ev").textContent = (+E.value).toFixed(2) + " s";
+  document.getElementById("gv").textContent = (+G.value > 0 ? "+" : "") + (+G.value).toFixed(1) + " dB";
   if (!buf) return;
   const x = t => t / buf.duration * w;
   if (!peaks || peaks.length !== w * 2) {   // min/max per pixel, worked out once per clip / resize
@@ -220,14 +274,17 @@ function draw() {
 function stop() { if (src) { src.onended = null; src.stop(); src = null; } draw(); }
 function play(a, b) {
   stop(); if (!buf) return; ac.resume();
-  src = ac.createBufferSource(); src.buffer = buf; src.connect(ac.destination);
+  src = ac.createBufferSource(); src.buffer = buf;
+  const gn = ac.createGain(); gn.gain.value = Math.pow(10, +G.value / 20);   // preview at the chosen volume
+  src.connect(gn); gn.connect(ac.destination);
   playStart = ac.currentTime; playOff = a; src.start(0, a, b - a);
   src.onended = () => { src = null; draw(); };
   (function tick() { if (src) { draw(); requestAnimationFrame(tick); } })();
 }
 S.oninput = () => { if (+S.value >= +E.value) S.value = (+E.value - 0.01).toFixed(2); draw(); };
 E.oninput = () => { if (+E.value <= +S.value) E.value = (+S.value + 0.01).toFixed(2); draw(); };
-S.onchange = E.onchange = () => play(+S.value, +E.value);   // auto-preview on release
+S.onchange = E.onchange = G.onchange = () => play(+S.value, +E.value);   // auto-preview on release
+G.oninput = draw;
 document.getElementById("play").onclick = () => play(+S.value, +E.value);
 document.getElementById("playall").onclick = () => buf && play(0, buf.duration);
 document.addEventListener("keydown", ev => { if (ev.code === "Space") { ev.preventDefault(); src ? stop() : play(+S.value, +E.value); } });
@@ -237,12 +294,17 @@ async function post(path, body) {
 }
 document.getElementById("save").onclick = async () => {
   if (!cur) return;
-  try { const t = await post("/trim", { name: cur, start: +S.value, end: +E.value }); await loadList(); msg.textContent = t; }
+  try { const t = await post("/trim", { name: cur, start: +S.value, end: +E.value, gain: +G.value }); await loadList(); msg.textContent = t; }
   catch (e) { msg.textContent = "error: " + e.message; }
 };
 document.getElementById("restore").onclick = async () => {
   if (!cur) return;
   try { await post("/restore", { name: cur }); await loadList(); await load(cur); msg.textContent = "restored original (" + buf.duration.toFixed(2) + " s)"; }
+  catch (e) { msg.textContent = "error: " + e.message; }
+};
+document.getElementById("norm").onclick = async () => {
+  msg.textContent = "normalising...";
+  try { const t = await post("/normalise", {}); await loadList(); if (cur) await load(cur); msg.textContent = "normalised:\n" + t; }
   catch (e) { msg.textContent = "error: " + e.message; }
 };
 addEventListener("resize", draw);
@@ -279,9 +341,12 @@ class H(BaseHTTPRequestHandler):
         try:
             req = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             if self.path == "/trim":
-                dur = trim(req["name"], float(req["start"]), float(req["end"]))
-                return self.send(200, "saved %s: %.2f s (cut %.2f s off the front) - recorded in trims.json"
-                                 % (req["name"], dur, req["start"]))
+                g = float(req.get("gain") or 0)
+                dur = trim(req["name"], float(req["start"]), float(req["end"]), g)
+                return self.send(200, "saved %s: %.2f s (cut %.2f s off the front, %+.1f dB) - recorded in trims.json"
+                                 % (req["name"], dur, req["start"], g))
+            if self.path == "/normalise":
+                return self.send(200, "\n".join(normalise_all()))
             if self.path == "/restore":
                 restore(req["name"])
                 return self.send(200, "ok")

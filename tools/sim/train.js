@@ -35,7 +35,7 @@ var SPACE = {
         berserkBanes: [1, 6, "int"], morphChancePerSec: [0.05, 1]
     },
     terran: {
-        marineMicro: [true, false], marineBaneHunt: [true, false], marineStimAttack: [true, false], marineSquads: [true, false], marineCtrlGroups: [1, 6, "int"], marineCtrlGroupSize: [2, 15, "int"],
+        marineHitSquads: [true, false], hitSquadSize: [2, 8, "int"], hitSquadTrigger: [0.1, 0.8], marineMicro: [true, false], marineBaneHunt: [true, false], marineStimAttack: [true, false], marineSquads: [true, false], marineCtrlGroups: [1, 6, "int"], marineCtrlGroupSize: [2, 15, "int"],
         marineFlank: [true, false], marineFlankAngle: [0, 80], marineStimPush: [true, false],
         marineEliteKite: [true, false], marineSpawnMode: [0, 2, "int"],
         stimGroupMax: [1, 10, "int"], stimRegroupDist: [0.05, 1],

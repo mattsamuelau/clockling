@@ -1275,12 +1275,13 @@ var Swarm = (function () {
                 var u = units[i];
                 u.cgGroup = null;
                 if (u.dead) continue;
-                if (u.kind === "marine" && MARINE_CG && u.entered && !(u.deployT > 0)) ms.push(u);
+                if (u.kind === "marine" && MARINE_CG && u.entered && !(u.deployT > 0) && !u.hitSquad) ms.push(u);
                 else if (u.kind === "ling" && ZERG_CG) ls.push(u);
                 else if (u.kind === "bane" && ZERG_CG) bs.push(u);
             }
             var kOf = function (n, size, max) { return Math.max(1, Math.min(max, Math.ceil(n / Math.max(1, size)))); };
             cgSets.marine = cgSplit(ms, kOf(ms.length, TB.marineCgSize, TB.marineCgMax), "cgm");
+            if (hitSquad && hitSquad.members.length) cgSets.marine.push(hitSquad.members.filter(function (m) { return !m.dead; }));   /* the hit squad is its own group */
             var zMax = Math.max(1, Math.round(TB.zergCgMax || 1));
             var kb = bs.length ? kOf(bs.length, 6, Math.max(1, Math.floor(zMax / 3))) : 0;
             cgSets.ling = cgSplit(ls, kOf(ls.length, TB.zergCgSize, Math.max(1, zMax - kb)), "cgz");
@@ -1340,7 +1341,40 @@ var Swarm = (function () {
                     var gb = nearestKind(g.cx, g.cy, "bane");
                     g.baneNear = !!(gb && dist(gb, g.cx, g.cy) < MARINE_RANGE * 1.5);
                 }
-                g.spread = (g.baneNear ? 30 : 11) * Math.sqrt(n);
+                /* surrounded (zerg close on opposite sides, or 3+ sides): close up back
+                 * to back - a tight ring that holds and shoots outward */
+                g.surrounded = false;
+                if (k === "marine") {
+                    var quad = [0, 0, 0, 0];
+                    for (var qi = 0; qi < units.length; qi++) {
+                        var qz = units[qi];
+                        if (qz.dead || (qz.kind !== "ling" && qz.kind !== "bane")) continue;
+                        var qdx = qz.x - g.cx, qdy = qz.y - g.cy;
+                        if (qdx * qdx + qdy * qdy > MARINE_RANGE * MARINE_RANGE * 2.25) continue;
+                        quad[Math.floor((Math.atan2(qdy, qdx) + Math.PI) / (Math.PI / 2)) & 3] = 1;
+                    }
+                    var sides = quad[0] + quad[1] + quad[2] + quad[3];
+                    g.surrounded = sides >= 3 || (quad[0] && quad[2]) || (quad[1] && quad[3]);
+                }
+                /* box radius from the units' own size, so a full box never squeezes them
+                 * into each other: about one body width apart, tighter when surrounded */
+                var body = (k === "marine" ? MARINE_BUMP : k === "bane" ? BANE_BUMP : LING_BUMP) * 2;
+                g.spread = Math.sqrt(n) * body * (g.surrounded ? 0.9 : g.baneNear ? 2 : 1.3);
+                /* marine groups don't loiter: standing 3 s with nothing in reach, the
+                 * group attack-moves on the nearest zerg (unless outnumbered), else
+                 * heads for the eggs, else patrols */
+                g.order = null;
+                if (k === "marine" && !g.surrounded) {
+                    var idle = 0;
+                    for (var ij = 0; ij < g.members.length; ij++) idle += g.members[ij].idleT || 0;
+                    if (idle / g.members.length > 3) {
+                        var oz = nearestZerg(g.cx, g.cy), oe = nearestEgg(g.cx, g.cy);
+                        var outn = (countKind("ling") + countKind("bane")) * 0.5 > 2 * countKind("marine");
+                        var ot = (oz && !outn) ? oz : oe ? oe : null;
+                        if (!ot) { patrolWaypoint(); ot = { x: patrolX, y: patrolY }; }
+                        g.order = Math.atan2(ot.y - g.cy, ot.x - g.cx);
+                    }
+                }
             });
         });
     }
@@ -1399,9 +1433,58 @@ var Swarm = (function () {
             } else dir = Math.atan2(T.y - g.cy, T.x - g.cx);
         }
         var vx = Math.cos(dir) + dx / d * pull, vy = Math.sin(dir) + dy / d * pull;
-        if (g.baneNear && d < g.spread) { vx -= dx / d * 0.7; vy -= dy / d * 0.7; }   /* split: open the box */
+        if (g.baneNear && !g.surrounded && d < g.spread) { vx -= dx / d * 0.7; vy -= dy / d * 0.7; }   /* split: open the box */
+        if (g.surrounded) { c.want = Math.atan2(dy, dx); return { go: 0, pull: pull }; }   /* back to back: close in, hold */
+        if (g.order !== null && g.order !== undefined) {   /* idle group: move out on its order */
+            c.want = Math.atan2(Math.sin(g.order) + dy / d * pull, Math.cos(g.order) + dx / d * pull);
+            return { go: 0.7, pull: pull };
+        }
         c.want = Math.atan2(vy, vx);
         return { go: g.go, pull: pull };
+    }
+
+    /* Commander hit squads (marineHitSquads, marine skill 50%+): once the zerg are
+     * spent from throwing themselves at the terran ball - below hitSquadTrigger of
+     * their cap, or terran clearly on top - the 4 healthiest marines of the biggest
+     * group break off, stim, and hunt: eggs first (the zerg's future), then the
+     * nearest zerg. They rejoin when down to one, when the zerg recover, or after
+     * 40 s. One squad at a time. */
+    var hitSquad = null, hitSquadT = 0;
+    function terranCommander(dt) {
+        hitSquadT -= dt;
+        if (hitSquad) {
+            hitSquad.t += dt;
+            hitSquad.members = hitSquad.members.filter(function (m) { return !m.dead; });
+            var zLeft = (countKind("ling") + countKind("bane")) / Math.max(1, MAX_LINGS + MAX_BANES);
+            if (hitSquad.members.length < 2 || hitSquad.t > 40 || zLeft > (+TB.hitSquadTrigger || 0.45) + 0.2) {
+                hitSquad.members.forEach(function (m) { m.hitSquad = null; });
+                hitSquad = null;
+                hitSquadT = 8;   /* a breather before the next one */
+                return;
+            }
+            if ((hitSquad.retarget -= dt) <= 0) {
+                hitSquad.retarget = 1;
+                var cx = 0, cy = 0;
+                hitSquad.members.forEach(function (m) { cx += m.x; cy += m.y; });
+                cx /= hitSquad.members.length; cy /= hitSquad.members.length;
+                hitSquad.target = nearestEgg(cx, cy) || nearestZerg(cx, cy);
+            }
+            return;
+        }
+        if (!TB.marineHitSquads || !MARINE_CG || marineSkill() < 0.5 || hitSquadT > 0) return;
+        var zs = (countKind("ling") + countKind("bane")) / Math.max(1, MAX_LINGS + MAX_BANES);
+        if (countKind("marine") < 6 || !(zs < (+TB.hitSquadTrigger || 0.45) || shellShare > 0.65)) return;
+        if (!countKind("ling") && !countKind("bane") && !countKind("egg")) return;
+        var big = null;
+        cgSets.marine.forEach(function (g) { if (!big || g.members.length > big.members.length) big = g; });
+        if (!big || big.members.length < 5) return;
+        var pick = big.members.filter(function (m) { return !m.dead && m.hp >= MARINE_HP * 0.8; })
+                              .sort(function (a, b) { return b.hp - a.hp; })
+                              .slice(0, Math.max(2, Math.round(+TB.hitSquadSize || 4)));
+        if (pick.length < 2) return;
+        hitSquad = { members: pick, t: 0, retarget: 0, target: null };
+        pick.forEach(function (m) { m.hitSquad = hitSquad; stimMarine(m, marineSkill()); });
+        cgT = 0;   /* regroup now so the squad becomes its own group */
     }
 
     var marineCtrlT = 0;
@@ -1750,6 +1833,20 @@ var Swarm = (function () {
      * half of both, so it doesn't flicker at the threshold. A cornered swarm (marines
      * already inside 70% of their range) fights at half odds rather than run, and a
      * berserk baneling in the swarm always sends it in. */
+    /* ling attack cry: once when a new attack starts across the whole swarm
+     * (nobody attacking -> someone attacking), at most every 8 game-seconds -
+     * not every time a stretched swarm's clusters split and re-commit */
+    var zergWasAttacking = false, attackCryT = 0;
+    function attackCry() {
+        var on = false;
+        for (var i = 0; i < units.length; i++) {
+            var u = units[i];
+            if (!u.dead && u.attacking && (u.kind === "ling" || u.kind === "bane")) { on = true; break; }
+        }
+        if (on && !zergWasAttacking && simT >= attackCryT) { sound("lingAttack"); attackCryT = simT + 8; }
+        zergWasAttacking = on;
+    }
+
     function updateSwarm() {
         var zs = [], i, j;
         eggCx = 0; eggCy = 0; eggN = 0;
@@ -1874,7 +1971,7 @@ var Swarm = (function () {
                 var nv = Math.round(cb.length * OV_VANGUARD);
                 for (i = 0; i < cb.length; i++) cb[i].vanguard = i < nv;
             }
-            if (attack && !committed) sound("lingAttack");
+
             var musterT = zergSkill() >= 0.3 ? (+TB.ovMuster || 0) : 0;
             for (i = 0; i < zs.length; i++) {
                 if (zs[i].cluster !== k) continue;
@@ -1963,6 +2060,12 @@ var Swarm = (function () {
             }
             /* control group: move on the group's consensus (shooting stays ours);
              * a bane about to blow or a hunt is the only reason to act alone */
+            if (c.hitSquad && c.hitSquad.target && !c.hitSquad.target.dead && !c.huntTarget) {
+                var ht = c.hitSquad.target, htd = dist(ht, c.x, c.y);
+                if (htd > MARINE_RANGE * 0.75) { c.want = Math.atan2(ht.y - c.y, ht.x - c.x); c.moveMul = 1; }
+                else if (c.moveMul > 0.3 && !(c.stimT > 0)) c.moveMul = 0;   /* in range: plant and shoot */
+            }
+            c.idleT = (c.moveMul < 0.15 && !c.shootTarget && (c.aimDist || 1e9) > MARINE_RANGE * 1.2) ? (c.idleT || 0) + dt : 0;
             c.intent = c.want; c.intentMul = c.moveMul;
             if (MARINE_CG && c.cgGroup && c.entered && !(c.deployT > 0) && !c.huntTarget) {
                 var cb0 = nearestKind(c.x, c.y, "bane");
@@ -2028,6 +2131,11 @@ var Swarm = (function () {
                     dist(c.aimTarget, c.x, c.y) < dist(tgt, c.x, c.y) * 1.35) tgt = c.aimTarget;
                 c.aimTarget = tgt;
                 c.aim = tgt ? Math.atan2(tgt.y - c.y, tgt.x - c.x) : c.heading;
+                /* nothing in sight: a marine in a group watches outward, away from the
+                 * group's centre, so the group covers every side (not facing in) */
+                var og = c.cgGroup;
+                if ((!tgt || dist(tgt, c.x, c.y) > MARINE_RANGE * 2.5) && og && og.n > 1 && og.go < 0.2 &&   /* no zerg within vision (2.5x range) */
+                    (c.x - og.cx) * (c.x - og.cx) + (c.y - og.cy) * (c.y - og.cy) > 36) c.aim = Math.atan2(c.y - og.cy, c.x - og.cx);
                 c.aimDist = tgt ? dist(tgt, c.x, c.y) : 1e9;
             }
             if (MARINE_UPRIGHT) {
@@ -2059,6 +2167,12 @@ var Swarm = (function () {
                         var ndx = nb.x - c.x, ndy = nb.y - c.y;
                         if (ndx * ndx + ndy * ndy > gr2) continue;
                         nc += Math.cos(nb.heading); ns += Math.sin(nb.heading);
+                    }
+                    /* grouped and nothing in sight: face outward from the group's centre */
+                    var og2 = c.cgGroup;
+                    if (og2 && og2.n > 1 && og2.go < 0.2 && (c.aimDist || 1e9) > MARINE_RANGE * 2.5) {
+                        var ox = c.x - og2.cx, oy = c.y - og2.cy;
+                        if (ox * ox + oy * oy > 36) { nc = ox; ns = oy; }
                     }
                     var nl = Math.sqrt(nc * nc + ns * ns) || 1;
                     nc /= nl; ns /= nl;
@@ -2721,6 +2835,8 @@ var Swarm = (function () {
         /* swarm-level attack decisions, then move everyone */
         updateSwarm();
         marineController(dt);
+        attackCry();
+        terranCommander(dt);
         cgFrame(dt);
         cgProngs();
         for (var i = 0; i < units.length; i++) step(units[i], dt);
@@ -2979,6 +3095,7 @@ var Swarm = (function () {
         zergWipeT = 0;
         zergWasAlive = true;
         simT = 0; lastDeathT = 0;
+        hitSquad = null; hitSquadT = 0;
         shellShare = 0.5; marineComeback = false; zergComeback = false; zergBoostLeft = 0; zergBrokenT = 0;
         marineTimer = 3;
         wavePending = 0;

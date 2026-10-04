@@ -200,6 +200,9 @@ both.
 | `marineGroupMode` | true | Control groups: marines move as up to marineCgMax groups (by proximity), each on one shared move like a human with hotkeys; off = every marine micros alone. | Visible |
 | `marineCgMax` | 5 | marineGroupMode: most control groups the marines split into. | Visible |
 | `marineCgSize` | 6 | marineGroupMode: marines per control group (more marines = more groups, up to marineCgMax). | Visible |
+| `marineHitSquads` | true | Commander hit squads (control groups, 50%+ skill): once the zerg are weakened, the healthiest marines break off, stim and hunt - eggs first, then the nearest zerg. | Visible |
+| `hitSquadSize` | 4 | Marines in a hit squad. | Visible |
+| `hitSquadTrigger` | 0.45 | Send a hit squad once the zerg are below this share of their cap (or terran is clearly on top). | Visible |
 | `marineMicro` | true | Per-marine micro (50%+ skill), like SC2 bots: stutter-step back while the gun cools down, fire when ready, and split away from banelings. | Visible |
 | `marineBaneHunt` | true | The 1-2 closest healthy marines (60%+ skill) stim forward and shoot a bane that isn't charging - in the open or stuck among them - keeping out of its splash. | Visible |
 | `marineStimAttack` | true | A healthy marine group (3+, 60%+ skill) in a fight it can win stims together and pushes in hard. | Visible |
