@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="app/images/ling1.png"><img src="app/images/ling1.png" alt="Clockling zergling" width="200"></a>
+</p>
+
 # Clockling
 | | **Web** - `clockling.html` | **ESP32** - `targets/esp32/` |
 |---|---|---|
