@@ -15,8 +15,8 @@ var SETTINGS = {
     timeZone: "auto",      /* web only: IANA zone (e.g. "Europe/London") or "auto" = this device */
 
     /* battle */
-    gameSpeed: 1.5,        /* speed multiplier */
-    unitScale: 1,          /* population multiplier (max units, wave sizes, spawn rate) */
+    gameSpeed: 5,        /* speed multiplier */
+    unitScale: 5,          /* population multiplier (max units, wave sizes, spawn rate) */
     unitCount: 10,         /* starting lings */
     unitSpeed: 1.0,        /* movement speed multiplier for every unit */
     showHealthBars: true,
@@ -26,10 +26,10 @@ var SETTINGS = {
     fieldSize: 1280,       /* web only: battlefield short side in logical px (smaller = bigger units) */
 
     /* audio (web only) */
-    soundOn: true,
+    soundOn: false,
     soundVolume: 70,       /* percent */
     soundRate: 1,          /* how often chatter and voicelines fire (0 = never, 2 = twice as often) */
-    musicTrack: 0,         /* 0 off, 1 Zerg, 2 Protoss, 3 Terran 1, 4 Terran 2, 5 Terran 3 */
+    musicTrack: 3,         /* 0 off, 1 Zerg, 2 Protoss, 3 Terran 1, 4 Terran 2, 5 Terran 3 */
     musicVolume: 35,       /* percent */
 
     /* device */

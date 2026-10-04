@@ -48,6 +48,7 @@ ESP32_DEFAULTS = {
     "eggHatchMult": 1,
     "clockBehind": False,
     "gameSpeed": 1,
+    "unitScale": 1,   # web default is 5x; the 240x320 panel stays at 1x population
 }
 
 

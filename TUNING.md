@@ -106,6 +106,8 @@ both.
 | `eggHatchMult` | 1.5 | Egg hatch acceleration multiplier. | Advanced |
 | `eggHp` | 100 | Egg hit points (eggs act as a tanky shield). | Visible |
 | `eggDamageMult` | 0.001 | Fraction of normal damage an egg takes per hit (0.001 = 0.1%). | Visible |
+| `eggOverlap` | 0 | How much a new egg may overlap another (0 = never touch, 1 = may stack). | Visible |
+| `eggMarineClearance` | 0.4 | Eggs are laid at least this far from any marine (fraction of the board's short side), on the far side from the marines. | Visible |
 | `morphAge` | 4 | Lings must live this long before morphing. | Visible |
 | `morphCooldown` | 2 | Seconds between successful morphs. | Visible |
 | `morphChancePerSec` | 1 | Chance per second to start morphing. | Visible |
@@ -200,8 +202,8 @@ both.
 | `clockBehind` | true | Draw the clock behind the units. | both |
 | `clockScale` | 0.55 | Clock size. | web |
 | `timeZone` | auto | Time zone (auto = this device). | web |
-| `gameSpeed` | 1.5 | Speed multiplier. | both |
-| `unitScale` | 1 | Unit multiplier (population, waves, spawn rate). | both |
+| `gameSpeed` | 5 | Speed multiplier. | both |
+| `unitScale` | 5 | Unit multiplier (population, waves, spawn rate). | both |
 | `unitCount` | 10 | Starting zerglings. | both |
 | `unitSpeed` | 1 | Movement speed multiplier for every unit. | both |
 | `showHealthBars` | true | Show unit health bars. | both |
@@ -209,10 +211,10 @@ both.
 | `showScore` | false | Score bar along the top. | web |
 | `gore` | true | Gore mode: splats and corpses linger (splat 16.2 s, corpse 19.2 s). | both |
 | `fieldSize` | 1280 | Battlefield size (smaller = bigger units). | web |
-| `soundOn` | true | Play sound effects. | web |
+| `soundOn` | false | Play sound effects. | web |
 | `soundVolume` | 70 | Sound volume. | web |
 | `soundRate` | 1 | How often chatter and voicelines play (0 = never). | web |
-| `musicTrack` | 0 | Background music. | web |
+| `musicTrack` | 3 | Background music. | web |
 | `musicVolume` | 35 | Music volume. | web |
 | `landscape` | true | Horizontal screen (off = vertical). | ESP32 |
 

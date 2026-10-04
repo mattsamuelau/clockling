@@ -84,6 +84,7 @@ var Swarm = (function () {
     /* gore mode (SETTINGS.gore, on by default): splats and corpses linger.
      * Timings come from TUNING.goreSplatLife / TUNING.goreCorpseLife. */
     var GORE_SPLAT_LIFE, GORE_CORPSE_LIFE;
+    var EGG_OVERLAP, EGG_MARINE_CLEAR;
     function splatLife() { return SETTINGS.gore !== false ? GORE_SPLAT_LIFE : SPLAT_LIFE; }
     function corpseLife() { return SETTINGS.gore !== false ? GORE_CORPSE_LIFE : CORPSE_LIFE; }
     var LING_SPLAT = ["#e02828", "#ff6b4a"];
@@ -98,6 +99,8 @@ var Swarm = (function () {
         BANE_W = TUNING.baneW;
         MARINE_W = TUNING.marineW;
         EGG_W = TUNING.eggW;
+        EGG_OVERLAP = Math.max(0, Math.min(1, TUNING.eggOverlap || 0));
+        EGG_MARINE_CLEAR = Math.max(0, TUNING.eggMarineClearance || 0);
         EGG_HP = TUNING.eggHp;
         EGG_DMG_MULT = TUNING.eggDamageMult;
         LING_BUMP = TUNING.lingBump;
@@ -548,8 +551,24 @@ var Swarm = (function () {
     /* The hive: where eggs are laid and threatened lings regroup. Keep the current
      * eggs / swarm position while it is safe, otherwise move to the spot (on a 3x3
      * grid) farthest from any marine. */
+    /* how far from any marine the hive (and so every new egg) should be */
+    function eggClearance() {
+        return Math.max(threatRadius() * 1.1, EGG_MARINE_CLEAR * Math.min(W, H));
+    }
+
+    /* centroid of the live marines (null if none) */
+    function marineCentroid() {
+        var x = 0, y = 0, n = 0;
+        for (var i = 0; i < units.length; i++) {
+            var c = units[i];
+            if (c.kind !== "marine" || c.dead || c.hp <= 0) continue;
+            x += c.x; y += c.y; n++;
+        }
+        return n ? { x: x / n, y: y / n } : null;
+    }
+
     function updateHive(zx, zy, zn) {
-        var safe = threatRadius() * 1.1;
+        var safe = eggClearance();
         if (eggN > 0 && nearestMarineDist(eggCx, eggCy) > safe) { hiveX = eggCx; hiveY = eggCy; return; }
         if (zn > 0 && nearestMarineDist(zx, zy) > safe) { hiveX = zx; hiveY = zy; return; }
         if (countKind("marine") === 0) {
@@ -557,20 +576,49 @@ var Swarm = (function () {
             else { hiveX = W / 2; hiveY = H / 2; }
             return;
         }
-        var best = -1;
+        /* farthest spot from the nearest marine, nudged to the far side of the
+         * marine group as a whole */
+        var best = -1, mc = marineCentroid();
         for (var gi = 0; gi < 3; gi++) {
             for (var gj = 0; gj < 3; gj++) {
                 var gx = W * (gi + 0.5) / 3, gy = H * (gj + 0.5) / 3;
                 var gd = nearestMarineDist(gx, gy);
+                if (mc) gd += 0.5 * Math.sqrt((gx - mc.x) * (gx - mc.x) + (gy - mc.y) * (gy - mc.y));
                 if (gd > best) { best = gd; hiveX = gx; hiveY = gy; }
             }
         }
     }
 
-    /* lay a new egg at the hive, so hatchlings start inside the swarm */
+    /* distance from (x,y) to the nearest live egg other than `self` */
+    function nearestEggDist(x, y, self) {
+        var bd = 1e18;
+        for (var i = 0; i < units.length; i++) {
+            var c = units[i];
+            if (c === self || c.kind !== "egg" || c.dead) continue;
+            var dx = c.x - x, dy = c.y - y, d2 = dx * dx + dy * dy;
+            if (d2 < bd) bd = d2;
+        }
+        return Math.sqrt(bd);
+    }
+
+    /* lay a new egg at the hive, so hatchlings start inside the swarm. Eggs keep
+     * EGG_W * (1 - eggOverlap) apart and stay eggClearance() from marines; the
+     * search ring grows outward until a spot fits, else the best spot found wins. */
     function placeEggAtHive(egg) {
-        egg.x = Math.max(16, Math.min(W - 16, hiveX + rand(-22, 22)));
-        egg.y = Math.max(16, Math.min(H - 16, hiveY + rand(-22, 22)));
+        var minD = EGG_W * (1 - EGG_OVERLAP), clear = eggClearance();
+        var bx = hiveX, by = hiveY, bs = -1e9;
+        for (var t = 0; t < 40; t++) {
+            var a = rand(0, 6.283), r = rand(0, 22 + t * Math.max(4, minD * 0.5));
+            var x = Math.max(16, Math.min(W - 16, hiveX + Math.cos(a) * r));
+            var y = Math.max(16, Math.min(H - 16, hiveY + Math.sin(a) * r));
+            var spacing = minD > 0 ? Math.min(1, nearestEggDist(x, y, egg) / minD) : 1;
+            var safety = clear > 0 ? Math.min(1, nearestMarineDist(x, y) / clear) : 1;
+            if (spacing >= 1 && safety >= 1) { bx = x; by = y; break; }
+            var score = spacing * 2 + safety - r * 0.001;   /* not stacking matters most */
+            if (score > bs) { bs = score; bx = x; by = y; }
+        }
+        egg.x = bx;
+        egg.y = by;
     }
 
     function pendingLings() {

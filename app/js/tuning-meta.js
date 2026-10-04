@@ -29,6 +29,8 @@ var TUNING_META = {
         eggHatchMult: { class: "Advanced", default: 1.5, meaning: "Egg hatch acceleration multiplier" },
         eggHp: { class: "Visible", default: 100, meaning: "Egg hit points (eggs act as a tanky shield)", only: "web" },
         eggDamageMult: { class: "Visible", default: 0.001, meaning: "Fraction of normal damage an egg takes per hit (0.001 = 0.1%)", only: "web", min: 0.0001, max: 1, step: 0.0005 },
+        eggOverlap: { class: "Visible", default: 0, meaning: "How much a new egg may overlap another (0 = never touch, 1 = may stack)", only: "web", min: 0, max: 1, step: 0.05 },
+        eggMarineClearance: { class: "Visible", default: 0.4, meaning: "Eggs are laid at least this far from any marine (fraction of the board's short side), on the far side from the marines", only: "web", min: 0, max: 1, step: 0.05 },
         morphAge: { class: "Visible", default: 4, meaning: "Lings must live this long before morphing" },
         morphCooldown: { class: "Visible", default: 2, meaning: "Seconds between successful morphs" },
         morphChancePerSec: { class: "Visible", default: 1, meaning: "Chance per second to start morphing" },
@@ -131,7 +133,7 @@ var TUNING_META = {
     groups: {
         "Zerg Rules": ["attackGroupSize", "lingFleeSpeedMult", "berserkBanes", "berserkUntilDeath", "attackOdds", "allyRadius", "marineScanRadius", "marineGroupRadius", "berserkCatchRadius"],
         "Zerg Units": ["maxLings", "maxBanes", "lingHp", "baneHp", "lingBiteDamage", "lingBiteInterval", "baneSplashDamage", "baneSplashR", "berserkSpeedMult"],
-        "Zerg Lifecycle": ["respawnInterval", "respawnBatch", "eggTimeMin", "eggTimeMax", "eggHatchMult", "eggHp", "eggDamageMult", "morphAge", "morphCooldown", "morphChancePerSec"],
+        "Zerg Lifecycle": ["respawnInterval", "respawnBatch", "eggTimeMin", "eggTimeMax", "eggHatchMult", "eggHp", "eggDamageMult", "eggOverlap", "eggMarineClearance", "morphAge", "morphCooldown", "morphChancePerSec"],
         "Terran Units": ["maxMarines", "marineHp", "marineShootDamage", "marineShootInterval", "marineRangeMult"],
         "Terran Spawning": ["marineEntrySpeed", "marineEntryDepth", "marineSpawnRateMult", "marineWaveLo", "marineWaveHi", "marineWaveSizeLo", "marineWaveSizeHi", "marineRespawnLo", "marineRespawnHi", "marineRespawnSizeLo", "marineRespawnSizeHi", "marineSpawnGap", "marineSpawnInset"],
         "Terran Behavior": ["marineTactics", "marineKiteFrac", "marineSightMult", "marineFleeHpPct", "marineGroupWeight", "marineAwayWeight", "marineTurnRate", "marineHealPct", "marineHealInterval"],
