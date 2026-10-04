@@ -1,3 +1,6 @@
+"""Write the values table below into the TUNING block of app/js/swarm.js.
+Ignores arguments: running it rewrites swarm.js. Keep the table equal to the defaults."""
+import os
 import re
 
 vals = {
@@ -31,7 +34,7 @@ vals = {
     "lingBump": 10, "baneBump": 12, "marineBump": 12,
 }
 
-path = r'd:\git\clockling\app\js\swarm.js'
+path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app', 'js', 'swarm.js')
 src = open(path, encoding='utf-8').read()
 
 def fmt(v):

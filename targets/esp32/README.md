@@ -8,7 +8,7 @@ The battle sim + clock running natively on the Freenove ESP32 Display
 ```bash
 pip install platformio
 cd targets/esp32
-pio run -e fnk0114b -t upload      # board on COM7 (edit platformio.ini if different)
+pio run -e fnk0114b -t upload      # port auto-detected (add upload_port = COMx to pin one)
 pio device monitor -e fnk0114b     # fps / heap / IP log every 10 s
 ```
 
@@ -23,6 +23,19 @@ pio device monitor -e fnk0114b     # fps / heap / IP log every 10 s
 - **Hold BOOT** for 2 s to reopen the setup hotspot.
 - **Orientation:** the `landscape` checkbox (Display) switches between vertical 240x320 and
   horizontal 320x240 live; the battle restarts for the new shape.
+- **Clock:** position (top, middle, bottom or a corner), in front of or behind the units,
+  24-hour, seconds; time zone is a POSIX TZ string (UK by default).
+
+## How this relates to the web version
+
+The web app (`clockling.html` at the repo root) is the reference: `app/js/swarm.js` holds the
+rules and TUNING defaults, `app/js/settings.js` the display defaults. This firmware is a
+port. Its defaults are *generated* from those files, so changing a default there and running
+`tools/gen_assets.py` updates both. Its rules are a hand port in `src/sim.cpp` (same function
+names and order as `swarm.js`), so behaviour changes must be made in both places.
+
+The ESP32 leaves out web-only extras (kill marks, score bar, clock size, battlefield size)
+and adds device settings (brightness, frame cap, orientation).
 
 ## How it's put together
 

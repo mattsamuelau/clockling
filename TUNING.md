@@ -1,17 +1,25 @@
-# TUNING reference
+# Settings & tuning reference
 
-Every battle-sim knob lives in `var TUNING = { ... }` at the top of `app/js/swarm.js`.
-The preview panel reads these via `?tun_<key>=<number>` URL overrides; defaults are the
-values baked into `swarm.js`.
+Two files hold every default, shared by the web app and the ESP32 firmware:
 
-**Visibility classes** (for the widget settings UI):
+- **`app/js/swarm.js`** - `var TUNING = { ... }`: the battle rules and balance (this file).
+- **`app/js/settings.js`** - `var SETTINGS = { ... }`: clock, display and battle options.
+- **`app/js/tuning-meta.js`** - the label, meaning, Visible/Advanced class and options for
+  every key. Both settings screens are generated from it.
 
-- **Visible** — user-facing setting in the main settings screen.
-- **Advanced** — hidden in an "Advanced" (collapsible) section by default, but still
-  editable, saveable, and revertable.
+How values are layered:
 
-> Revert = restore this key to the baked default. Save = persist to local storage
-> (`localStorage` in web; platform storage on Android/Windows).
+- **Web (`clockling.html`)**: defaults, then what you saved in this browser (localStorage),
+  then a shared link's `#s=...` settings. Change anything in the settings drawer and it
+  applies live and saves automatically. *Reset all* returns to the defaults.
+- **ESP32**: defaults generated from these files (see `targets/esp32/tools/gen_assets.py`,
+  which scales sizes and radii by 0.75 for the 240x320 panel), then values saved on the
+  device (NVS) from its settings page at `http://clockling.local`.
+- **Testing**: `?tun_<key>=<number>` in the URL overrides a TUNING value at load (used by
+  headless test harnesses).
+
+**Visibility classes**: **Visible** keys are shown up front; **Advanced** ones sit in the
+collapsible advanced section. All are editable and revertable.
 
 ## Parameter tiers
 
@@ -141,28 +149,32 @@ Settings are grouped into three tiers:
 | `retargetInterval` | 0.5 | Lings/banes retarget this often (anti-jitter). | Advanced |
 | `aimInterval` | 0.3 | Marine re-aims this often. | Advanced |
 
-## SETTINGS (not `TUNING`) — in `app/js/settings.js`
+## SETTINGS (not `TUNING`) - in `app/js/settings.js`
 
-| Key | Default | Meaning |
-|---|---|---|
-| `hour24` | true | 24h vs 12h clock. |
-| `showSeconds` | true | Show seconds. |
-| `showClock` | true | Show the clock block. |
-| `showHealthBars` | true | Show unit health bars. |
-| `landscape` | true | Horizontal screen (on) or vertical (off). ESP32 rotates the panel live and restarts the battle; the web preview swaps `mapW`/`mapH`. |
-| `unitCount` | 10 | Initial unit count on first load. |
-| `unitSpeed` | 1.0 | Global unit movement speed multiplier. |
+| Key | Default | Meaning | Applies to |
+|---|---|---|---|
+| `showClock` | true | Show the clock. | both |
+| `hour24` | true | 24-hour time (off = 12-hour). | both |
+| `showSeconds` | false | Show seconds. | both |
+| `clockPosition` | 0 | 0 top, 1 middle, 2 bottom, 3 top left, 4 top right, 5 bottom left, 6 bottom right. | both |
+| `clockBehind` | false | Draw the clock behind the units instead of on top. | both |
+| `clockScale` | 1 | Clock size multiplier. | web |
+| `timeZone` | auto | IANA zone (e.g. `Europe/London`) or `auto`. The ESP32 has its own POSIX TZ setting. | web |
+| `gameSpeed` | 1 | Time multiplier (the Time slider). | both |
+| `unitScale` | 1 | Population multiplier: max units, wave sizes, spawn rate (the Units slider). | both |
+| `unitCount` | 10 | Starting zerglings. | both |
+| `unitSpeed` | 1.0 | Movement speed multiplier for every unit. | both |
+| `showHealthBars` | true | Show unit health bars. | both |
+| `showKills` | true | One yellow mark per zergling a marine has killed. | web |
+| `showScore` | false | Zerg vs terran supply bar along the top. | web |
+| `fieldSize` | 320 | Battlefield short side in logical px (Small 240, Medium 320, Large 480, Huge 640). Smaller = bigger units. | web |
+| `landscape` | true | Horizontal 320x240 panel (off = vertical 240x320). The web app always fills its window. | ESP32 |
 
-## Widget size presets
+ESP32-only device settings (`brightness`, `fpsCap`) are defined in `targets/esp32/tools/gen_assets.py`.
 
-The preview exposes three named sizes that set `mapW`/`mapH` (and, in the future, default
-unit counts per size):
+## Battlefield size (web)
 
-| Preset | `mapW` × `mapH` |
-|---|---|
-| Small | 432 × 432 |
-| Medium | 864 × 864 |
-| Large | 1296 × 1296 |
-
-> Per-size unit defaults (more units on bigger maps) are a deferred feature — see the
-> "Resolution presets" note at the bottom of `BRIEF.md`.
+The web battlefield always fills the window. `fieldSize` sets how many logical pixels the
+shorter side spans; the sim runs in those logical pixels and is drawn scaled up, crisp at any
+resolution. Medium (320) matches the ESP32 panel's proportions, so a battle looks the same on
+both.

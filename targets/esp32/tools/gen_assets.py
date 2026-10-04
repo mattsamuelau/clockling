@@ -28,8 +28,6 @@ DROP_KEYS = {"mapW", "mapH"}
 
 # ESP32-only settings: key -> (default, class, group, meaning)
 EXTRA = {
-    "gameSpeed": (1, "Visible", "Game", "Game speed multiplier (preview 'Time' dropdown)"),
-    "unitScale": (1, "Visible", "Game", "Unit population multiplier (preview 'Units' dropdown)"),
     "brightness": (100, "Visible", "Display", "Backlight brightness (%)"),
     "fpsCap": (30, "Advanced", "Display", "Max frames per second (lower = cooler, less power)"),
 }
@@ -43,9 +41,8 @@ SCALED = {k: UNIT_SCALE for k in ["lingW", "baneW", "marineW", "eggW", "lingBump
                                    "marineBump", "splatBase"]}
 SCALED.update({k: RADIUS_SCALE for k in ["baneSplashR", "allyRadius", "marineScanRadius",
                                           "marineGroupRadius", "berserkCatchRadius"]})
-ESP32_DEFAULTS = {"showSeconds": False}
-SETTINGS_GROUP = {"hour24": "Display", "showSeconds": "Display", "showClock": "Display", "landscape": "Display", "showHealthBars": "Display",
-                  "unitCount": "Game", "unitSpeed": "Game"}
+ESP32_DEFAULTS = {}
+
 
 
 def c_str(s):
@@ -97,25 +94,29 @@ def gen_tuning():
             print("note: %s default differs (swarm.js=%s, tuning-meta=%s); using swarm.js"
                   % (k, v, m.get("default")), file=sys.stderr)
         entries.append((k, v, isinstance(v, bool), m["class"] == "Advanced",
-                        group_of.get(k, "Other"), m["meaning"]))
+                        group_of.get(k, "Other"), m["meaning"], ""))
     for k, v in settings.items():
         m = meta["settings"].get(k, {"class": "Advanced", "meaning": k})
+        if m.get("only") == "web" or isinstance(v, str):
+            continue   # web-only (e.g. timeZone, fieldSize); the ESP32 has its own POSIX TZ
+        opts = "|".join(m["options"]) if isinstance(m.get("options"), list) else ""
         entries.append((k, v, isinstance(v, bool), m["class"] == "Advanced",
-                        SETTINGS_GROUP.get(k, group_of.get(k, "Other")), m["meaning"]))
+                        group_of.get(k, "Other"), m["meaning"], opts))
     for k, (v, cls, g, meaning) in EXTRA.items():
-        entries.append((k, v, isinstance(v, bool), cls == "Advanced", g, meaning))
+        entries.append((k, v, isinstance(v, bool), cls == "Advanced", g, meaning, ""))
 
     # group display order: web groups, then anything new
-    order = ["Game", "Display"] + [g for g in meta["groups"] if g not in ("Display", "Map")]
+    order = ["Clock", "Battle", "Display"] + [g for g in meta["groups"] if g not in ("Clock", "Battle", "Display", "Map")]
     for e in entries:
         if e[4] not in order:
             order.append(e[4])
 
     enum = ",\n".join("  T_%s" % e[0] for e in entries)
     rows = ",\n".join(
-        "  {%s, %s, %d, %d, %d, %s}" % (
-            c_str(k), fmt_float(float(v)), int(b), int(adv), order.index(g), c_str(meaning))
-        for (k, v, b, adv, g, meaning) in entries)
+        "  {%s, %s, %d, %d, %d, %s, %s}" % (
+            c_str(k), fmt_float(float(v)), int(b), int(adv), order.index(g), c_str(meaning),
+            c_str(opts) if opts else "nullptr")
+        for (k, v, b, adv, g, meaning, opts) in entries)
     groups = ", ".join(c_str(g) for g in order)
     header = """// ---- tuning (generated from app/js/swarm.js + settings.js + tuning-meta.js)
 enum TKey : uint8_t {
@@ -129,6 +130,7 @@ struct TMeta {
   uint8_t advanced;
   uint8_t group;      // index into TGROUPS
   const char* meaning;
+  const char* opts;   // dropdown labels "A|B|C" (value = index), or nullptr
 };
 extern const TMeta TMETA[T_COUNT];
 extern const char* const TGROUPS[];
