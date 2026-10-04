@@ -1,0 +1,22 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Clockling: run",
+            "detail": "Serve the app at http://127.0.0.1:8080/clockling.html",
+            "type": "shell",
+            "command": "node server.js",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Clockling: run on port 8090",
+            "detail": "Same, for when port 8080 is taken: http://127.0.0.1:8090/clockling.html",
+            "type": "shell",
+            "command": "node server.js",
+            "options": { "env": { "PORT": "8090" } },
+            "isBackground": true,
+            "problemMatcher": []
+        }
+    ]
+}
