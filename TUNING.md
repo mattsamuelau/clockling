@@ -172,6 +172,7 @@ Settings are grouped into three tiers:
 | `showHealthBars` | true | Show unit health bars. | both |
 | `showKills` | true | One yellow mark per zergling a marine has killed. | web |
 | `showScore` | false | Zerg vs terran supply bar along the top. | web |
+| `gore` | true | Gore mode: splats last 21.21 s and corpses 19.2 s (overrides `splatLife` / `corpseLife`). | both |
 | `fieldSize` | 1280 | Battlefield short side in logical px (Small 480, Medium 640, Large 960, Huge 1280). Smaller = bigger units. | web |
 | `landscape` | true | Horizontal 320x240 panel (off = vertical 240x320). The web app always fills its window. | ESP32 |
 

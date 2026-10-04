@@ -110,6 +110,7 @@ var TUNING_META = {
         showHealthBars: { class: "Visible", default: true, meaning: "Show unit health bars" },
         showKills: { class: "Visible", default: true, meaning: "Marine kill marks (one per ling killed)", only: "web" },
         showScore: { class: "Visible", default: false, meaning: "Score bar along the top", only: "web" },
+        gore: { class: "Visible", default: true, meaning: "Gore mode: splats and corpses linger (splat 21.21 s, corpse 19.2 s)" },
         fieldSize: { class: "Visible", default: 1280, meaning: "Battlefield size (smaller = bigger units)", only: "web",
                      options: { "480": "Small", "640": "Medium", "960": "Large", "1280": "Huge" } },
         landscape: { class: "Visible", default: true, meaning: "Horizontal screen (off = vertical)", only: "esp32" }
@@ -127,7 +128,7 @@ var TUNING_META = {
         "Visuals": ["lingW", "baneW", "marineW", "eggW", "lingBump", "baneBump", "marineBump", "splatLife", "splatBase", "splatFadeStart", "corpseLife", "marineSplatScale", "baneSplatScale", "retargetInterval", "aimInterval"],
         "Map": ["mapW", "mapH"],
         "Clock": ["showClock", "hour24", "showSeconds", "clockPosition", "clockBehind", "clockScale", "timeZone"],
-        "Battle": ["gameSpeed", "unitScale", "fieldSize", "showHealthBars", "showKills", "showScore", "unitCount", "unitSpeed"],
+        "Battle": ["gameSpeed", "unitScale", "fieldSize", "showHealthBars", "showKills", "showScore", "gore", "unitCount", "unitSpeed"],
         "Display": ["landscape"]
     }
 };
