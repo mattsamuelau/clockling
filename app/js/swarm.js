@@ -992,9 +992,8 @@ var Swarm = (function () {
     function marineFootwork(S) {
         return S < 0.5 ? lerp(0.6, 1, S / 0.5) : lerp(1, MARINE_SKILL_TOP_SPEED, (S - 0.5) / 0.5);
     }
-    /* kiting speed: marineKiteSpeed for green marines, rising to full footwork at
-     * max skill, so elite marines can actually open a gap on chasing lings */
-    function marineKiteMul(S) { return MARINE_ELITE_KITE ? lerp(MARINE_KITE_SPEED, 1, S * S) : MARINE_KITE_SPEED; }
+    /* kiting speed: marineKiteSpeed at every skill (the user's "short hops") */
+    function marineKiteMul(S) { return MARINE_KITE_SPEED; }   /* short hops, not sprints: per-marine micro does the kiting */
     function marineTurnRate(S) {
         return S < 0.5 ? MARINE_TURN * (0.6 + 0.8 * S) : lerp(MARINE_TURN, 0.92, (S - 0.5) / 0.5);
     }
@@ -1229,7 +1228,7 @@ var Swarm = (function () {
             var grp = groups[g], n = grp.length;
             var cx = 0, cy = 0, near = 1e9, nearB = 1e9, allClear = true, running = false, runT = 0, shootT = 1e9;
             var allStim = true, minHp = 1e9;
-            var myV = 1e9, stimV = 1e9, stimReady = true, feet = marineFootwork(S) * marineKiteMul(S);
+            var myV = 1e9, stimV = 1e9, stimReady = true, feet = Math.min(1, marineFootwork(S) * marineKiteMul(S));
             for (var a = 0; a < n; a++) {
                 var m = grp[a];
                 cx += m.x; cy += m.y;
@@ -1457,11 +1456,15 @@ var Swarm = (function () {
         if (c.stimT > 0 && !c.huntTarget) {
             var sz = nearestZerg(c.x, c.y);
             if (sz) {
-                var szd = dist(sz, c.x, c.y);
-                if (szd < MARINE_RANGE * 0.55) marineSteerToward(c, sz.x, sz.y, true);
-                else if (szd > MARINE_RANGE * 0.65) c.want = MARINE_FLANK_ON ? marineFlankDir(c, sz.x, sz.y, S) : Math.atan2(sz.y - c.y, sz.x - c.x);
-                else c.want = Math.atan2(sz.y - c.y, sz.x - c.x) + Math.PI / 2 * (c.flankSide || 1);
-                c.moveMul = 1;
+                /* hysteresis so it doesn't ping-pong: back off under 50% range until
+                 * past 60%, push in beyond 85% until inside 75%, else strafe slowly */
+                var szd = dist(sz, c.x, c.y), R0 = MARINE_RANGE;
+                if (c.stimMove === "back" ? szd < R0 * 0.6 : szd < R0 * 0.5) c.stimMove = "back";
+                else if (c.stimMove === "in" ? szd > R0 * 0.75 : szd > R0 * 0.85) c.stimMove = "in";
+                else c.stimMove = "strafe";
+                if (c.stimMove === "back") { marineSteerToward(c, sz.x, sz.y, true); c.moveMul = 1; }
+                else if (c.stimMove === "in") { c.want = MARINE_FLANK_ON ? marineFlankDir(c, sz.x, sz.y, S) : Math.atan2(sz.y - c.y, sz.x - c.x); c.moveMul = 0.8; }
+                else { c.want = Math.atan2(sz.y - c.y, sz.x - c.x) + Math.PI / 2 * (c.flankSide || 1); c.moveMul = 0.3; }
                 return;
             }
         }
@@ -1694,11 +1697,38 @@ var Swarm = (function () {
                     if (c.regroupTo) { marineSteerToward(c, c.regroupTo.x, c.regroupTo.y, false); c.moveMul = 1; }
                 }
             }
+            /* run in straight legs: once moving, hold the line for a short leg; a
+             * sharp change of direction (60+ deg) plants the feet for a beat and
+             * pivots first - no ankle-breaking zig-zags. A bane about to blow is
+             * the only excuse for dodging at once */
+            if (c.entered && c.deployT <= 0 && skill > 0) {
+                var lb = nearestKind(c.x, c.y, "bane");
+                var urgent = lb && dist(lb, c.x, c.y) < BANE_SPLASH_R * 2;
+                if (c.stopT > 0) {
+                    c.stopT -= dt;
+                    c.moveMul = 0;
+                    if (c.stopT <= 0) { c.legDir = c.want; c.legT = 0.35; c.heading = c.want; }
+                } else if (c.moveMul > 0) {
+                    if (c.legT > 0 && !urgent) {
+                        c.legT -= dt;
+                        c.want = c.legDir;
+                    } else {
+                        var ld = c.want - (c.legDir === undefined ? c.want : c.legDir);
+                        while (ld > Math.PI) ld -= 6.283;
+                        while (ld < -Math.PI) ld += 6.283;
+                        if (c.wasMoving && Math.abs(ld) > 1.05 && !urgent) { c.stopT = 0.12; c.moveMul = 0; }
+                        else { c.legDir = c.want; c.legT = 0.35; }
+                    }
+                } else c.legT = 0;
+                c.wasMoving = c.moveMul > 0;
+            }
             turnToward(c, c.deployT > 0 ? MARINE_TURN : marineTurnRate(skill), dt);
             /* quick feet only where they help: kiting and running back to the mob */
             var feet = c.deployT > 0 ? 1 : marineFootwork(skill);
-            if ((c.combat && (c.kitePhase === "run" || c.moveMul >= 1)) || c.regroupTo) feet *= marineKiteMul(skill);
-            else feet = Math.min(1, feet);
+            if ((c.combat && c.kitePhase === "run") || c.regroupTo) feet *= marineKiteMul(skill);
+            /* marines are naturally a bit slower than lings and banes: never above
+             * their base pace unless stimmed (stim is how they outrun a chase) */
+            feet = Math.min(1, feet);
             var mv = c.speed * TERRAN_SPEED * SETTINGS.unitSpeed * c.moveMul * feet *
                      (c.stimT > 0 ? STIM_SPEED_MULT : 1) * dt;
             c.x += Math.cos(c.heading) * mv;

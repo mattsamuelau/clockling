@@ -184,7 +184,7 @@ both.
 | `stimRegenTime` | 20 | Seconds of slowed regen from the moment a marine stims. | Visible |
 | `stimGroupMax` | 3 | Only marine groups this small (or smaller) stim to escape. | Visible |
 | `stimRegroupDist` | 0.3 | Lone marines farther than this from the main mob (x board short side) stim back to it. | Visible |
-| `marineKiteSpeed` | 0.5 | Speed multiplier while kiting / running back to the mob for green marines (on top of skill footwork and stim); rises to 1x at max skill. | Visible |
+| `marineKiteSpeed` | 0.5 | Speed multiplier while kiting / running back to the mob (on top of skill footwork and stim): keeps escapes to short hops. | Visible |
 | `marineUpright` | true | Marines stand upright (feet down) when not firing, facing and leaning with their squad's walk; off = they always face the closest zerg, leaning at most marineMaxTilt. | Visible |
 | `marineWalkTilt` | 25 | marineUpright: max degrees a marine leans from upright while walking (it turns fully to its target when firing). | Visible |
 | `marineMicro` | true | Per-marine micro (50%+ skill), like SC2 bots: stutter-step back while the gun cools down, fire when ready, and split away from banelings. | Visible |
@@ -195,7 +195,7 @@ both.
 | `marineCtrlGroupSize` | 6 | marineSquads: marines per control group (a mob of 12 makes 2 groups, 40 makes marineCtrlGroups). | Visible |
 | `marineFlank` | true | Marines advance on a flank instead of straight at the zerg. | Visible |
 | `marineStimPush` | true | Stimmed elite marines (75%+ skill) push in while firing and kite back later. | Visible |
-| `marineEliteKite` | true | Elite marines (75%+ skill) stutter-step whenever lings close in, and kite at full footwork speed. | Visible |
+| `marineEliteKite` | true | Elite marines (75%+ skill) stutter-step whenever lings close in. | Visible |
 | `marineFlankAngle` | 45 | Degrees off the direct line marines advance at, so they come in on a flank (scaled by skill; straight in when they overwhelm 3:1). | Visible |
 | `marineMaxTilt` | 45 | Max degrees a marine sprite leans from level when aiming up or down (feet stay down). | Visible |
 | `marineSkillTopSpeed` | 3 | Movement multiplier at max marine skill (1x at half skill). | Advanced |
