@@ -263,7 +263,7 @@ var Swarm = (function () {
             c.faceDir = -1; c.face = -1; c.w = MARINE_W; c.bumpR = MARINE_BUMP;
             c.speed = rand(16, 24); c.splatCol = MARINE_SPLAT; c.hp = MARINE_HP;
             c.splatScale = TUNING.marineSplatScale;
-            c.shootCd = SHOOT_T; c.aim = c.heading; c.drawAng = 0; c.walkSide = 0; c.tiltAng = 0; c.wasIdle = true; c.leanBias = rand(-1, 1); c.healCd = 0; c.entered = false; c.shootTarget = null;
+            c.shootCd = SHOOT_T; c.aim = c.heading; c.healCd = 0; c.entered = false; c.shootTarget = null;
             c.flashT = 0; c.hitX = 0; c.hitY = 0; c.kills = 0;
             c.deployT = 0; c.deployX = 0; c.deployY = 0;
             c.stimT = 0; c.stimCd = 0; c.stimRegenT = 0; c.stimFxT = 0; c.stimFxAge = 0; c.combat = false; c.kitePhase = "shoot"; c.runT = 0; c.shootT = 0;
@@ -1202,43 +1202,6 @@ var Swarm = (function () {
                 var tgt = nearestZerg(c.x, c.y);
                 c.aim = tgt ? Math.atan2(tgt.y - c.y, tgt.x - c.x) : c.heading;
             }
-            /* sprite angle: firing -> turn quickly to the target; otherwise ease
-             * back upright (feet to the bottom of the screen), facing the way we
-             * walk, leaning up to marineWalkTilt degrees with the slope of the walk
-             * (plus a small personal lean), so marines never walk on their heads */
-            var firing = !!c.shootTarget || c.flashT > 0;
-            if (firing) {
-                var da = c.aim - c.drawAng;
-                while (da > Math.PI) da -= 6.283;
-                while (da < -Math.PI) da += 6.283;
-                c.drawAng += da * (1 - Math.exp(-dt * 18));
-            } else {
-                if (!c.wasIdle) {
-                    /* just stopped firing: keep the side the gun is on, ease the lean down */
-                    c.walkSide = Math.cos(c.drawAng) >= 0 ? 0 : Math.PI;
-                    c.tiltAng = Math.atan2(Math.sin(c.walkSide ? Math.PI - c.drawAng : c.drawAng),
-                                           Math.cos(c.walkSide ? Math.PI - c.drawAng : c.drawAng));
-                }
-                /* face and lean like the neighbours: average walk direction of the
-                 * marines around us (self included), so a squad looks the same way */
-                var nc = 0, ns = 0, gr2 = MARINE_GROUP_RADIUS * MARINE_GROUP_RADIUS;
-                for (var ni = 0; ni < units.length; ni++) {
-                    var nb = units[ni];
-                    if (nb.kind !== "marine" || nb.dead) continue;
-                    var ndx = nb.x - c.x, ndy = nb.y - c.y;
-                    if (ndx * ndx + ndy * ndy > gr2) continue;
-                    nc += Math.cos(nb.heading); ns += Math.sin(nb.heading);
-                }
-                var nl = Math.sqrt(nc * nc + ns * ns) || 1;
-                nc /= nl; ns /= nl;
-                if (nc > 0.2) c.walkSide = 0;                /* hysteresis: straight up/down keeps the side */
-                else if (nc < -0.2) c.walkSide = Math.PI;    /* side flips are an instant mirror, never a roll */
-                var maxTilt = (TUNING.marineWalkTilt || 0) * Math.PI / 180;
-                var wantTilt = Math.max(-maxTilt, Math.min(maxTilt, ns * maxTilt * 1.2 + c.leanBias * maxTilt * 0.25));
-                c.tiltAng += (wantTilt - c.tiltAng) * (1 - Math.exp(-dt * 4));
-                c.drawAng = c.walkSide ? Math.PI - c.tiltAng : c.tiltAng;
-            }
-            c.wasIdle = !firing;
         } else {
             /* ling / bane: only pick a direction every RETARGET_T (anti-jitter) */
             c.age += dt;
@@ -1306,7 +1269,7 @@ var Swarm = (function () {
         }
 
         /* horizontal facing with hysteresis */
-        var ang = (c.kind === "marine") ? c.drawAng : c.heading;
+        var ang = (c.kind === "marine") ? c.aim : c.heading;
         var cosh = Math.cos(ang);
         if (cosh > 0.3) c.face = 1;
         else if (cosh < -0.3) c.face = -1;
@@ -1355,7 +1318,7 @@ var Swarm = (function () {
         cc.save();
         cc.translate(c.x, c.y);
         if (c.kind !== "egg") {
-            var ang = (c.kind === "marine") ? c.drawAng : c.heading;
+            var ang = (c.kind === "marine") ? c.aim : c.heading;
             var fd = c.faceDir;               /* +1 faces right, -1 faces left */
             var mirror = (fd === 1) ? (c.face === -1) : (c.face === 1);
             var rot = (fd === 1)
@@ -1522,7 +1485,7 @@ var Swarm = (function () {
             sound("marineDie");
             if (c.lastHitBy === "ling") sound("marineDieLing");   /* torn down by zerglings */
             /* corpse: freeze the frame, show only the bottom half, fade out */
-            var ang = (typeof c.drawAng === "number") ? c.drawAng : c.heading;
+            var ang = (typeof c.aim === "number") ? c.aim : c.heading;
             var fd = c.faceDir;
             var mirror = (fd === 1) ? (c.face === -1) : (c.face === 1);
             var rot = (fd === 1) ? (mirror ? ang + Math.PI : ang) : (mirror ? -ang : ang + Math.PI);
@@ -1892,8 +1855,8 @@ var Swarm = (function () {
             var fm = units[fl];
             if (fm.kind !== "marine" || fm.dead || fm.flashT <= 0) continue;
             var alpha = Math.min(1, fm.flashT / 0.1) * 0.7;
-            var gx = fm.x + Math.cos(fm.drawAng) * (fm.w / 2 + 6);
-            var gy = fm.y + Math.sin(fm.drawAng) * (fm.w / 2 + 6);
+            var gx = fm.x + Math.cos(fm.aim) * (fm.w / 2 + 6);
+            var gy = fm.y + Math.sin(fm.aim) * (fm.w / 2 + 6);
             ctx.strokeStyle = "rgba(255,220,80," + alpha + ")";
             ctx.lineWidth = 1.5;
             ctx.beginPath();
