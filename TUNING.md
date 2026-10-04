@@ -163,6 +163,7 @@ both.
 | `stimRegenMult` | 0.25 | HP regen multiplier while stimmed. | Visible |
 | `stimGroupMax` | 3 | Only marine groups this small (or smaller) stim to escape. | Visible |
 | `stimRegroupDist` | 0.3 | Lone marines farther than this from the main mob (x board short side) stim back to it. | Visible |
+| `marineKiteSpeed` | 0.5 | Speed multiplier while kiting / running back to the mob (on top of skill footwork and stim). | Visible |
 | `marineSkillTopSpeed` | 3 | Movement multiplier at max marine skill (1x at half skill). | Advanced |
 
 ## Movement

@@ -87,7 +87,7 @@ var Swarm = (function () {
     var EGG_OVERLAP, EGG_MARINE_CLEAR;
     var STIM_DURATION, STIM_COOLDOWN, STIM_SPEED_MULT, STIM_HP_COST, STIM_REGEN_MULT, STIM_GROUP_MAX,
         STIM_REGROUP_DIST, MARINE_SKILL_TOP_SPEED;
-    var LING_BOOST_MULT, LING_BOOST_TIME, LING_BOOST_CD;
+    var LING_BOOST_MULT, LING_BOOST_TIME, LING_BOOST_CD, MARINE_KITE_SPEED;
     function splatLife() { return SETTINGS.gore !== false ? GORE_SPLAT_LIFE : SPLAT_LIFE; }
     function corpseLife() { return SETTINGS.gore !== false ? GORE_CORPSE_LIFE : CORPSE_LIFE; }
     var LING_SPLAT = ["#e02828", "#ff6b4a"];
@@ -112,6 +112,7 @@ var Swarm = (function () {
         STIM_REGROUP_DIST = TUNING.stimRegroupDist;
         MARINE_SKILL_TOP_SPEED = TUNING.marineSkillTopSpeed;
         LING_BOOST_MULT = TUNING.lingAttackBoostMult;
+        MARINE_KITE_SPEED = TUNING.marineKiteSpeed;
         LING_BOOST_TIME = TUNING.lingAttackBoostTime;
         LING_BOOST_CD = TUNING.lingAttackBoostCooldown;
         EGG_MARINE_CLEAR = Math.max(0, TUNING.eggMarineClearance || 0);
@@ -923,7 +924,7 @@ var Swarm = (function () {
         for (g = 0; g < groups.length; g++) {
             var grp = groups[g], n = grp.length;
             var cx = 0, cy = 0, near = 1e9, nearB = 1e9, allClear = true, running = false, runT = 0, shootT = 1e9;
-            var myV = 1e9, stimV = 1e9, stimReady = true, feet = marineFootwork(S);
+            var myV = 1e9, stimV = 1e9, stimReady = true, feet = marineFootwork(S) * MARINE_KITE_SPEED;
             for (var a = 0; a < n; a++) {
                 var m = grp[a];
                 cx += m.x; cy += m.y;
@@ -1174,7 +1175,8 @@ var Swarm = (function () {
             turnToward(c, c.deployT > 0 ? MARINE_TURN : marineTurnRate(skill), dt);
             /* quick feet only where they help: kiting and running back to the mob */
             var feet = c.deployT > 0 ? 1 : marineFootwork(skill);
-            if (!((c.combat && c.kitePhase === "run") || c.regroupTo)) feet = Math.min(1, feet);
+            if ((c.combat && c.kitePhase === "run") || c.regroupTo) feet *= MARINE_KITE_SPEED;
+            else feet = Math.min(1, feet);
             var mv = c.speed * TERRAN_SPEED * SETTINGS.unitSpeed * c.moveMul * feet *
                      (c.stimT > 0 ? STIM_SPEED_MULT : 1) * dt;
             c.x += Math.cos(c.heading) * mv;

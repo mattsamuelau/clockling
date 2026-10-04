@@ -88,6 +88,7 @@ var TUNING_META = {
         stimRegenMult: { class: "Visible", default: 0.25, meaning: "HP regen multiplier while stimmed", only: "web", min: 0, max: 1, step: 0.05 },
         stimGroupMax: { class: "Visible", default: 3, meaning: "Only marine groups this small (or smaller) stim to escape", only: "web", min: 1, max: 20, step: 1 },
         stimRegroupDist: { class: "Visible", default: 0.3, meaning: "Lone marines farther than this from the main mob (x board short side) stim back to it", only: "web", min: 0.05, max: 1, step: 0.05 },
+        marineKiteSpeed: { class: "Visible", default: 0.5, meaning: "Speed multiplier while kiting / running back to the mob (on top of skill footwork and stim)", only: "web", min: 0.25, max: 2, step: 0.05 },
         marineSkillTopSpeed: { class: "Advanced", default: 3, meaning: "Movement multiplier at max marine skill (1x at half skill)", only: "web", min: 1, max: 4, step: 0.1 },
 
         /* Visuals & timing */
@@ -148,7 +149,7 @@ var TUNING_META = {
         "Zerg Lifecycle": ["respawnInterval", "respawnBatch", "eggTimeMin", "eggTimeMax", "eggHatchMult", "eggHp", "eggDamageMult", "eggOverlap", "eggMarineClearance", "morphAge", "morphCooldown", "morphChancePerSec"],
         "Terran Units": ["maxMarines", "marineHp", "marineShootDamage", "marineShootInterval", "marineRangeMult"],
         "Terran Spawning": ["marineEntrySpeed", "marineEntryDepth", "marineSpawnRateMult", "marineWaveLo", "marineWaveHi", "marineWaveSizeLo", "marineWaveSizeHi", "marineRespawnLo", "marineRespawnHi", "marineRespawnSizeLo", "marineRespawnSizeHi", "marineSpawnGap", "marineSpawnInset"],
-        "Terran Behavior": ["marineTactics", "marineKiteFrac", "marineSightMult", "marineFleeHpPct", "marineGroupWeight", "marineAwayWeight", "marineTurnRate", "marineHealPct", "marineHealInterval", "stimDuration", "stimCooldown", "stimSpeedMult", "stimHpCost", "stimRegenMult", "stimGroupMax", "stimRegroupDist", "marineSkillTopSpeed"],
+        "Terran Behavior": ["marineTactics", "marineKiteFrac", "marineSightMult", "marineFleeHpPct", "marineGroupWeight", "marineAwayWeight", "marineTurnRate", "marineHealPct", "marineHealInterval", "stimDuration", "stimCooldown", "stimSpeedMult", "stimHpCost", "stimRegenMult", "stimGroupMax", "stimRegroupDist", "marineKiteSpeed", "marineSkillTopSpeed"],
         "Movement": ["zergSpeed", "terranSpeed"],
         "Visuals": ["lingW", "baneW", "marineW", "eggW", "lingBump", "baneBump", "marineBump", "splatLife", "splatBase", "splatFadeStart", "corpseLife", "goreSplatLife", "goreCorpseLife", "baneSplatLifeMult", "marineSplatScale", "baneSplatScale", "retargetInterval", "aimInterval"],
         "Map": ["mapW", "mapH"],
