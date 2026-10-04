@@ -3,6 +3,8 @@
 </p>
 
 # Clockling
+Clock display with a live zergling-versus-marine simulation.
+
 | | **Web** - `clockling.html` | **ESP32** - `targets/esp32/` |
 |---|---|---|
 | Runs on | Any browser (desktop, phone, embedded iframe) | Freenove ESP32 Display, 2.8" 240x320 "CYD" (FNK0114B) |
@@ -31,7 +33,8 @@ app/images/*.png     sprites
                                    sim.cpp (hand-ported rules) + renderer -> firmware
 ```
 
-- **Defaults** flow one way: edit the JS files, run `gen_assets.py`, rebuild the firmware.
+- **Defaults** start in the JS files. `gen_assets.py` applies ESP32-specific scaling and
+  overrides before generating firmware tables.
 - **Rules** are ported by hand. When you change behaviour in `swarm.js`, make the same
   change in `targets/esp32/src/sim.cpp` (the functions have the same names and order).
 - Keys marked `only: "web"` or `only: "esp32"` in `tuning-meta.js` exist on one side only.
@@ -40,23 +43,16 @@ app/images/*.png     sprites
 
 ### Web
 
-1. Open the repo folder in VS Code.
-2. *Terminal > Run Task... > Clockling: run* (or type `node server.js` in the terminal).
-3. Open http://127.0.0.1:8080/clockling.html. If port 8080 is busy, use the
-   *Clockling: run on port 8090* task (or `PORT=8090 node server.js`).
+1. Open `clockling.html` directly in a browser. This requires no server or Node.js.
+2. Optional local server: in VS Code, run *Terminal > Run Task... > Clockling: run*, or
+   run `node server.js`, then open http://127.0.0.1:8080/clockling.html. If port 8080 is
+   busy, use *Clockling: run on port 8090* or `PORT=8090 node server.js`.
 
-No Node? Just double-click `clockling.html`; it runs straight from disk too.
-
-- **Settings**: the gear button (or <kbd>S</kbd>). Clock, battle sliders and toggles up
-  front; every rule and balance number under *Advanced tuning* with search and per-setting
-  revert. Changes apply instantly and are remembered by your browser. <kbd>R</kbd> restarts
-  the battle.
-- **Share / embed**: the button at the bottom of the settings drawer gives you
-  - a **link** that carries your exact settings (in the `#s=...` part). It points at
-    wherever Clockling is running, so it works on this computer, or for anyone on your
-    network if you open Clockling via your PC's IP address while `node server.js` runs;
-  - an **iframe** snippet for embedding it in another page you host (the gear hides
-    until hovered).
+- **Settings**: use the gear button or <kbd>S</kbd>. Main controls are in the drawer;
+  rules and balance values are under *Advanced tuning*. Changes apply immediately and
+  persist in the browser. Press <kbd>R</kbd> to restart.
+- **Share / embed**: the drawer provides a settings link (`#s=...`) and an iframe snippet.
+  Network links require the local server and a URL using the host PC's IP address.
 
 ### ESP32
 
@@ -116,7 +112,7 @@ Each rule maps to a clearly named setting (`attackGroupSize`, `berserkBanes`,
 | I want to... | Do this |
 |---|---|
 | Try a setting | Web: settings drawer. ESP32: `http://clockling.local`. Both apply live. |
-| Change a default for everyone | Edit `app/js/swarm.js` (TUNING) or `app/js/settings.js` (SETTINGS) and the matching `default` in `app/js/tuning-meta.js`. Then `python targets/esp32/tools/gen_assets.py` and rebuild the firmware. |
+| Change a default | Edit `app/js/swarm.js` (TUNING) or `app/js/settings.js` (SETTINGS) and the matching `default` in `app/js/tuning-meta.js`. Then run `python targets/esp32/tools/gen_assets.py` and rebuild firmware; ESP32 overrides are in `targets/esp32/tools/gen_assets.py`. |
 | Make my device's settings the defaults | Read them from `http://clockling.local/api/config` (each key has its value `v` and default `d`) and copy the differences into the files above. |
 | Change how units behave | Edit the rules in `app/js/swarm.js`, then port the same change to `targets/esp32/src/sim.cpp`. |
 | Add a setting | Add it to `swarm.js`/`settings.js` and `tuning-meta.js` (class, meaning, optional `options`, `min/max/step`, `only`). Both settings screens pick it up automatically. |
