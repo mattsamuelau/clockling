@@ -1,0 +1,6 @@
+# Tizen build outputs (deploy.ps1 regenerates these)
+app/*.wgt
+app/author-signature.xml
+app/signature1.xml
+app/.manifest.tmp
+app/.buildResult

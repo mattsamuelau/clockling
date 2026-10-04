@@ -1,3 +1,8 @@
+> **Legacy branch.** This is the original Clockling: a Tizen 2.3.2 watch face for the Samsung
+> Gear Fit 2 (it ran as "Zerg Desk"). It is kept as it was and is not maintained. The project
+> continues on the [`main` branch](https://github.com/mattsamuelau/clockling) as a web app and
+> ESP32 firmware, with newer rules and settings that do not apply here.
+
 # ⚔️ Zerg Desk
 
 An always-on **watch-face battlefield** for the Samsung Gear Fit 2 (SM-R360) — a Tizen 2.3.2 web watch face where a swarm of zerglings and banelings endlessly fights waves of marines across your wrist.
