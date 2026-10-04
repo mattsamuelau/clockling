@@ -63,8 +63,8 @@ Settings are grouped into three tiers:
 
 | Key | Default | Meaning | Class |
 |---|---|---|---|
-| `maxLings` | 14 | Max zerglings on screen at once. | Visible |
-| `maxBanes` | 2 | Max banelings on screen at once. | Visible |
+| `maxLings` | 16 | Max zerglings on screen at once. | Visible |
+| `maxBanes` | 3 | Max banelings on screen at once. | Visible |
 | `maxMarines` | 6 | Max marines on screen at once. | Visible |
 
 ## Movement
@@ -78,10 +78,10 @@ Settings are grouped into three tiers:
 
 | Key | Default | Meaning | Class |
 |---|---|---|---|
-| `respawnInterval` | 2 | Seconds between ling-egg refill batches. | Visible |
-| `respawnBatch` | 4 | Eggs spawned per refill batch. | Visible |
-| `eggTimeMin` | 8 | Min seconds until an egg hatches. | Visible |
-| `eggTimeMax` | 10 | Max seconds until an egg hatches. | Visible |
+| `respawnInterval` | 1.5 | Seconds between ling-egg refill batches. | Visible |
+| `respawnBatch` | 8 | Eggs spawned per refill batch. | Visible |
+| `eggTimeMin` | 7 | Min seconds until an egg hatches. | Visible |
+| `eggTimeMax` | 9 | Max seconds until an egg hatches. | Visible |
 | `eggHatchMult` | 1.5 | When an egg hatches, one other egg speeds up by this much. | Advanced |
 | `morphAge` | 4 | A ling must live this long before it can morph into a baneling egg. | Visible |
 | `morphCooldown` | 2 | Seconds between successful morphs. | Visible |
@@ -92,11 +92,11 @@ Settings are grouped into three tiers:
 | `lingBiteInterval` | 0.2 | Seconds between bites. | Visible |
 | `baneSplashDamage` | 90 | Damage a baneling deals to every marine in blast radius. | Visible |
 | `baneSplashR` | 61 | Baneling blast radius (px). | Visible |
-| `attackGroupSize` | 5 | Minimum swarm strength (ling 1, bane 2) to attack; capped at `maxLings`. | Visible |
+| `attackGroupSize` | 10 | Minimum swarm strength (ling 1, bane 2) to attack; capped at `maxLings`. | Visible |
 | `berserkBanes` | 2 | Banelings alive needed to trigger bane berserk. | Visible |
 | `berserkUntilDeath` | false | On: berserk never retreats; off: cancels when outnumbered. | Visible |
 | `attackOdds` | 1.5 | Swarm strength (ling 1, bane 2) needed per marine in the target group. | Visible |
-| `lingFleeSpeedMult` | 1.4 | Speed multiplier for lings escaping marines. | Visible |
+| `lingFleeSpeedMult` | 1.6 | Speed multiplier for lings escaping marines. | Visible |
 | `allyRadius` | 45 | Lings/banes this close to each other count as one swarm (keep above ~2x `lingBump` + 8). | Visible |
 | `marineScanRadius` | 140 | Lings flee marines inside this radius (never less than 1.25x marine range). | Visible |
 | `marineGroupRadius` | 60 | Radius around a marine used to count its group. | Visible |
