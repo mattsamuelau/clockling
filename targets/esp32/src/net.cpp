@@ -76,6 +76,7 @@ static void handleGetConfig() {
         chunk += ",\"g\":"; chunk += m.group;
         chunk += ",\"m\":";
         appendEscaped(chunk, m.meaning);
+        if (m.opts) { chunk += ",\"o\":"; appendEscaped(chunk, m.opts); }
         chunk += '}';
         server.sendContent(chunk);
     }

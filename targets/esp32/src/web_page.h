@@ -28,6 +28,7 @@ body.showadv .row.adv{display:flex}
 input[type=number],input[type=text]{width:96px;background:#0b0618;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit}
 input[type=text]{width:100%}
 input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
+select{background:#0b0618;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit}
 .changed .k{color:var(--accent)}
 .rev{background:none;border:1px solid var(--line);color:var(--dim);border-radius:6px;width:30px;height:30px;cursor:pointer;visibility:hidden}
 .changed .rev{visibility:visible}
@@ -77,12 +78,14 @@ function build(){
       var l=document.createElement("div");l.className="lbl";
       l.innerHTML='<div class="k"></div><div class="m"></div>';
       l.firstChild.textContent=e.k;if(e.a){var t=document.createElement("span");t.className="tag";t.textContent="adv";l.firstChild.appendChild(t)}
-      l.lastChild.textContent=e.m+(e.b?"":" (default "+fmt(e.d)+")");
+      l.lastChild.textContent=e.m+(e.b?"":" (default "+(e.o?e.o.split("|")[e.d]:fmt(e.d))+")");
       var i=document.createElement("input");
-      if(e.b){i.type="checkbox";i.checked=!!e.v}else{i.type="number";i.step="any";i.value=fmt(e.v)}
+      if(e.o){i=document.createElement("select");e.o.split("|").forEach(function(t,ix){var op=document.createElement("option");op.value=ix;op.textContent=t;i.appendChild(op)});i.value=e.v}
+      else if(e.b){i.type="checkbox";i.checked=!!e.v}else{i.type="number";i.step="any";i.value=fmt(e.v)}
       i.addEventListener("input",function(){mark(e)});
       var rv=document.createElement("button");rv.className="rev";rv.title="Revert to default";rv.textContent="↺";
-      rv.onclick=function(){if(e.b)i.checked=!!e.d;else i.value=fmt(e.d);mark(e)};
+      i.addEventListener("change",function(){mark(e)});
+      rv.onclick=function(){if(e.b)i.checked=!!e.d;else i.value=e.o?e.d:fmt(e.d);mark(e)};
       r.appendChild(l);r.appendChild(i);r.appendChild(rv);s.appendChild(r);
       inputs[e.k]=i;
     });

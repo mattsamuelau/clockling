@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clockling</title>
+<meta name="description" content="Time on top. Total war underneath. A live zerglings-vs-marines battle with a clock on top.">
+<meta property="og:title" content="Clockling">
+<meta property="og:description" content="Time on top. Total war underneath. A live zerglings-vs-marines battle with a clock on top.">
+<meta property="og:image" content="https://raw.githubusercontent.com/mattsamuelau/clockling/main/docs/screenshot.png">
+<meta name="theme-color" content="#0b0618">
+<link rel="icon" href="app/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0b0618;
+    --panel: rgba(19, 12, 42, 0.86);
+    --card: rgba(255, 255, 255, 0.04);
+    --line: rgba(195, 155, 255, 0.16);
+    --text: #eee8ff;
+    --dim: #a59bc9;
+    --green: #b6ff5e;
+    --purple: #c39bff;
+    --radius: 14px;
+    color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); }
+body { font: 14px/1.4 Roboto, "Segoe UI", system-ui, sans-serif; color: var(--text); -webkit-tap-highlight-color: transparent; }
+
+/* ---------------------------------------------------------------- battlefield */
+#stage { position: fixed; inset: 0; cursor: crosshair; user-select: none; }
+#bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 30%, #1c1142 0%, #0b0618 72%); }
+#swarm { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; }
+#clock {
+    position: absolute; z-index: 3; pointer-events: none; padding: 0 4%;
+    display: flex; flex-direction: column; text-align: center; align-items: center;
+    opacity: 0.6;   /* the ESP32 learning: lighter so the battle reads through */
+}
+#clock.behind { z-index: 1; }
+#clock.hidden { display: none; }
+#clock .time {
+    font-weight: 700; line-height: 1; letter-spacing: 0.01em;
+    color: rgba(182, 255, 94, 0.35);
+    -webkit-text-stroke: 1px #b6ff5e;
+    text-shadow: 0 0 4px rgba(182, 255, 94, 0.7), 0 0 11px rgba(182, 255, 94, 0.45);
+}
+#clock .sec { font-weight: 700; color: #c3a6ff; margin-top: 0.15em; }
+#clock .date { color: #cfc3f5; margin-top: 0.2em; }
+#clock.p0 { top: 2.5%; left: 0; right: 0; }
+#clock.p1 { top: 50%; left: 0; right: 0; transform: translateY(-50%); }
+#clock.p2 { bottom: 3%; left: 0; right: 0; }
+#clock.p3 { top: 2.5%; left: 0; align-items: flex-start; text-align: left; }
+#clock.p4 { top: 2.5%; right: 0; align-items: flex-end; text-align: right; }
+#clock.p5 { bottom: 3%; left: 0; align-items: flex-start; text-align: left; }
+#clock.p6 { bottom: 3%; right: 0; align-items: flex-end; text-align: right; }
+
+/* ---------------------------------------------------------------- gear button */
+.fab {
+    position: fixed; top: max(14px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right));
+    z-index: 20; width: 46px; height: 46px; border-radius: 50%;
+    border: 1px solid var(--line); background: rgba(19, 12, 42, 0.55);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    color: var(--text); display: grid; place-items: center; cursor: pointer;
+    transition: opacity 0.4s, transform 0.2s, background 0.2s;
+}
+.fab:hover { background: rgba(60, 40, 110, 0.75); transform: rotate(30deg); }
+.fab svg { width: 22px; height: 22px; }
+body.idle .fab { opacity: 0.12; }
+body.embed .fab { opacity: 0; }
+body.embed:hover .fab { opacity: 0.8; }
+body.drawer-open .fab { opacity: 0; pointer-events: none; }
+
+/* ---------------------------------------------------------------- drawer */
+#drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 30; width: min(380px, 100vw);
+    background: var(--panel); border-left: 1px solid var(--line);
+    backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%);
+    transform: translateX(105%); transition: transform 0.28s cubic-bezier(.2,.8,.2,1);
+    display: flex; flex-direction: column; box-shadow: -20px 0 60px rgba(0, 0, 0, 0.45);
+}
+body.drawer-open #drawer { transform: none; }
+@media (max-width: 640px) {
+    #drawer { top: auto; left: 0; width: 100vw; height: 78vh; border-left: 0; border-top: 1px solid var(--line);
+              border-radius: 20px 20px 0 0; transform: translateY(105%); }
+}
+.drawer-head { display: flex; align-items: center; gap: 10px; padding: 18px 18px 12px; }
+.brand { flex: 1; }
+.brand h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.04em; color: var(--green);
+            text-shadow: 0 0 12px rgba(182, 255, 94, 0.35); }
+.brand p { margin: 2px 0 0; color: var(--dim); font-size: 12px; }
+.icon-btn { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--card);
+            color: var(--text); cursor: pointer; display: grid; place-items: center; font-size: 18px; }
+.icon-btn:hover { border-color: var(--purple); }
+.drawer-body { flex: 1; overflow-y: auto; padding: 4px 18px 18px; scrollbar-width: thin; scrollbar-color: #4b3f7a transparent; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 14px; margin-bottom: 12px; }
+.card h2 { margin: 8px 0 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--purple); }
+.row { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 6px 0; border-top: 1px solid rgba(195, 155, 255, 0.07); }
+.card h2 + .row { border-top: 0; }
+.row .lbl { flex: 1; min-width: 0; }
+.row .lbl b { display: block; font-weight: 500; }
+.row .lbl small { display: block; color: var(--dim); font-size: 12px; }
+.row.slider { flex-wrap: wrap; }
+.row.slider .lbl { display: flex; justify-content: space-between; align-items: baseline; flex-basis: 100%; }
+.row.stack .lbl { display: block; }
+.row.slider .val { color: var(--green); font-variant-numeric: tabular-nums; font-weight: 700; }
+
+/* switch */
+.sw { position: relative; width: 44px; height: 26px; flex: none; }
+.sw input { opacity: 0; width: 0; height: 0; position: absolute; }
+.sw span { position: absolute; inset: 0; border-radius: 26px; background: #2b2150; border: 1px solid var(--line); transition: 0.2s; cursor: pointer; }
+.sw span::after { content: ""; position: absolute; width: 20px; height: 20px; left: 2px; top: 2px; border-radius: 50%; background: #cfc4ff; transition: 0.2s; }
+.sw input:checked + span { background: rgba(182, 255, 94, 0.35); border-color: var(--green); }
+.sw input:checked + span::after { transform: translateX(18px); background: var(--green); }
+.sw input:focus-visible + span { outline: 2px solid var(--purple); outline-offset: 2px; }
+
+/* range */
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 6px; background: linear-gradient(90deg, var(--green) var(--p, 50%), #2b2150 var(--p, 50%)); }
+input[type=range]::-moz-range-track { height: 6px; border-radius: 6px; background: #2b2150; }
+input[type=range]::-moz-range-progress { height: 6px; border-radius: 6px; background: var(--green); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: #fff; border: 3px solid var(--green); box-shadow: 0 0 10px rgba(182, 255, 94, 0.5); }
+input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid var(--green); }
+
+select, input[type=text], input[type=number], input[type=search] {
+    background: #1a1236; color: var(--text); border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px 10px; font: inherit; outline: none;
+}
+select:focus, input:focus { border-color: var(--purple); }
+select { cursor: pointer; }
+input[type=text].wide, input[type=search] { width: 100%; }
+input[type=number] { width: 88px; text-align: right; }
+input.invalid { border-color: #ff6b6b; }
+
+.seg { display: flex; background: #1a1236; border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
+.seg button { flex: 1; border: 0; background: transparent; color: var(--dim); padding: 6px 8px; border-radius: 8px; cursor: pointer; font: inherit; font-size: 13px; }
+.seg button.on { background: rgba(182, 255, 94, 0.18); color: var(--green); font-weight: 700; }
+
+.btn { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 11px; padding: 10px 14px;
+       font: inherit; font-weight: 500; cursor: pointer; transition: 0.15s; }
+.btn:hover { border-color: var(--purple); background: rgba(195, 155, 255, 0.1); }
+.btn.primary { background: var(--green); color: #12091f; border-color: var(--green); font-weight: 700; }
+.btn.primary:hover { background: #c9ff86; }
+.btn.block { width: 100%; margin: 6px 0 8px; }
+
+/* advanced */
+details.adv { border-top: 1px solid rgba(195, 155, 255, 0.07); }
+details.adv:first-of-type { border-top: 0; }
+details.adv summary { list-style: none; cursor: pointer; padding: 11px 0; display: flex; align-items: center; gap: 8px; font-weight: 500; }
+details.adv summary::-webkit-details-marker { display: none; }
+details.adv summary::before { content: "›"; color: var(--purple); font-size: 18px; transition: transform 0.2s; width: 10px; }
+details.adv[open] summary::before { transform: rotate(90deg); }
+details.adv summary .badge { margin-left: auto; font-size: 11px; color: #12091f; background: var(--green); border-radius: 10px; padding: 1px 7px; }
+.adv-row { display: flex; align-items: center; gap: 8px; padding: 6px 0 6px 18px; }
+.adv-row .lbl { flex: 1; min-width: 0; }
+.adv-row .lbl b { display: block; font-weight: 500; font-size: 13px; }
+.adv-row .lbl small { display: block; color: var(--dim); font-size: 11.5px; }
+.adv-row.changed .lbl b { color: var(--green); }
+.rev { border: 0; background: transparent; color: var(--dim); cursor: pointer; font-size: 16px; width: 26px; visibility: hidden; }
+.adv-row.changed .rev { visibility: visible; }
+.rev:hover { color: var(--green); }
+#advSearch { margin: 6px 0 4px; }
+
+.drawer-foot { padding: 14px 18px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); display: flex; gap: 10px; }
+.drawer-foot .btn { flex: 1; }
+.fine { color: var(--dim); font-size: 12px; text-align: center; margin: 4px 0 14px; }
+.fine a { color: var(--purple); }
+kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; color: var(--text); }
+
+/* ---------------------------------------------------------------- share modal */
+#modal { position: fixed; inset: 0; z-index: 40; display: none; place-items: center; background: rgba(5, 2, 12, 0.6); backdrop-filter: blur(4px); padding: 16px; }
+#modal.open { display: grid; }
+.sheet { width: min(560px, 100%); max-height: 90vh; overflow-y: auto; background: #140c2c; border: 1px solid var(--line); border-radius: 18px; padding: 20px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); }
+.sheet h3 { margin: 0 0 4px; font-size: 18px; }
+.sheet > p { margin: 0 0 14px; color: var(--dim); font-size: 13px; }
+.field { margin-bottom: 14px; }
+.field label { display: block; font-weight: 500; margin-bottom: 6px; }
+.field small { display: block; color: var(--dim); font-size: 12px; margin-top: 6px; }
+.copy { display: flex; gap: 8px; }
+.copy textarea { flex: 1; resize: none; height: 64px; background: #1a1236; color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font: 12px/1.4 ui-monospace, Consolas, monospace; }
+.copy .btn { white-space: nowrap; }
+
+#toast { position: fixed; left: 50%; bottom: 28px; z-index: 50; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+         background: #1f1540; border: 1px solid var(--line); color: var(--text); padding: 10px 16px; border-radius: 12px; transition: 0.25s; }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+<div id="stage">
+    <div id="bg"></div>
+    <div id="clock" class="p0"><div class="time">--:--</div><div class="sec"></div><div class="date"></div></div>
+    <canvas id="swarm"></canvas>
+</div>
+
+<button class="fab" id="gear" aria-label="Settings" title="Settings (S)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+</button>
+
+<aside id="drawer" aria-label="Settings">
+    <div class="drawer-head">
+        <div class="brand"><h1>CLOCKLING</h1><p>Time on top. Total war underneath.</p></div>
+        <button class="icon-btn" id="closeDrawer" aria-label="Close settings">&times;</button>
+    </div>
+    <div class="drawer-body" id="drawerBody">
+        <section class="card" id="cardClock"><h2>Clock</h2></section>
+        <section class="card" id="cardBattle"><h2>Battle</h2></section>
+        <section class="card" id="cardAdv">
+            <h2>Advanced tuning</h2>
+            <input type="search" id="advSearch" placeholder="Search settings, e.g. marine range" aria-label="Search settings">
+            <div id="advGroups"></div>
+        </section>
+        <p class="fine">Tap the battlefield to splat units &middot; <kbd>S</kbd> settings &middot; <kbd>R</kbd> restart<br>
+            <a href="https://github.com/mattsamuelau/clockling" target="_blank" rel="noopener">github.com/mattsamuelau/clockling</a></p>
+    </div>
+    <div class="drawer-foot">
+        <button class="btn" id="resetAll">Reset all</button>
+        <button class="btn primary" id="openShare">Share / embed</button>
+    </div>
+</aside>
+
+<div id="modal" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+    <div class="sheet">
+        <h3 id="shareTitle">Share your Clockling</h3>
+        <p>Links carry your current settings, so whoever opens one sees exactly this battle.</p>
+        <div class="field">
+            <label for="shareLink">Link</label>
+            <div class="copy"><textarea id="shareLink" readonly></textarea><button class="btn" data-copy="shareLink">Copy</button></div>
+            <small id="shareNote"></small>
+        </div>
+        <div class="field">
+            <label for="shareEmbed">Embed on a website</label>
+            <div class="copy"><textarea id="shareEmbed" readonly></textarea><button class="btn" data-copy="shareEmbed">Copy</button></div>
+            <small>Paste into any page that allows iframes (blogs, Notion, dashboards). The settings button hides until hovered.</small>
+        </div>
+        <div class="field">
+            <label for="shareMd">GitHub README / Markdown</label>
+            <div class="copy"><textarea id="shareMd" readonly></textarea><button class="btn" data-copy="shareMd">Copy</button></div>
+            <small>GitHub won't run live pages inside a README, so this shows the animated demo and opens your setup when clicked.</small>
+        </div>
+        <button class="btn block" id="closeShare">Done</button>
+    </div>
+</div>
+<div id="toast" role="status"></div>
+
+<script src="app/js/settings.js"></script>
+<script src="app/js/tuning-meta.js"></script>
+<script src="app/js/swarm.js"></script>
+<script>
+(function () {
+    "use strict";
+
+    var PUBLIC_URL = "https://mattsamuelau.github.io/clockling/clockling.html";
+    var DEMO_GIF = "https://raw.githubusercontent.com/mattsamuelau/clockling/main/docs/demo.gif";
+    var STORE = "clockling.v2";
+    var TUNING = Swarm.TUNING;
+    var META = TUNING_META;
+    var DEF_SETTINGS = JSON.parse(JSON.stringify(SETTINGS));
+    var DEF_TUNING = JSON.parse(JSON.stringify(TUNING));
+    var HIDDEN_TUNING = { mapW: 1, mapH: 1 };   /* set by the page from the window size */
+    var $ = function (id) { return document.getElementById(id); };
+    var clockEl = $("clock");
+    var scale = 1;          /* CSS px per logical battlefield px */
+
+    /* ------------------------------------------------------------ state */
+    function isWebKey(k) { var m = META.settings[k]; return m && m.only !== "esp32"; }
+
+    function diff(cur, def, skip) {
+        var out = {};
+        for (var k in cur) {
+            if (skip && skip[k]) continue;
+            if (cur[k] !== def[k]) out[k] = cur[k];
+        }
+        return out;
+    }
+
+    function applyObj(target, src) {
+        for (var k in src) if (Object.prototype.hasOwnProperty.call(target, k)) target[k] = src[k];
+    }
+
+    function readStore() {
+        try { return JSON.parse(localStorage.getItem(STORE) || "{}"); } catch (e) { return {}; }
+    }
+
+    function save() {
+        try {
+            localStorage.setItem(STORE, JSON.stringify({
+                s: diff(SETTINGS, DEF_SETTINGS), t: diff(TUNING, DEF_TUNING, HIDDEN_TUNING)
+            }));
+        } catch (e) {}
+    }
+
+    function b64urlEncode(str) {
+        return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    }
+    function b64urlDecode(str) {
+        str = str.replace(/-/g, "+").replace(/_/g, "/");
+        while (str.length % 4) str += "=";
+        return decodeURIComponent(escape(atob(str)));
+    }
+
+    /* hash: #s=<base64url JSON {s:{settings}, t:{tuning}}>&e=1 (embed) */
+    function readHash() {
+        var out = { cfg: null, embed: false };
+        var h = (location.hash || "").replace(/^#/, "");
+        h.split("&").forEach(function (part) {
+            var kv = part.split("=");
+            if (kv[0] === "s" && kv[1]) {
+                try { out.cfg = JSON.parse(b64urlDecode(kv[1])); } catch (e) {}
+            } else if (kv[0] === "e") {
+                out.embed = kv[1] !== "0";
+            }
+        });
+        return out;
+    }
+
+    var stored = readStore();
+    applyObj(SETTINGS, stored.s || {});
+    var storedTuning = stored.t || {};
+    var hash = readHash();
+    if (hash.cfg) {   /* a shared link: view it without overwriting this browser's saved setup */
+        applyObj(SETTINGS, hash.cfg.s || {});
+        applyObj(storedTuning, hash.cfg.t || {});
+    }
+    if (hash.embed) document.body.classList.add("embed");
+    Swarm.setTuning(storedTuning);
+
+    /* ------------------------------------------------------------ layout */
+    function layout() {
+        var vw = window.innerWidth, vh = window.innerHeight;
+        var short = Math.min(vw, vh);
+        var field = +SETTINGS.fieldSize || 320;
+        scale = short / field;
+        var ratio = scale * (window.devicePixelRatio || 1);
+        Swarm.resize(vw / scale, vh / scale, ratio);
+        /* clock sizes follow the screen (ESP32: 36/15/16 px on a 240 px short side) */
+        var k = short * (+SETTINGS.clockScale || 1);
+        clockEl.querySelector(".time").style.fontSize = (k * 0.15) + "px";
+        clockEl.querySelector(".sec").style.fontSize = (k * 0.0625) + "px";
+        clockEl.querySelector(".date").style.fontSize = (k * 0.067) + "px";
+    }
+
+    function applyClockLayout() {
+        var p = +SETTINGS.clockPosition || 0;
+        clockEl.className = "p" + p + (SETTINGS.clockBehind ? " behind" : "") + (SETTINGS.showClock ? "" : " hidden");
+    }
+
+    /* ------------------------------------------------------------ clock */
+    var DAYS = { Sun: 1, Mon: 1, Tue: 1, Wed: 1, Thu: 1, Fri: 1, Sat: 1 };
+    function zone() {
+        var z = SETTINGS.timeZone;
+        return (!z || z === "auto") ? undefined : z;
+    }
+    function validZone(z) {
+        if (!z || z === "auto") return true;
+        try { new Intl.DateTimeFormat("en-GB", { timeZone: z }); return true; } catch (e) { return false; }
+    }
+    function pad(n) { return (n < 10 ? "0" : "") + n; }
+
+    function tick() {
+        var tz = validZone(SETTINGS.timeZone) ? zone() : undefined;
+        var parts = {};
+        new Intl.DateTimeFormat("en-GB", {
+            timeZone: tz, hourCycle: "h23", hour: "numeric", minute: "numeric", second: "numeric",
+            weekday: "short", day: "numeric", month: "short"
+        }).formatToParts(new Date()).forEach(function (p) { parts[p.type] = p.value; });
+        var h = parseInt(parts.hour, 10) % 24;
+        var hh = SETTINGS.hour24 ? h : (h % 12 === 0 ? 12 : h % 12);
+        clockEl.querySelector(".time").textContent = pad(hh) + ":" + pad(parseInt(parts.minute, 10));
+        clockEl.querySelector(".sec").textContent = SETTINGS.showSeconds ? ":" + pad(parseInt(parts.second, 10)) : "";
+        clockEl.querySelector(".sec").style.display = SETTINGS.showSeconds ? "" : "none";
+        clockEl.querySelector(".date").textContent = parts.weekday + " " + parts.day + " " + parts.month;
+    }
+
+    /* ------------------------------------------------------------ settings UI */
+    function el(tag, cls, html) {
+        var e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (html != null) e.innerHTML = html;
+        return e;
+    }
+    function label(title, hint) {
+        var l = el("div", "lbl");
+        var b = el("b"); b.textContent = title; l.appendChild(b);
+        if (hint) { var s = el("small"); s.textContent = hint; l.appendChild(s); }
+        return l;
+    }
+
+    function changed(key) {
+        if (key === "gameSpeed") Swarm.setGameSpeed(SETTINGS.gameSpeed);
+        else if (key === "unitScale") Swarm.setUnitScale(SETTINGS.unitScale);
+        else if (key === "fieldSize" || key === "clockScale") layout();
+        if (/^clock|showClock/.test(key)) applyClockLayout();
+        tick();
+        save();
+    }
+
+    function switchRow(parent, key, title, hint) {
+        var row = el("div", "row");
+        row.appendChild(label(title, hint));
+        var sw = el("label", "sw");
+        var input = el("input"); input.type = "checkbox"; input.checked = !!SETTINGS[key];
+        input.setAttribute("aria-label", title);
+        input.addEventListener("change", function () { SETTINGS[key] = input.checked; changed(key); });
+        sw.appendChild(input); sw.appendChild(el("span"));
+        row.appendChild(sw);
+        parent.appendChild(row);
+        return input;
+    }
+
+    function sliderRow(parent, key, title, fmt) {
+        var m = META.settings[key];
+        var row = el("div", "row slider");
+        var l = label(title);
+        var val = el("span", "val");
+        l.appendChild(val);
+        row.appendChild(l);
+        var r = el("input"); r.type = "range"; r.min = m.min; r.max = m.max; r.step = m.step; r.value = SETTINGS[key];
+        r.setAttribute("aria-label", title);
+        function show() {
+            val.textContent = fmt(+r.value);
+            r.style.setProperty("--p", ((r.value - m.min) / (m.max - m.min) * 100) + "%");
+        }
+        r.addEventListener("input", function () { SETTINGS[key] = +r.value; show(); changed(key); });
+        show();
+        row.appendChild(r);
+        parent.appendChild(row);
+        return r;
+    }
+
+    function selectRow(parent, key, title, options) {
+        var row = el("div", "row");
+        row.appendChild(label(title));
+        var s = el("select"); s.setAttribute("aria-label", title);
+        options.forEach(function (o, i) {
+            var opt = el("option"); opt.value = i; opt.textContent = o; s.appendChild(opt);
+        });
+        s.value = SETTINGS[key];
+        s.addEventListener("change", function () { SETTINGS[key] = +s.value; changed(key); });
+        row.appendChild(s);
+        parent.appendChild(row);
+        return s;
+    }
+
+    function segRow(parent, key, title, hint, options) {
+        var row = el("div", "row slider");
+        row.appendChild(label(title, hint));
+        var seg = el("div", "seg");
+        Object.keys(options).forEach(function (v) {
+            var b = el("button"); b.type = "button"; b.textContent = options[v];
+            if (+v === +SETTINGS[key]) b.className = "on";
+            b.addEventListener("click", function () {
+                SETTINGS[key] = +v;
+                Array.prototype.forEach.call(seg.children, function (c) { c.className = ""; });
+                b.className = "on";
+                changed(key);
+            });
+            seg.appendChild(b);
+        });
+        row.appendChild(seg);
+        parent.appendChild(row);
+    }
+
+    function timeZoneRow(parent) {
+        var row = el("div", "row slider stack");
+        var local = Intl.DateTimeFormat().resolvedOptions().timeZone || "this device";
+        row.appendChild(label("Time zone", "Leave blank for this device (" + local + ")"));
+        var input = el("input", "wide"); input.type = "text";
+        input.placeholder = "Auto (" + local + ")";
+        input.setAttribute("list", "tzList");
+        input.setAttribute("aria-label", "Time zone");
+        input.value = SETTINGS.timeZone === "auto" ? "" : SETTINGS.timeZone;
+        var list = el("datalist"); list.id = "tzList";
+        var zones = (Intl.supportedValuesOf && Intl.supportedValuesOf("timeZone")) ||
+            ["Europe/London", "Europe/Paris", "America/New_York", "America/Los_Angeles", "Asia/Tokyo", "Australia/Sydney", "UTC"];
+        zones.forEach(function (z) { var o = el("option"); o.value = z; list.appendChild(o); });
+        input.addEventListener("input", function () {
+            var v = input.value.trim();
+            var ok = validZone(v || "auto");
+            input.classList.toggle("invalid", !ok);
+            if (ok) { SETTINGS.timeZone = v || "auto"; changed("timeZone"); }
+        });
+        row.appendChild(input);
+        row.appendChild(list);
+        parent.appendChild(row);
+    }
+
+    var x = function (v) { return (Math.round(v * 100) / 100) + "×"; };
+
+    function buildMain() {
+        var c = $("cardClock");
+        c.querySelectorAll(".row").forEach(function (r) { r.remove(); });
+        switchRow(c, "showClock", "Show clock");
+        switchRow(c, "hour24", "24-hour time");
+        switchRow(c, "showSeconds", "Show seconds");
+        selectRow(c, "clockPosition", "Position", META.settings.clockPosition.options);
+        switchRow(c, "clockBehind", "Behind the units", "Units walk over the clock");
+        sliderRow(c, "clockScale", "Clock size", function (v) { return Math.round(v * 100) + "%"; });
+        timeZoneRow(c);
+
+        var b = $("cardBattle");
+        b.querySelectorAll(".row, .btn").forEach(function (r) { r.remove(); });
+        sliderRow(b, "gameSpeed", "Time", x);
+        sliderRow(b, "unitScale", "Units", x);
+        segRow(b, "fieldSize", "Battlefield", "Smaller field = bigger units", META.settings.fieldSize.options);
+        switchRow(b, "showHealthBars", "Health bars");
+        switchRow(b, "showKills", "Kill marks", "One mark per zergling a marine has killed");
+        switchRow(b, "showScore", "Score bar", "Zerg vs terran supply along the top");
+        var restart = el("button", "btn block"); restart.textContent = "Restart battle";
+        restart.addEventListener("click", function () { Swarm.restart(); toast("Battle restarted"); });
+        b.appendChild(restart);
+    }
+
+    /* advanced: every TUNING key + the remaining settings, grouped like tuning-meta.js */
+    var NICE = {
+        maxLings: "Max zerglings", maxBanes: "Max banelings", maxMarines: "Max marines",
+        lingHp: "Zergling health", baneHp: "Baneling health", marineHp: "Marine health",
+        attackGroupSize: "Swarm size to attack", attackOdds: "Attack odds", berserkBanes: "Banelings to berserk",
+        lingFleeSpeedMult: "Flee speed", zergSpeed: "Zerg speed", terranSpeed: "Marine speed",
+        marineRangeMult: "Marine range", marineScanRadius: "Ling danger radius", allyRadius: "Swarm link radius",
+        unitCount: "Starting zerglings", unitSpeed: "Movement speed",
+        marineKiteFrac: "Marine kite distance", marineSightMult: "Marine sight", marineEntrySpeed: "March-in speed",
+        marineEntryDepth: "March-in depth", marineFleeHpPct: "Marine retreat health", marineTactics: "Marine tactics",
+        berserkUntilDeath: "Berserk until death", berserkSpeedMult: "Berserk speed", marineSpawnRateMult: "Marine spawn rate"
+    };
+    function nice(k) { return NICE[k] || k.replace(/([A-Z])/g, " $1").replace(/^./, function (c) { return c.toUpperCase(); }); }
+
+    function buildAdvanced() {
+        var host = $("advGroups");
+        host.innerHTML = "";
+        var shown = { showClock: 1, hour24: 1, showSeconds: 1, clockPosition: 1, clockBehind: 1, clockScale: 1, timeZone: 1,
+                      gameSpeed: 1, unitScale: 1, fieldSize: 1, showHealthBars: 1, showKills: 1, showScore: 1 };
+        Object.keys(META.groups).forEach(function (g) {
+            var keys = META.groups[g].filter(function (k) {
+                if (HIDDEN_TUNING[k] || shown[k]) return false;
+                if (META.settings[k]) return isWebKey(k);
+                return !!META.tuning[k];
+            });
+            if (!keys.length) return;
+            var d = el("details", "adv");
+            var sum = el("summary"); sum.textContent = g;
+            var badge = el("span", "badge"); badge.style.display = "none"; sum.appendChild(badge);
+            d.appendChild(sum);
+            function refreshBadge() {
+                var n = d.querySelectorAll(".adv-row.changed").length;
+                badge.textContent = n; badge.style.display = n ? "" : "none";
+            }
+            keys.forEach(function (k) {
+                var isSetting = !!META.settings[k];
+                var m = isSetting ? META.settings[k] : META.tuning[k];
+                var obj = isSetting ? SETTINGS : TUNING;
+                var def = isSetting ? DEF_SETTINGS[k] : DEF_TUNING[k];
+                var row = el("div", "adv-row");
+                row.dataset.search = (k + " " + nice(k) + " " + m.meaning).toLowerCase();
+                row.appendChild(label(nice(k), m.meaning));
+                var input;
+                if (typeof def === "boolean") {
+                    var sw = el("label", "sw");
+                    input = el("input"); input.type = "checkbox"; input.checked = !!obj[k];
+                    sw.appendChild(input); sw.appendChild(el("span"));
+                    row.appendChild(sw);
+                } else {
+                    input = el("input"); input.type = "number"; input.step = "any"; input.value = obj[k];
+                    row.appendChild(input);
+                }
+                input.setAttribute("aria-label", nice(k));
+                var rev = el("button", "rev", "↺"); rev.title = "Back to default (" + def + ")";
+                row.appendChild(rev);
+                function mark() { row.classList.toggle("changed", obj[k] !== def); refreshBadge(); }
+                function set(v) {
+                    if (isSetting) { SETTINGS[k] = v; changed(k); }
+                    else { var o = {}; o[k] = v; Swarm.setTuning(o); save(); }
+                    mark();
+                }
+                input.addEventListener("change", function () {
+                    if (input.type === "checkbox") set(input.checked);
+                    else if (input.value !== "" && isFinite(+input.value)) set(+input.value);
+                });
+                rev.addEventListener("click", function () {
+                    if (input.type === "checkbox") input.checked = def; else input.value = def;
+                    set(def);
+                });
+                mark();
+                d.appendChild(row);
+            });
+            host.appendChild(d);
+        });
+    }
+
+    $("advSearch").addEventListener("input", function () {
+        var q = this.value.trim().toLowerCase();
+        document.querySelectorAll("details.adv").forEach(function (d) {
+            var any = false;
+            d.querySelectorAll(".adv-row").forEach(function (r) {
+                var hit = !q || r.dataset.search.indexOf(q) >= 0;
+                r.style.display = hit ? "" : "none";
+                any = any || hit;
+            });
+            d.style.display = any ? "" : "none";
+            if (q) d.open = any;
+        });
+    });
+
+    function buildAll() { buildMain(); buildAdvanced(); }
+
+    /* ------------------------------------------------------------ drawer / modal */
+    function openDrawer(open) {
+        document.body.classList.toggle("drawer-open", open);
+        $("drawer").setAttribute("aria-hidden", open ? "false" : "true");
+    }
+    $("gear").addEventListener("click", function () { openDrawer(true); });
+    $("closeDrawer").addEventListener("click", function () { openDrawer(false); });
+
+    $("resetAll").addEventListener("click", function () {
+        if (!confirm("Reset every setting to its default?")) return;
+        applyObj(SETTINGS, DEF_SETTINGS);
+        var t = {};
+        for (var k in DEF_TUNING) if (!HIDDEN_TUNING[k]) t[k] = DEF_TUNING[k];
+        Swarm.setTuning(t);
+        Swarm.setGameSpeed(SETTINGS.gameSpeed);
+        Swarm.setUnitScale(SETTINGS.unitScale);
+        save();
+        layout(); applyClockLayout(); tick(); buildAll();
+        Swarm.restart();
+        toast("Everything is back to default");
+    });
+
+    function shareUrl(embed) {
+        var cfg = { s: diff(SETTINGS, DEF_SETTINGS), t: diff(TUNING, DEF_TUNING, HIDDEN_TUNING) };
+        var local = location.protocol === "file:" || /^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname);
+        var base = local ? PUBLIC_URL : location.origin + location.pathname;
+        var parts = [];
+        if (Object.keys(cfg.s).length || Object.keys(cfg.t).length) parts.push("s=" + b64urlEncode(JSON.stringify(cfg)));
+        if (embed) parts.push("e=1");
+        return { url: base + (parts.length ? "#" + parts.join("&") : ""), local: local };
+    }
+
+    $("openShare").addEventListener("click", function () {
+        var link = shareUrl(false), emb = shareUrl(true);
+        $("shareLink").value = link.url;
+        $("shareEmbed").value = '<iframe src="' + emb.url + '" width="480" height="320" style="border:0;border-radius:12px" title="Clockling" loading="lazy"></iframe>';
+        $("shareMd").value = "[![Clockling](" + DEMO_GIF + ")](" + link.url + ")";
+        $("shareNote").textContent = link.local
+            ? "You're running locally, so links point at the public site (" + PUBLIC_URL.replace(/^https:\/\//, "") + ")."
+            : "";
+        $("modal").classList.add("open");
+    });
+    $("closeShare").addEventListener("click", function () { $("modal").classList.remove("open"); });
+    $("modal").addEventListener("click", function (e) { if (e.target === this) this.classList.remove("open"); });
+    document.querySelectorAll("[data-copy]").forEach(function (b) {
+        b.addEventListener("click", function () {
+            var t = $(b.getAttribute("data-copy"));
+            t.select();
+            var done = function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy"; }, 1400); };
+            if (navigator.clipboard) navigator.clipboard.writeText(t.value).then(done, function () { document.execCommand("copy"); done(); });
+            else { document.execCommand("copy"); done(); }
+        });
+    });
+
+    var toastT = null;
+    function toast(msg) {
+        if (document.body.classList.contains("embed")) return;
+        var t = $("toast");
+        t.textContent = msg;
+        t.classList.add("show");
+        clearTimeout(toastT);
+        toastT = setTimeout(function () { t.classList.remove("show"); }, 1800);
+    }
+
+    /* ------------------------------------------------------------ input */
+    $("stage").addEventListener("pointerdown", function (e) {
+        if (document.body.classList.contains("drawer-open")) { openDrawer(false); return; }
+        Swarm.killNear(e.clientX / scale, e.clientY / scale, 60);
+    });
+    document.addEventListener("keydown", function (e) {
+        if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") {
+            if (e.key === "Escape") e.target.blur();
+            return;
+        }
+        if (e.key === "s" || e.key === "S") openDrawer(!document.body.classList.contains("drawer-open"));
+        else if (e.key === "r" || e.key === "R") { Swarm.restart(); toast("Battle restarted"); }
+        else if (e.key === "Escape") { openDrawer(false); $("modal").classList.remove("open"); }
+    });
+
+    /* fade the gear button when idle */
+    var idleT = null;
+    function wake() {
+        document.body.classList.remove("idle");
+        clearTimeout(idleT);
+        idleT = setTimeout(function () { document.body.classList.add("idle"); }, 2500);
+    }
+    ["mousemove", "pointerdown", "keydown", "touchstart"].forEach(function (ev) { document.addEventListener(ev, wake, { passive: true }); });
+
+    document.addEventListener("visibilitychange", function () { if (document.hidden) Swarm.stop(); else Swarm.start(); });
+    window.addEventListener("resize", layout);
+    window.addEventListener("hashchange", function () { location.reload(); });   /* a new shared link */
+
+    /* ------------------------------------------------------------ go */
+    Swarm.setGameSpeed(SETTINGS.gameSpeed);
+    Swarm.setUnitScale(SETTINGS.unitScale);
+    Swarm.init({ canvas: "swarm", assets: "app/images/" });
+    layout();
+    applyClockLayout();
+    tick();
+    setInterval(tick, 500);
+    buildAll();
+    wake();
+    if (hash.cfg) toast("Viewing a shared Clockling");
+})();
+</script>
+</body>
+</html>

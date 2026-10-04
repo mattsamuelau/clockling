@@ -1,6 +1,8 @@
 /* Clockling - battle swarm: lings/banes vs marines, egg morphs.
- * Sprite art: user GIFs -> images/ling0-3.png, bane0-3.png, eggA-C.png, marine0-20.png.
- * ES5 on purpose: broad compatibility across widget hosts and browsers.
+ * This file is the reference implementation of the game rules. The ESP32 firmware
+ * (targets/esp32/src/sim.cpp) is a C++ port of it; keep the two in step.
+ * Sprite art: images/ling0-3.png, bane0-3.png, eggA-C.png, marine_walk/new*.png.
+ * ES5 on purpose: runs anywhere, no build step.
  */
 var Swarm = (function () {
     "use strict";
@@ -34,6 +36,7 @@ var Swarm = (function () {
     var patrolX = 0, patrolY = 0, patrolT = 0;  /* shared marine patrol waypoint */
     var ZERG_TURN = 0.45;                  /* zerg steering: share of the turn closed per 1/8 s */
     var unitScale = 1;
+    var assetBase = "images/";  /* sprite folder, relative to the page */
 
     /* ALL tunable numbers live here so balance is easy to tweak. */
     var TUNING = {
@@ -111,17 +114,7 @@ var Swarm = (function () {
         marineSightMult: 2,      /* no zerg within this x weapon range: patrol */
     };
 
-    /* Load saved tuning before cached simulation constants are calculated. */
-    (function () {
-        try {
-            var stored = JSON.parse(localStorage.getItem("clocklingTuning") || "{}");
-            for (var storedKey in stored) {
-                if (TUNING[storedKey] !== undefined) TUNING[storedKey] = stored[storedKey];
-            }
-        } catch (e) {}
-    })();
-
-    /* Preview control panel: ?tun_<key>=<number> overrides. */
+    /* Dev/test hook: ?tun_<key>=<number> overrides (used by headless test harnesses). */
     (function () {
         var q = window.location.search || "";
         var re = /[?&]tun_([A-Za-z0-9]+)=([^&]+)/g, mm;
@@ -137,93 +130,96 @@ var Swarm = (function () {
         }
     })();
 
-    /* runtime controls: ?speed=N&scale=N (game speed and unit multiplier) */
-    (function () {
-        var q = window.location.search || "";
-        var sp = /[?&]speed=(\d+(?:\.\d+)?)/.exec(q);
-        var sc = /[?&]scale=(\d+(?:\.\d+)?)/.exec(q);
-        if (sp) gameSpeed = parseFloat(sp[1]) || 1;
-        if (sc) unitScale = parseFloat(sc[1]) || 1;
-    })();
-
-    /* map resolution (preview can override via tun_mapW / tun_mapH) */
+    /* battlefield size in logical px (clockling.html calls resize() to fit the window) */
     W = TUNING.mapW;
     H = TUNING.mapH;
-    /* orientation setting: landscape = wider than tall, portrait = taller than wide */
-    if (typeof SETTINGS !== "undefined" && (SETTINGS.landscape ? W < H : W > H)) {
-        var tmpW = W; W = H; H = tmpW;
-    }
 
-    var MAX_LINGS = TUNING.maxLings;
-    var MAX_BANES = TUNING.maxBanes;
-    var MAX_MARINES = TUNING.maxMarines;
-    var LING_W = TUNING.lingW;
-    var BANE_W = TUNING.baneW;
-    var MARINE_W = TUNING.marineW;
-    var EGG_W = TUNING.eggW;
-    var LING_BUMP = TUNING.lingBump;
-    var BANE_BUMP = TUNING.baneBump;
-    var MARINE_BUMP = TUNING.marineBump;
-    var RESPAWN_T = TUNING.respawnInterval;
-    var RESPAWN_BATCH = TUNING.respawnBatch;
-    var MARINE_LO = TUNING.marineWaveLo;
-    var MARINE_HI = TUNING.marineWaveHi;
-    var MARINE_LO2 = TUNING.marineRespawnLo;
-    var MARINE_HI2 = TUNING.marineRespawnHi;
-    var MARINE_INSET = TUNING.marineSpawnInset;
-    var SHOOT_DMG = TUNING.marineShootDamage;
-    var SHOOT_T = TUNING.marineShootInterval;
-    var BITE_DMG = TUNING.lingBiteDamage;
-    var BITE_T = TUNING.lingBiteInterval;
-    var LING_HP = TUNING.lingHp;
-    var MARINE_HP = TUNING.marineHp;
-    var MARINE_HEAL_PCT = TUNING.marineHealPct;
-    var MARINE_HEAL_T = TUNING.marineHealInterval;
-    var MARINE_GROUP_W = TUNING.marineGroupWeight;
-    var MARINE_AWAY_W = TUNING.marineAwayWeight;
-    var MARINE_TURN = TUNING.marineTurnRate;
-    var MARINE_FLEE_PCT = TUNING.marineFleeHpPct;
-    var MARINE_KITE_FRAC = TUNING.marineKiteFrac;
-    var LING_FLEE_MULT = TUNING.lingFleeSpeedMult;
-    var MARINE_ENTRY_SPEED = TUNING.marineEntrySpeed;
-    var MARINE_ENTRY_DEPTH = TUNING.marineEntryDepth;
-    var MARINE_SIGHT_MULT = TUNING.marineSightMult;
-    var MARINE_RANGE = MARINE_W * TUNING.marineRangeMult;
-    var ALLY_RADIUS = TUNING.allyRadius;
-    var ATTACK_GROUP_SIZE = TUNING.attackGroupSize;
-    var MARINE_SCAN_RADIUS = TUNING.marineScanRadius;
-    var MARINE_GROUP_RADIUS = TUNING.marineGroupRadius;
-    var ATTACK_ODDS = TUNING.attackOdds;
-    var BERSERK_SPEED_MULT = TUNING.berserkSpeedMult;
-    var BERSERK_BANES = TUNING.berserkBanes;
-    var BERSERK_CATCH_RADIUS = TUNING.berserkCatchRadius;
-    var BERSERK_UNTIL_DEATH = TUNING.berserkUntilDeath;
-    var MARINE_WAVE_SIZE_LO = TUNING.marineWaveSizeLo;
-    var MARINE_WAVE_SIZE_HI = TUNING.marineWaveSizeHi;
-    var MARINE_RESPAWN_SIZE_LO = TUNING.marineRespawnSizeLo;
-    var MARINE_RESPAWN_SIZE_HI = TUNING.marineRespawnSizeHi;
-    var MARINE_SPAWN_RATE = TUNING.marineSpawnRateMult;
-    var ZERG_SPEED = TUNING.zergSpeed;
-    var TERRAN_SPEED = TUNING.terranSpeed;
-    var MARINE_TACTICS = TUNING.marineTactics;
-    var RETARGET_T = TUNING.retargetInterval;
-    var AIM_T = TUNING.aimInterval;
-    var MORPH_AGE = TUNING.morphAge;
-    var MORPH_CD = TUNING.morphCooldown;
-    var EGG_TIME_MIN = TUNING.eggTimeMin;
-    var EGG_TIME_MAX = TUNING.eggTimeMax;
-    var SPLAT_LIFE = TUNING.splatLife;
-    var SPLAT_BASE = TUNING.splatBase;
-    var BANE_SPLASH_R = TUNING.baneSplashR;
-    var BANE_SPLASH_DMG = TUNING.baneSplashDamage;
-    var BANE_HP = TUNING.baneHp;
-    var CORPSE_LIFE = TUNING.corpseLife;
-    var BANE_SPLAT_SCALE = TUNING.baneSplatScale;
+    /* cached copies of TUNING, refreshed by computeTuning() whenever settings change */
+    var MAX_LINGS, MAX_BANES, MAX_MARINES, LING_W, BANE_W, MARINE_W;
+    var EGG_W, LING_BUMP, BANE_BUMP, MARINE_BUMP, RESPAWN_T, RESPAWN_BATCH;
+    var MARINE_LO, MARINE_HI, MARINE_LO2, MARINE_HI2, MARINE_INSET, SHOOT_DMG;
+    var SHOOT_T, BITE_DMG, BITE_T, LING_HP, MARINE_HP, MARINE_HEAL_PCT;
+    var MARINE_HEAL_T, MARINE_GROUP_W, MARINE_AWAY_W, MARINE_TURN, MARINE_FLEE_PCT, MARINE_KITE_FRAC;
+    var LING_FLEE_MULT, MARINE_ENTRY_SPEED, MARINE_ENTRY_DEPTH, MARINE_SIGHT_MULT, MARINE_RANGE, ALLY_RADIUS;
+    var ATTACK_GROUP_SIZE, MARINE_SCAN_RADIUS, MARINE_GROUP_RADIUS, ATTACK_ODDS, BERSERK_SPEED_MULT, BERSERK_BANES;
+    var BERSERK_CATCH_RADIUS, BERSERK_UNTIL_DEATH, MARINE_WAVE_SIZE_LO, MARINE_WAVE_SIZE_HI, MARINE_RESPAWN_SIZE_LO, MARINE_RESPAWN_SIZE_HI;
+    var MARINE_SPAWN_RATE, ZERG_SPEED, TERRAN_SPEED, MARINE_TACTICS, RETARGET_T, AIM_T;
+    var MORPH_AGE, MORPH_CD, EGG_TIME_MIN, EGG_TIME_MAX, SPLAT_LIFE, SPLAT_BASE;
+    var BANE_SPLASH_R, BANE_SPLASH_DMG, BANE_HP, CORPSE_LIFE, BANE_SPLAT_SCALE;
     var LING_SPLAT = ["#e02828", "#ff6b4a"];
     var BANE_SPLAT = ["#39ff14", "#b8ff4d"]; /* fluoro lime green */
     var MARINE_SPLAT = ["#d62020", "#ff6b4a"];
 
-    /* scale unit population knobs together (1x/2x/5x/10x) */
+    function computeTuning() {
+        MAX_LINGS = TUNING.maxLings;
+        MAX_BANES = TUNING.maxBanes;
+        MAX_MARINES = TUNING.maxMarines;
+        LING_W = TUNING.lingW;
+        BANE_W = TUNING.baneW;
+        MARINE_W = TUNING.marineW;
+        EGG_W = TUNING.eggW;
+        LING_BUMP = TUNING.lingBump;
+        BANE_BUMP = TUNING.baneBump;
+        MARINE_BUMP = TUNING.marineBump;
+        RESPAWN_T = TUNING.respawnInterval;
+        RESPAWN_BATCH = TUNING.respawnBatch;
+        MARINE_LO = TUNING.marineWaveLo;
+        MARINE_HI = TUNING.marineWaveHi;
+        MARINE_LO2 = TUNING.marineRespawnLo;
+        MARINE_HI2 = TUNING.marineRespawnHi;
+        MARINE_INSET = TUNING.marineSpawnInset;
+        SHOOT_DMG = TUNING.marineShootDamage;
+        SHOOT_T = TUNING.marineShootInterval;
+        BITE_DMG = TUNING.lingBiteDamage;
+        BITE_T = TUNING.lingBiteInterval;
+        LING_HP = TUNING.lingHp;
+        MARINE_HP = TUNING.marineHp;
+        MARINE_HEAL_PCT = TUNING.marineHealPct;
+        MARINE_HEAL_T = TUNING.marineHealInterval;
+        MARINE_GROUP_W = TUNING.marineGroupWeight;
+        MARINE_AWAY_W = TUNING.marineAwayWeight;
+        MARINE_TURN = TUNING.marineTurnRate;
+        MARINE_FLEE_PCT = TUNING.marineFleeHpPct;
+        MARINE_KITE_FRAC = TUNING.marineKiteFrac;
+        LING_FLEE_MULT = TUNING.lingFleeSpeedMult;
+        MARINE_ENTRY_SPEED = TUNING.marineEntrySpeed;
+        MARINE_ENTRY_DEPTH = TUNING.marineEntryDepth;
+        MARINE_SIGHT_MULT = TUNING.marineSightMult;
+        MARINE_RANGE = MARINE_W * TUNING.marineRangeMult;
+        ALLY_RADIUS = TUNING.allyRadius;
+        ATTACK_GROUP_SIZE = TUNING.attackGroupSize;
+        MARINE_SCAN_RADIUS = TUNING.marineScanRadius;
+        MARINE_GROUP_RADIUS = TUNING.marineGroupRadius;
+        ATTACK_ODDS = TUNING.attackOdds;
+        BERSERK_SPEED_MULT = TUNING.berserkSpeedMult;
+        BERSERK_BANES = TUNING.berserkBanes;
+        BERSERK_CATCH_RADIUS = TUNING.berserkCatchRadius;
+        BERSERK_UNTIL_DEATH = TUNING.berserkUntilDeath;
+        MARINE_WAVE_SIZE_LO = TUNING.marineWaveSizeLo;
+        MARINE_WAVE_SIZE_HI = TUNING.marineWaveSizeHi;
+        MARINE_RESPAWN_SIZE_LO = TUNING.marineRespawnSizeLo;
+        MARINE_RESPAWN_SIZE_HI = TUNING.marineRespawnSizeHi;
+        MARINE_SPAWN_RATE = TUNING.marineSpawnRateMult;
+        ZERG_SPEED = TUNING.zergSpeed;
+        TERRAN_SPEED = TUNING.terranSpeed;
+        MARINE_TACTICS = TUNING.marineTactics;
+        RETARGET_T = TUNING.retargetInterval;
+        AIM_T = TUNING.aimInterval;
+        MORPH_AGE = TUNING.morphAge;
+        MORPH_CD = TUNING.morphCooldown;
+        EGG_TIME_MIN = TUNING.eggTimeMin;
+        EGG_TIME_MAX = TUNING.eggTimeMax;
+        SPLAT_LIFE = TUNING.splatLife;
+        SPLAT_BASE = TUNING.splatBase;
+        BANE_SPLASH_R = TUNING.baneSplashR;
+        BANE_SPLASH_DMG = TUNING.baneSplashDamage;
+        BANE_HP = TUNING.baneHp;
+        CORPSE_LIFE = TUNING.corpseLife;
+        BANE_SPLAT_SCALE = TUNING.baneSplatScale;
+        applyUnitScale();
+    }
+
+    /* scale unit population knobs together (the Units slider) */
     function applyUnitScale() {
         MAX_LINGS = Math.max(1, Math.round(TUNING.maxLings * unitScale));
         MAX_BANES = Math.max(1, Math.round(TUNING.maxBanes * unitScale));
@@ -235,7 +231,7 @@ var Swarm = (function () {
         MARINE_RESPAWN_SIZE_HI = Math.max(1, Math.round(TUNING.marineRespawnSizeHi * unitScale));
         MARINE_SPAWN_RATE = Math.max(0.1, TUNING.marineSpawnRateMult * unitScale);
     }
-    applyUnitScale();
+    computeTuning();
 
     var raf = window.requestAnimationFrame || window.webkitRequestAnimationFrame ||
         function (cb) { return setTimeout(function () { cb(Date.now()); }, 16); };
@@ -261,14 +257,14 @@ var Swarm = (function () {
             sets++;
             if (sets === 5) done();
         }
-        loadSet(["images/ling0.png", "images/ling1.png", "images/ling2.png", "images/ling3.png"], lingFrames, inc);
-        loadSet(["images/bane0.png", "images/bane1.png", "images/bane2.png", "images/bane3.png"], baneFrames, inc);
-        loadSet(["images/eggA.png", "images/eggB.png", "images/eggC.png"], eggFrames, inc);
+        loadSet([assetBase + "ling0.png", assetBase + "ling1.png", assetBase + "ling2.png", assetBase + "ling3.png"], lingFrames, inc);
+        loadSet([assetBase + "bane0.png", assetBase + "bane1.png", assetBase + "bane2.png", assetBase + "bane3.png"], baneFrames, inc);
+        loadSet([assetBase + "eggA.png", assetBase + "eggB.png", assetBase + "eggC.png"], eggFrames, inc);
         var walkUrls = [];
-        for (var w = 0; w < 6; w++) walkUrls.push("images/marine_walk0." + (w + 1) + ".png");
+        for (var w = 0; w < 6; w++) walkUrls.push(assetBase + "marine_walk0." + (w + 1) + ".png");
         loadSet(walkUrls, marineIdleFrames, inc);
         var atkUrls = [];
-        for (var a = 0; a < 8; a++) atkUrls.push("images/marine_new" + a + ".png");
+        for (var a = 0; a < 8; a++) atkUrls.push(assetBase + "marine_new" + a + ".png");
         loadSet(atkUrls, marineFlashFrames, inc);
     }
 
@@ -970,15 +966,15 @@ var Swarm = (function () {
         /* health bar under every non-egg unit (showHealthBars) */
         if (c.kind !== "egg" && SETTINGS.showHealthBars !== false) {
             var hp = (typeof c.hp === "number") ? c.hp : 100;
-            var bw = 30, bh = 3;   /* all health bars the same width */
-            var by = c.y + hh / 2 + 4;
+            var bw = 30, bh = 2;   /* all health bars the same width (2 px tall, as on the ESP32) */
+            var by = c.y + hh / 2 + 3;
             cc.fillStyle = "rgba(0,0,0,0.55)";
             cc.fillRect(c.x - bw / 2, by, bw, bh);
             var frac = Math.max(0, Math.min(1, hp / 100));
             cc.fillStyle = frac > 0.5 ? "#4cff4c" : (frac > 0.25 ? "#ffd23e" : "#ff4c4c");
             cc.fillRect(c.x - bw / 2, by, bw * frac, bh);
             /* marine kill stripes: one 1x2px yellow stripe per ling killed */
-            if (c.kind === "marine" && c.kills > 0) {
+            if (c.kind === "marine" && c.kills > 0 && SETTINGS.showKills !== false) {
                 var nk = c.kills;
                 cc.fillStyle = "#ffe23e";
                 for (var si = 0; si < nk; si++) {
@@ -1387,29 +1383,32 @@ var Swarm = (function () {
         drawCorpses(ctx, dt);
         for (var k = 0; k < units.length; k++) drawUnit(units[k], ctx);
 
-        /* supply bar: zerg (purple) vs terran (blue). 1 marine = 1 supply,
-         * 1 ling/bane = 0.5 supply, so the bar shows who is ahead. */
-        var zergSupply = (countKind("ling") + countKind("bane")) * 0.5;
-        var terranSupply = countKind("marine");
-        var totalSupply = zergSupply + terranSupply;
-        var frac = totalSupply > 0 ? zergSupply / totalSupply : 0.5;
-        var margin = 6, barH = 2, barY = 6, barW = W - margin * 2;
-        var split = margin + barW * frac;
-        ctx.fillStyle = "#c39bff";
-        ctx.fillRect(margin, barY, split - margin, barH);
-        ctx.fillStyle = "#6ab8ff";
-        ctx.fillRect(split, barY, margin + barW - split, barH);
-        /* supply numbers just below the bar, coloured to match (no labels) */
-        var zergStr = (zergSupply % 1 === 0) ? String(zergSupply) : zergSupply.toFixed(1);
-        var terranStr = (terranSupply % 1 === 0) ? String(terranSupply) : terranSupply.toFixed(1);
-        ctx.font = "bold 10px Arial";
-        ctx.textAlign = "left";
-        ctx.fillStyle = "#c39bff";
-        ctx.fillText(zergStr, margin, barY + barH + 12);
-        ctx.textAlign = "right";
-        ctx.fillStyle = "#6ab8ff";
-        ctx.fillText(terranStr, W - margin, barY + barH + 12);
-        ctx.textAlign = "left";
+        /* score (showScore, off by default) */
+        if (SETTINGS.showScore) {
+            /* supply bar: zerg (purple) vs terran (blue). 1 marine = 1 supply,
+             * 1 ling/bane = 0.5 supply, so the bar shows who is ahead. */
+            var zergSupply = (countKind("ling") + countKind("bane")) * 0.5;
+            var terranSupply = countKind("marine");
+            var totalSupply = zergSupply + terranSupply;
+            var frac = totalSupply > 0 ? zergSupply / totalSupply : 0.5;
+            var margin = 6, barH = 2, barY = 6, barW = W - margin * 2;
+            var split = margin + barW * frac;
+            ctx.fillStyle = "#c39bff";
+            ctx.fillRect(margin, barY, split - margin, barH);
+            ctx.fillStyle = "#6ab8ff";
+            ctx.fillRect(split, barY, margin + barW - split, barH);
+            /* supply numbers just below the bar, coloured to match (no labels) */
+            var zergStr = (zergSupply % 1 === 0) ? String(zergSupply) : zergSupply.toFixed(1);
+            var terranStr = (terranSupply % 1 === 0) ? String(terranSupply) : terranSupply.toFixed(1);
+            ctx.font = "bold 10px Arial";
+            ctx.textAlign = "left";
+            ctx.fillStyle = "#c39bff";
+            ctx.fillText(zergStr, margin, barY + barH + 12);
+            ctx.textAlign = "right";
+            ctx.fillStyle = "#6ab8ff";
+            ctx.fillText(terranStr, W - margin, barY + barH + 12);
+            ctx.textAlign = "left";
+        }
 
         /* firing lines: brief, semi-transparent, gun tip -> random point on the ling */
         for (var fl = 0; fl < units.length; fl++) {
@@ -1474,18 +1473,57 @@ var Swarm = (function () {
         applyUnitScale();
     }
 
-    function init() {
-        canvas = document.getElementById("swarm");
+    /* restart the battle with the configured starting population */
+    function restart() {
+        setCount(SETTINGS.unitCount || MAX_LINGS);
+    }
+
+    /* change TUNING live: copy the given keys in and refresh the cached values.
+     * Sizes/HP apply to units spawned from now on; restart() applies them to all. */
+    function setTuning(obj) {
+        for (var k in obj) {
+            if (Object.prototype.hasOwnProperty.call(TUNING, k)) TUNING[k] = obj[k];
+        }
+        computeTuning();
+    }
+
+    /* resize the battlefield to w x h logical px, rendered at `ratio` device pixels
+     * per logical px (crisp when scaled up). Units are kept inside the new bounds. */
+    var pixelRatio = 1;
+    function resize(w, h, ratio) {
+        W = Math.max(60, Math.round(w));
+        H = Math.max(60, Math.round(h));
+        pixelRatio = ratio || 1;
+        TUNING.mapW = W;
+        TUNING.mapH = H;
+        if (canvas) {
+            canvas.width = Math.round(W * pixelRatio);
+            canvas.height = Math.round(H * pixelRatio);
+            if (ctx) ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+        }
+        for (var i = 0; i < units.length; i++) {
+            var c = units[i];
+            if (c.kind === "marine" && !c.entered) continue;
+            c.x = Math.max(12, Math.min(W - 12, c.x));
+            c.y = Math.max(12, Math.min(H - 12, c.y));
+        }
+    }
+
+    /* opts: { canvas: element or id (default "swarm"), assets: sprite folder (default "images/") } */
+    function init(opts) {
+        opts = opts || {};
+        canvas = typeof opts.canvas === "object" ? opts.canvas : document.getElementById(opts.canvas || "swarm");
+        if (opts.assets) assetBase = opts.assets;
         if (!canvas || !canvas.getContext) return;
-        canvas.width = W;
-        canvas.height = H;
         ctx = canvas.getContext("2d");
+        resize(W, H, pixelRatio);
         loadFrames(function () {
-            setCount(SETTINGS.unitCount || MAX_LINGS);
+            restart();
             start();
         });
     }
 
-    return { init: init, start: start, stop: stop, setCount: setCount, killNear: killNear, setGameSpeed: setGameSpeed, setUnitScale: setUnitScale, TUNING: TUNING,
-             debugUnits: function () { return units; } };
+    return { init: init, start: start, stop: stop, restart: restart, setCount: setCount, killNear: killNear,
+             setGameSpeed: setGameSpeed, setUnitScale: setUnitScale, setTuning: setTuning, resize: resize,
+             TUNING: TUNING, debugUnits: function () { return units; } };
 })();

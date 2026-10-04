@@ -41,9 +41,10 @@ struct UnitDraw {
 static UnitDraw s_ud[sim::MAX_UNITS];
 static int s_nud;
 
-/* clock layout: the web #face stack at 1/2 scale, pinned to the top */
-static const uint8_t CLOCK_ALPHA = 153;   /* 40% more see-through than the web clock */
-static int s_timeBase, s_secBase, s_dateBase;
+/* clock layout: time / seconds / date stack, placed by clockPosition
+ * (0 top, 1 middle, 2 bottom, 3 top left, 4 top right, 5 bottom left, 6 bottom right) */
+static const uint8_t CLOCK_ALPHA = 153;   /* 40% more see-through than the original watch clock */
+static int s_timeBase, s_secBase, s_dateBase, s_clockAlign;  /* align: 0 centre, 1 left, 2 right */
 static char s_time[8], s_sec[8], s_date[24];
 static bool s_timeValid;
 
@@ -54,7 +55,14 @@ static void layoutClock() {
     int tA = FONT_TIME.ascent, tD = FONT_TIME.descent;
     int sLine = FONT_SEC.ascent + FONT_SEC.descent;
     int secBox = max(12, sLine);
-    const int timeBox = 36, top = 6;   /* pinned to the top of the screen */
+    const int timeBox = 36, margin = 6;
+    int dLine = FONT_DATE.ascent + FONT_DATE.descent;
+    int block = timeBox + 1 + (s_sec[0] ? secBox : 0) + 2 + dLine;
+    int pos = (int)TUN(clockPosition);
+    int top = margin;                                                   /* top rows */
+    if (pos == 1) top = (H - block) / 2;                                /* middle */
+    else if (pos == 2 || pos == 5 || pos == 6) top = H - block - margin; /* bottom rows */
+    s_clockAlign = (pos == 3 || pos == 5) ? 1 : (pos == 4 || pos == 6) ? 2 : 0;
     s_timeBase = top + (timeBox - (tA + tD)) / 2 + tA;
     int secTop = top + timeBox + 1;
     s_secBase = secTop + FONT_SEC.ascent;
@@ -144,9 +152,25 @@ static void buildDrawList() {
     }
 }
 
+/* x for a line of text `w` px wide under the current clock alignment */
+static int clockX(int w) {
+    if (s_clockAlign == 1) return 8;
+    if (s_clockAlign == 2) return W - w - 8;
+    return (W - w) / 2;
+}
+
+static void drawClock(Band& b) {
+    if (!TUNB(showClock)) return;
+    gfx::text(b, FONT_TIME, clockX(gfx::textWidth(FONT_TIME, s_time)), s_timeBase, s_time, C_TIME, CLOCK_ALPHA);
+    if (s_sec[0])
+        gfx::text(b, FONT_SEC, clockX(gfx::textWidth(FONT_SEC, s_sec)), s_secBase, s_sec, C_SEC, CLOCK_ALPHA);
+    gfx::text(b, FONT_DATE, clockX(gfx::textWidth(FONT_DATE, s_date)), s_dateBase, s_date, C_DATE, CLOCK_ALPHA);
+}
+
 static void drawBand(Band& b, const Overlay& ov) {
     float bTop = b.y0 - 2, bBot = b.y0 + b.h + 2;
     gfx::background(b);
+    if (TUNB(clockBehind)) drawClock(b);   /* units walk over it */
 
     /* splats: grow 20% early, stay put, fade near the end */
     for (int i = 0; i < sim::nSplats; i++) {
@@ -193,13 +217,7 @@ static void drawBand(Band& b, const Overlay& ov) {
         gfx::line(b, gx, gy, m.hitX, m.hitY, 1.0f, C_SHOT, (uint8_t)(alpha * 255));
     }
 
-    /* clock on top of the battle (the #face overlay) */
-    if (TUNB(showClock)) {
-        gfx::text(b, FONT_TIME, (W - gfx::textWidth(FONT_TIME, s_time)) / 2, s_timeBase, s_time, C_TIME, CLOCK_ALPHA);
-        if (s_sec[0])
-            gfx::text(b, FONT_SEC, (W - gfx::textWidth(FONT_SEC, s_sec)) / 2, s_secBase, s_sec, C_SEC, CLOCK_ALPHA);
-        gfx::text(b, FONT_DATE, (W - gfx::textWidth(FONT_DATE, s_date)) / 2, s_dateBase, s_date, C_DATE, CLOCK_ALPHA);
-    }
+    if (!TUNB(clockBehind)) drawClock(b);  /* on top of the battle */
 
     /* status panel (WiFi setup / settings address) */
     if (ov.show) {

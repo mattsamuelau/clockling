@@ -1,3 +1,5 @@
+> **Historical.** This was the September 2026 plan to turn the watch face into Android and Windows widgets. The project went web + ESP32 instead; see the README for the current state.
+
 # Clockling — build-out brief
 
 **Goal:** turn the watch-face battle sim into a **phone widget (Android)** and a

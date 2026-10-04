@@ -1,6 +1,8 @@
 /* Clockling - TUNING & SETTINGS metadata.
- * Maps all tunable keys to their visibility class (Visible/Advanced) and defaults.
- * Used to generate settings UI and manage persistence.
+ * For every key: visibility class (Visible/Advanced), default and a plain-English
+ * meaning. Optional: options (dropdown), min/max/step (slider), only ("web" or
+ * "esp32" when a key applies to one target). Both settings UIs are built from this:
+ * clockling.html directly, the ESP32 page via targets/esp32/tools/gen_assets.py.
  */
 
 var TUNING_META = {
@@ -93,13 +95,24 @@ var TUNING_META = {
 
     /* Map of SETTINGS key -> { class, default, meaning } */
     settings: {
-        hour24: { class: "Visible", default: true, meaning: "24h vs 12h clock" },
-        showSeconds: { class: "Visible", default: true, meaning: "Show seconds in clock" },
-        showClock: { class: "Visible", default: true, meaning: "Show clock block" },
-        landscape: { class: "Visible", default: true, meaning: "Horizontal screen (off = vertical)" },
+        showClock: { class: "Visible", default: true, meaning: "Show the clock" },
+        hour24: { class: "Visible", default: true, meaning: "24-hour clock (off = 12-hour)" },
+        showSeconds: { class: "Visible", default: false, meaning: "Show seconds" },
+        clockPosition: { class: "Visible", default: 0, meaning: "Where the clock sits",
+                         options: ["Top", "Middle", "Bottom", "Top left", "Top right", "Bottom left", "Bottom right"] },
+        clockBehind: { class: "Visible", default: false, meaning: "Draw the clock behind the units" },
+        clockScale: { class: "Visible", default: 1, meaning: "Clock size", only: "web", min: 0.5, max: 2, step: 0.05 },
+        timeZone: { class: "Visible", default: "auto", meaning: "Time zone (auto = this device)", only: "web" },
+        gameSpeed: { class: "Visible", default: 1, meaning: "Time multiplier", min: 0.25, max: 5, step: 0.25 },
+        unitScale: { class: "Visible", default: 1, meaning: "Unit multiplier (population, waves, spawn rate)", min: 0.5, max: 5, step: 0.5 },
+        unitCount: { class: "Advanced", default: 10, meaning: "Starting zerglings" },
+        unitSpeed: { class: "Advanced", default: 1.0, meaning: "Movement speed multiplier for every unit" },
         showHealthBars: { class: "Visible", default: true, meaning: "Show unit health bars" },
-        unitCount: { class: "Advanced", default: 10, meaning: "Initial unit count" },
-        unitSpeed: { class: "Advanced", default: 1.0, meaning: "Global speed multiplier for all units" }
+        showKills: { class: "Visible", default: true, meaning: "Marine kill marks (one per ling killed)", only: "web" },
+        showScore: { class: "Visible", default: false, meaning: "Score bar along the top", only: "web" },
+        fieldSize: { class: "Visible", default: 320, meaning: "Battlefield size (smaller = bigger units)", only: "web",
+                     options: { "240": "Small", "320": "Medium", "480": "Large", "640": "Huge" } },
+        landscape: { class: "Visible", default: true, meaning: "Horizontal screen (off = vertical)", only: "esp32" }
     },
 
     /* Groups for UI organization */
@@ -113,6 +126,8 @@ var TUNING_META = {
         "Movement": ["zergSpeed", "terranSpeed"],
         "Visuals": ["lingW", "baneW", "marineW", "eggW", "lingBump", "baneBump", "marineBump", "splatLife", "splatBase", "splatFadeStart", "corpseLife", "marineSplatScale", "baneSplatScale", "retargetInterval", "aimInterval"],
         "Map": ["mapW", "mapH"],
-        "Display": ["hour24", "showSeconds", "showClock", "landscape", "showHealthBars"]
+        "Clock": ["showClock", "hour24", "showSeconds", "clockPosition", "clockBehind", "clockScale", "timeZone"],
+        "Battle": ["gameSpeed", "unitScale", "fieldSize", "showHealthBars", "showKills", "showScore", "unitCount", "unitSpeed"],
+        "Display": ["landscape"]
     }
 };

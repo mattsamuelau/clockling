@@ -74,15 +74,17 @@ enum TKey : uint8_t {
   T_marineEntrySpeed,
   T_marineEntryDepth,
   T_marineSightMult,
+  T_showClock,
   T_hour24,
   T_showSeconds,
-  T_showClock,
-  T_landscape,
-  T_showHealthBars,
-  T_unitCount,
-  T_unitSpeed,
+  T_clockPosition,
+  T_clockBehind,
   T_gameSpeed,
   T_unitScale,
+  T_unitCount,
+  T_unitSpeed,
+  T_showHealthBars,
+  T_landscape,
   T_brightness,
   T_fpsCap,
   T_COUNT
@@ -94,6 +96,7 @@ struct TMeta {
   uint8_t advanced;
   uint8_t group;      // index into TGROUPS
   const char* meaning;
+  const char* opts;   // dropdown labels "A|B|C" (value = index), or nullptr
 };
 extern const TMeta TMETA[T_COUNT];
 extern const char* const TGROUPS[];
