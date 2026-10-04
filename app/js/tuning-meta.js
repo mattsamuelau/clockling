@@ -13,9 +13,9 @@ var TUNING_META = {
         mapH: { class: "Advanced", default: 432, meaning: "Battlefield height (px)" },
 
         /* Max units */
-        maxLings: { class: "Visible", default: 10, meaning: "Max zerglings on screen" },
+        maxLings: { class: "Visible", default: 14, meaning: "Max zerglings on screen" },
         maxBanes: { class: "Visible", default: 2, meaning: "Max banelings on screen" },
-        maxMarines: { class: "Visible", default: 7, meaning: "Max marines on screen" },
+        maxMarines: { class: "Visible", default: 6, meaning: "Max marines on screen" },
 
         /* Movement */
         zergSpeed: { class: "Visible", default: 1.2, meaning: "Zerg base speed multiplier" },
@@ -26,7 +26,7 @@ var TUNING_META = {
         respawnBatch: { class: "Visible", default: 4, meaning: "Eggs spawned per refill batch" },
         eggTimeMin: { class: "Visible", default: 8, meaning: "Min seconds until an egg hatches" },
         eggTimeMax: { class: "Visible", default: 10, meaning: "Max seconds until an egg hatches" },
-        eggHatchMult: { class: "Advanced", default: 1, meaning: "Egg hatch acceleration multiplier" },
+        eggHatchMult: { class: "Advanced", default: 1.5, meaning: "Egg hatch acceleration multiplier" },
         morphAge: { class: "Visible", default: 4, meaning: "Lings must live this long before morphing" },
         morphCooldown: { class: "Visible", default: 2, meaning: "Seconds between successful morphs" },
         morphChancePerSec: { class: "Visible", default: 1, meaning: "Chance per second to start morphing" },
@@ -100,18 +100,18 @@ var TUNING_META = {
         showSeconds: { class: "Visible", default: false, meaning: "Show seconds" },
         clockPosition: { class: "Visible", default: 0, meaning: "Where the clock sits",
                          options: ["Top", "Middle", "Bottom", "Top left", "Top right", "Bottom left", "Bottom right"] },
-        clockBehind: { class: "Visible", default: false, meaning: "Draw the clock behind the units" },
-        clockScale: { class: "Visible", default: 1, meaning: "Clock size", only: "web", min: 0.5, max: 2, step: 0.05 },
+        clockBehind: { class: "Visible", default: true, meaning: "Draw the clock behind the units" },
+        clockScale: { class: "Visible", default: 0.55, meaning: "Clock size", only: "web", min: 0.5, max: 2, step: 0.05 },
         timeZone: { class: "Visible", default: "auto", meaning: "Time zone (auto = this device)", only: "web" },
-        gameSpeed: { class: "Visible", default: 1, meaning: "Time multiplier", min: 0.25, max: 5, step: 0.25 },
+        gameSpeed: { class: "Visible", default: 1.5, meaning: "Speed multiplier", min: 0.25, max: 5, step: 0.25 },
         unitScale: { class: "Visible", default: 1, meaning: "Unit multiplier (population, waves, spawn rate)", min: 0.5, max: 5, step: 0.5 },
         unitCount: { class: "Advanced", default: 10, meaning: "Starting zerglings" },
         unitSpeed: { class: "Advanced", default: 1.0, meaning: "Movement speed multiplier for every unit" },
         showHealthBars: { class: "Visible", default: true, meaning: "Show unit health bars" },
         showKills: { class: "Visible", default: true, meaning: "Marine kill marks (one per ling killed)", only: "web" },
         showScore: { class: "Visible", default: false, meaning: "Score bar along the top", only: "web" },
-        fieldSize: { class: "Visible", default: 320, meaning: "Battlefield size (smaller = bigger units)", only: "web",
-                     options: { "240": "Small", "320": "Medium", "480": "Large", "640": "Huge" } },
+        fieldSize: { class: "Visible", default: 1280, meaning: "Battlefield size (smaller = bigger units)", only: "web",
+                     options: { "480": "Small", "640": "Medium", "960": "Large", "1280": "Huge" } },
         landscape: { class: "Visible", default: true, meaning: "Horizontal screen (off = vertical)", only: "esp32" }
     },
 

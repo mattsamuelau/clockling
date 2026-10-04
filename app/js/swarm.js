@@ -43,9 +43,9 @@ var Swarm = (function () {
         mapW: 216,
         mapH: 432,
         marineSpawnRateMult: 1.5, /* >1 spawns marines faster */
-        maxLings: 10,
+        maxLings: 14,
         maxBanes: 2,
-        maxMarines: 7,
+        maxMarines: 6,
         lingW: 30,
         baneW: 39,             /* 30% larger than the ling */
         marineW: 42,
@@ -72,7 +72,7 @@ var Swarm = (function () {
         morphChancePerSec: 1, /* chance/sec an eligible ling starts morphing */
         eggTimeMin: 8,             /* min seconds until an egg hatches */
         eggTimeMax: 10,            /* max seconds until an egg hatches */
-        eggHatchMult: 1,           /* when an egg hatches, one other egg speeds up this much */
+        eggHatchMult: 1.5,         /* when an egg hatches, one other egg speeds up this much */
         splatLife: 1.21,
         splatBase: 7,           /* splat start radius (grows only 20%) */
         splatFadeStart: 0.6,    /* fraction of splat life before it starts fading */

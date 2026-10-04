@@ -490,7 +490,7 @@ kbd { font: 11px Roboto, monospace; border: 1px solid var(--line); border-radius
 
         var b = $("cardBattle");
         b.querySelectorAll(".row, .btn").forEach(function (r) { r.remove(); });
-        sliderRow(b, "gameSpeed", "Time", x);
+        sliderRow(b, "gameSpeed", "Speed", x);
         sliderRow(b, "unitScale", "Units", x);
         segRow(b, "fieldSize", "Battlefield", "Smaller field = bigger units", META.settings.fieldSize.options);
         switchRow(b, "showHealthBars", "Health bars");

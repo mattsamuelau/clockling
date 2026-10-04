@@ -41,7 +41,14 @@ SCALED = {k: UNIT_SCALE for k in ["lingW", "baneW", "marineW", "eggW", "lingBump
                                    "marineBump", "splatBase"]}
 SCALED.update({k: RADIUS_SCALE for k in ["baneSplashR", "allyRadius", "marineScanRadius",
                                           "marineGroupRadius", "berserkCatchRadius"]})
-ESP32_DEFAULTS = {}
+# Shared keys with web-specific values retain their established ESP32 defaults.
+ESP32_DEFAULTS = {
+    "maxLings": 10,
+    "maxMarines": 7,
+    "eggHatchMult": 1,
+    "clockBehind": False,
+    "gameSpeed": 1,
+}
 
 
 
@@ -90,7 +97,7 @@ def gen_tuning():
         if m is None:
             print("warning: TUNING key %s has no tuning-meta entry" % k, file=sys.stderr)
             m = {"class": "Advanced", "meaning": k}
-        elif m.get("default") != v and k not in SCALED:
+        elif m.get("default") != v and k not in SCALED and k not in ESP32_DEFAULTS:
             print("note: %s default differs (swarm.js=%s, tuning-meta=%s); using swarm.js"
                   % (k, v, m.get("default")), file=sys.stderr)
         entries.append((k, v, isinstance(v, bool), m["class"] == "Advanced",
