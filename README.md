@@ -4,10 +4,10 @@
 raging behind it: the swarm masses up and rushes, banelings roll in and pop, marines
 march in pairs and kite. Tap to splat whatever is under your finger.
 
-[![Clockling demo](docs/demo.gif)](https://mattsamuelau.github.io/clockling/)
+![Clockling demo](docs/demo.gif)
 
-**[Open Clockling in your browser](https://mattsamuelau.github.io/clockling/)** - full
-screen, settings behind the gear, share your setup as a link or embed it anywhere.
+This is a private project: run it yourself from a clone (see [Use it](#use-it)). It's a
+plain web page with no build step, so it takes about ten seconds.
 
 ---
 
@@ -53,20 +53,23 @@ app/images/*.png     sprites
 
 ### Web
 
-- **Online**: [mattsamuelau.github.io/clockling](https://mattsamuelau.github.io/clockling/).
-- **Locally**: `node server.js`, then open http://127.0.0.1:8080/clockling.html
-  (`PORT=8090 node server.js` if 8080 is busy). Opening `clockling.html` straight from disk
-  works too.
+1. Open the repo folder in VS Code.
+2. *Terminal > Run Task... > Clockling: run* (or type `node server.js` in the terminal).
+3. Open http://127.0.0.1:8080/clockling.html. If port 8080 is busy, use the
+   *Clockling: run on port 8090* task (or `PORT=8090 node server.js`).
+
+No Node? Just double-click `clockling.html`; it runs straight from disk too.
+
 - **Settings**: the gear button (or <kbd>S</kbd>). Clock, battle sliders and toggles up
   front; every rule and balance number under *Advanced tuning* with search and per-setting
   revert. Changes apply instantly and are remembered by your browser. <kbd>R</kbd> restarts
   the battle.
 - **Share / embed**: the button at the bottom of the settings drawer gives you
-  - a **link** that carries your exact settings (in the `#s=...` part), so friends see
-    your battle without touching their own saved setup;
-  - an **iframe** snippet for any site that allows embeds (the gear hides until hovered);
-  - a **Markdown** snippet for GitHub READMEs. GitHub won't run live pages inside a README,
-    so it shows the demo GIF and opens your setup when clicked.
+  - a **link** that carries your exact settings (in the `#s=...` part). It points at
+    wherever Clockling is running, so it works on this computer, or for anyone on your
+    network if you open Clockling via your PC's IP address while `node server.js` runs;
+  - an **iframe** snippet for embedding it in another page you host (the gear hides
+    until hovered).
 
 ### ESP32
 
@@ -155,8 +158,9 @@ Every key is documented in **[TUNING.md](TUNING.md)**.
 
 ```
 clockling.html            the web app (open this)
-index.html                redirects to clockling.html (GitHub Pages entry)
+index.html                redirects to clockling.html (so the server root opens it)
 server.js                 tiny local web server (node server.js)
+.vscode/tasks.json        VS Code tasks to run it
 app/
   js/swarm.js             battle sim + TUNING defaults (reference implementation)
   js/settings.js          SETTINGS defaults
