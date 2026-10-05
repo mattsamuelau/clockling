@@ -2089,7 +2089,7 @@ var Swarm = (function () {
         zergWasAttacking = on;
     }
 
-    var allInOn = false, allInLaunched = false, marineCycle = 10;
+    var allInOn = false, allInLaunched = false, marineCycle = 10, lastZergAttackReal = 0;
     function updateSwarm() {
         var zs = [], i, j;
         eggCx = 0; eggCy = 0; eggN = 0;
@@ -2141,7 +2141,12 @@ var Swarm = (function () {
              * at ovReinforceGap s) is still to go */
             var gapOK = marineTimer > Math.min(+TB.ovReinforceGap || 0, marineCycle * 0.5) && wavePending === 0;
             var settled = simT / Math.max(1, gameSpeed) > 60;   /* not in the opening minute: let the armies feel each other out */
-            if (!allInOn && settled && committedPower === 0 && countKind("marine") > 0 && zTotal >= zCapAll * (+TB.ovAllInFrac || 0.9) && banesReady() && gapOK) {
+            /* ovMaxWait: never sit out longer than this many real seconds - go with what we have */
+            var realNow = simT / Math.max(1, gameSpeed);
+            if (committedPower > 0) lastZergAttackReal = realNow;
+            var bored = +TB.ovMaxWait > 0 && realNow - lastZergAttackReal > +TB.ovMaxWait && zTotal > 0;
+            if (!allInOn && committedPower === 0 && countKind("marine") > 0 && (bored ||
+                (settled && zTotal >= zCapAll * (+TB.ovAllInFrac || 0.9) && banesReady() && gapOK))) {
                 allInOn = true;
                 pincerAxis = null;   /* lock a fresh approach for this push */
             }
@@ -3433,7 +3438,7 @@ var Swarm = (function () {
         zergWasAlive = true;
         simT = 0; lastDeathT = 0;
         hitSquad = null; hitSquadT = 0; trickleM = []; trickleZ = []; terranPush = false; patrolPlan = null; zergRushFill = 0;
-        allInOn = false; allInLaunched = false;
+        allInOn = false; allInLaunched = false; lastZergAttackReal = 0;
         shellShare = 0.5; marineComeback = false; zergComeback = false; zergBoostLeft = 0; zergBrokenT = 0; marineBrokenT = 0;
         marineTimer = 3;
         wavePending = 0;
