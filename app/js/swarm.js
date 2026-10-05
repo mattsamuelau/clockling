@@ -2162,7 +2162,12 @@ var Swarm = (function () {
             var realNow = simT / Math.max(1, gameSpeed);
             if (committedPower > 0) lastZergAttackReal = realNow;
             var bored = +TB.ovMaxWait > 0 && realNow - lastZergAttackReal > +TB.ovMaxWait && zTotal > 0;
-            if (!allInOn && committedPower === 0 && countKind("marine") > 0 && (bored ||
+            /* ovBiomass: attack once zerg supply (ling 0.5, bane 1) is that many times
+             * the marines' and the banes are in - dynamic: a small terran force is hit
+             * early, a big one makes the swarm build up */
+            var zSupply = countKind("ling") * 0.5 + countKind("bane");
+            var biomassReady = +TB.ovBiomass > 0 && zSupply >= countKind("marine") * +TB.ovBiomass && banesReady();
+            if (!allInOn && committedPower === 0 && countKind("marine") > 0 && (bored || biomassReady ||
                 (settled && zTotal >= zCapAll * (+TB.ovAllInFrac || 0.9) && banesReady() && gapOK))) {
                 allInOn = true;
                 pincerAxis = null;   /* lock a fresh approach for this push */

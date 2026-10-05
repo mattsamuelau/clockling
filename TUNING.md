@@ -82,7 +82,8 @@ both.
 | `ovFrontMorph` | 0.3 | Overmind: how strongly morphs pick lings at the front line / near the terran spawn (x zergSkill; 0 = oldest lings). | Visible |
 | `ovBaneRatio` | 0.5 | Overmind (zergSkill 50%+): banes needed per ling before any attack (0.25 = the 1:4 golden ratio; capped by the bane cap). | Visible |
 | `ovAllIn` | true | Overmind (zergSkill 50%+): save it all up - no new attack until the swarm is at ovAllInFrac of its cap with banes in, in a gap between marine reinforcements; then everything goes at once (a wall fight is the only exception). | Visible |
-| `ovMaxWait` | 25 | Overmind: if the zerg haven't attacked for this many real seconds, they stop saving up and go with what they have (0 = wait as long as it takes). | Visible |
+| `ovMaxWait` | 60 | Overmind: backstop - if the zerg haven't attacked for this many real seconds they go with what they have (0 = off). | Visible |
+| `ovBiomass` | 3 | Overmind: attack once zerg supply (ling 0.5, bane 1) is this many times the marines' and the banes are in - a small terran force gets hit early, a big one makes the swarm build up (0 = off). | Visible |
 | `ovAllInFrac` | 0.9 | ovAllIn: share of the full zerg cap (lings + banes) to build before the big push. | Visible |
 | `ovReinforceGap` | 12 | ovAllIn: only push in a gap - at least half the current marine reinforcement cycle (capped at this many game-seconds) still to go. | Visible |
 | `ovWallPress` | true | Overmind: the big push comes in from the open side of the map so the marines get pressed back against their wall. | Visible |
