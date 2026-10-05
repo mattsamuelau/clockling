@@ -1012,6 +1012,23 @@ var Swarm = (function () {
         c.want = Math.atan2(ty - c.y, tx - c.x);
     }
 
+    /* commandInterval (real seconds, 0 = off): a unit takes a new movement order at
+     * most this often (jittered +-20%), and between orders keeps going where it was
+     * told - smoother, less twitchy movement. `free` lets emergencies through
+     * (a bane on top of a marine, lings in biting range). */
+    function holdCommand(c, dt, free) {
+        var iv = +TB.commandInterval || 0;
+        if (iv <= 0 || free) { c.cmdT = 0; return; }
+        c.cmdT = (c.cmdT || 0) - dt / Math.max(1, gameSpeed);
+        if (c.cmdT > 0 && c.cmdWant !== undefined) {
+            c.want = c.cmdWant;
+            if (c.kind === "marine") c.moveMul = c.cmdMul;
+            return;
+        }
+        c.cmdWant = c.want; c.cmdMul = c.moveMul;
+        c.cmdT = iv * rand(0.8, 1.2);
+    }
+
     /* lings fighting near a bane (attacking, within marine range of it) */
     function lingsFightingNear(b) {
         for (var i = 0; i < units.length; i++) {
@@ -2359,6 +2376,10 @@ var Swarm = (function () {
                     if (gs) c.moveMul = gs.go < 0.2 && gs.pull <= 0 ? 0 : Math.max(gs.go, Math.min(1, gs.pull));
                 }
             }
+            if (c.entered && !(c.deployT > 0)) {
+                var hb = nearestKind(c.x, c.y, "bane");
+                holdCommand(c, dt, !!(hb && dist(hb, c.x, c.y) < BANE_SPLASH_R * 1.5));
+            }
             /* run in straight legs: once moving, hold the line for a short leg; a
              * sharp change of direction (60+ deg) plants the feet for a beat and
              * pivots first - no ankle-breaking zig-zags. A bane about to blow is
@@ -2609,6 +2630,8 @@ var Swarm = (function () {
                 if (!(zm && dist(zm, c.x, c.y) < MARINE_RANGE * 0.4) && !(c.kind === "bane" && c.berserk && zm && dist(zm, c.x, c.y) < MARINE_RANGE * 0.8)) cgSteer(c);
             }
             if (c.kind === "ling" && c.attacking) lingEncircle(c);
+            var cm = nearestMarine(c.x, c.y);
+            holdCommand(c, dt, !!(cm && dist(cm, c.x, c.y) < MARINE_RANGE * 0.35) || (c.kind === "bane" && c.berserk));
             turnToward(c, c.fleeing ? 0.75 : ZERG_TURN, dt);
             var zv = zergMoveSpeed(c) * SETTINGS.unitSpeed * (c.boostWait ? 0.25 : 1);   /* waiting on the sprint */
             c.x += Math.cos(c.heading) * zv * dt;

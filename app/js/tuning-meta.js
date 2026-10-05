@@ -18,6 +18,7 @@ var TUNING_META = {
         maxMarines: { class: "Visible", default: 8, meaning: "Max marines on screen" },
 
         /* Movement */
+        commandInterval: { class: "Visible", default: 1, meaning: "Real seconds between movement orders for every unit (smoother, less jerky); emergencies like a bane on a marine or lings in biting range still react at once. 0 = off", only: "web", min: 0, max: 3, step: 0.1 },
         zergSpeed: { class: "Visible", default: 1.2, meaning: "Zerg base speed multiplier" },
         terranSpeed: { class: "Visible", default: 1.35, meaning: "Terran base speed multiplier" },
 
@@ -222,7 +223,7 @@ var TUNING_META = {
         "Terran Units": ["maxMarines", "marineHp", "marineShootDamage", "marineShootInterval", "marineRangeMult"],
         "Terran Spawning": ["dropPointsMax", "marineSpawnAnchor", "marineSideSwap", "marineSpawnDrift", "marineSpawnMode", "marineEntrySpeed", "marineEntryDepth", "marineSpawnRateMult", "marineWaveLo", "marineWaveHi", "marineWaveSizeLo", "marineWaveSizeHi", "marineRespawnLo", "marineRespawnHi", "marineRespawnSizeLo", "marineRespawnSizeHi", "marineSpawnGap", "marineSpawnInset"],
         "Terran Behavior": ["marineTactics", "marineKiteFrac", "marineSightMult", "marineFleeHpPct", "marineGroupWeight", "marineAwayWeight", "marineTurnRate", "marineHealPct", "marineHealInterval", "stimDuration", "stimCooldown", "stimSpeedMult", "stimHpCost", "stimRegenMult", "stimFireMult", "stimRegenTime", "stimGroupMax", "stimRegroupDist", "marineKiteSpeed", "marineUpright", "marineWalkTilt", "marineGroupMode", "marineCgMax", "marineCgSize", "marineHitSquads", "hitSquadSize", "hitSquadTrigger", "marineMicro", "marineBaneHunt", "marineStimAttack", "marineSquads", "marineCtrlGroups", "marineCtrlGroupSize", "marineFlank", "marineStimPush", "marineEliteKite", "marineFlankAngle", "marineMaxTilt", "marineSkillTopSpeed"],
-        "Movement": ["zergSpeed", "terranSpeed"],
+        "Movement": ["commandInterval", "zergSpeed", "terranSpeed"],
         "Visuals": ["lingW", "baneW", "marineW", "eggW", "lingBump", "baneBump", "marineBump", "splatLife", "splatBase", "splatFadeStart", "corpseLife", "goreSplatLife", "goreCorpseLife", "baneSplatLifeMult", "marineSplatScale", "baneSplatScale", "retargetInterval", "aimInterval"],
         "Map": ["mapW", "mapH"],
         "Clock": ["showClock", "hour24", "showSeconds", "clockPosition", "clockBehind", "clockScale", "timeZone"],

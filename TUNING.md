@@ -237,6 +237,7 @@ both.
 
 | Key | Default | Meaning | Class |
 |---|---|---|---|
+| `commandInterval` | 1 | Real seconds between movement orders for every unit (smoother, less jerky); emergencies like a bane on a marine or lings in biting range still react at once. 0 = off. | Visible |
 | `zergSpeed` | 1.2 | Zerg base speed multiplier. | Visible |
 | `terranSpeed` | 1.35 | Terran base speed multiplier. | Visible |
 
