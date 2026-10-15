@@ -43,13 +43,21 @@ void initBackground() {
     if (s_bg) memcpy(s_bg, BG_NIB, sizeof(BG_NIB));
 }
 
+/* The gradient is baked 240 wide; narrower screens show its centre columns
+ * (even offset keeps the 4-bit pairs byte-aligned). */
+static const int BG_W = 240;
+
 void background(Band& b) {
-    const uint8_t* src = (s_bg ? s_bg : BG_NIB) + (b.y0 * b.W) / 2;
+    const uint8_t* bg = s_bg ? s_bg : BG_NIB;
+    const int off = ((BG_W - b.W) / 2) & ~1;
     uint16_t* p = b.px;
-    for (int n = b.W * b.h / 2; n > 0; n--) {
-        uint8_t v = *src++;
-        *p++ = s_pal[v & 15];
-        *p++ = s_pal[v >> 4];
+    for (int y = b.y0; y < b.y0 + b.h; y++) {
+        const uint8_t* src = bg + (y * BG_W + off) / 2;
+        for (int n = b.W / 2; n > 0; n--) {
+            uint8_t v = *src++;
+            *p++ = s_pal[v & 15];
+            *p++ = s_pal[v >> 4];
+        }
     }
 }
 

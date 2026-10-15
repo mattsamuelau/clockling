@@ -11,7 +11,9 @@
 #include "tuning.h"
 
 static const int PIN_BOOT = 0;
+#ifdef BOARD_CYD
 static const int PIN_LED_R = 22, PIN_LED_G = 16, PIN_LED_B = 17;  /* active low */
+#endif
 
 static uint32_t s_lastUs;
 static uint32_t s_infoUntil = 0;
@@ -43,16 +45,69 @@ static void buildOverlay(render::Overlay& ov) {
     }
 }
 
+#ifdef BOARD_RGB_LED
+/* Onboard WS2812 shows who's winning (zerg vs terran count on screen) with a slow
+ * breathe: pink = zerg ahead, blue = terran ahead, a tie keeps the last colour.
+ * When terran takes the lead, it first flashes red/blue like a police light. */
+static const float LED_PEAK = 14;              /* max channel value of the breathe (0-255) */
+static const float LED_FLASH_PEAK = 22;
+static const uint32_t LED_PERIOD_MS = 4500;    /* one full breathe */
+static const uint32_t LED_FLASH_STEP_MS = 130; /* red, blue, red, blue, red, blue */
+static const uint32_t LED_FLASH_COOLDOWN_MS = 8000;
+
+static void updateWinnerLed() {
+    static uint32_t last = 0, phase0 = 0, flashStart = 0, lastFlash = 0;
+    static int8_t shown = 0;
+    uint32_t now = millis();
+    if (now - last < 30) return;
+    last = now;
+
+    int zerg = 0, terran = 0;
+    for (int i = 0; i < sim::nUnits; i++) {
+        const Unit& u = sim::units[i];
+        if (u.dead) continue;
+        if (u.kind == K_LING || u.kind == K_BANE) zerg++;
+        else if (u.kind == K_MARINE) terran++;
+    }
+    int8_t want = zerg > terran ? 1 : (terran > zerg ? 2 : shown);
+    if (want != shown) {
+        bool flash = want == 2 && shown == 1 && (lastFlash == 0 || now - lastFlash > LED_FLASH_COOLDOWN_MS);
+        shown = want;
+        phase0 = now;
+        if (flash) flashStart = lastFlash = now;
+    }
+    if (!shown) return;
+
+    if (flashStart && now - flashStart < 6 * LED_FLASH_STEP_MS) {
+        bool red = ((now - flashStart) / LED_FLASH_STEP_MS) % 2 == 0;
+        if (red) neopixelWrite(BOARD_RGB_LED, (uint8_t)LED_FLASH_PEAK, 0, 0);
+        else neopixelWrite(BOARD_RGB_LED, 0, 0, (uint8_t)LED_FLASH_PEAK);
+        return;
+    }
+    flashStart = 0;
+
+    /* 0..1 raised cosine, squared so the dim end looks even despite 8-bit steps */
+    float ph = ((now - phase0) % LED_PERIOD_MS) / (float)LED_PERIOD_MS;
+    float b = 0.5f - 0.5f * cosf(ph * 6.2831853f);
+    b = 0.06f + 0.94f * b * b;
+    float v = LED_PEAK * b;
+    if (shown == 1) neopixelWrite(BOARD_RGB_LED, (uint8_t)(v + 0.5f), (uint8_t)(v * 0.08f + 0.5f), (uint8_t)(v * 0.4f + 0.5f));
+    else neopixelWrite(BOARD_RGB_LED, 0, (uint8_t)(v * 0.1f + 0.5f), (uint8_t)(v + 0.5f));
+}
+#endif
+
 static void pollInput() {
+    uint32_t now = millis();
+#ifdef BOARD_CYD
     int16_t x, y;
     bool down = touch::read(&x, &y);
-    uint32_t now = millis();
     if (down && !s_wasTouched) {
         s_touchStart = now;
         sim::killNear(x, y, 45);   /* watch tap radius (60 px) at the 0.75x unit scale */
     }
     if (down && now - s_touchStart > 1500) s_infoUntil = now + 10000;
     s_wasTouched = down;
+#endif
 
     if (digitalRead(PIN_BOOT) == LOW) {
         if (!s_bootDown) s_bootDown = now;
@@ -69,16 +124,20 @@ void setup() {
     Serial.begin(115200);
     Serial.println("\nClockling ESP32");
     pinMode(PIN_BOOT, INPUT_PULLUP);
+#ifdef BOARD_CYD
     for (int p : {PIN_LED_R, PIN_LED_G, PIN_LED_B}) {
         pinMode(p, OUTPUT);
         digitalWrite(p, HIGH);   /* RGB LED off */
     }
+#endif
 
     tuning::begin();
     render::begin();
     render::setBrightness(TUN(brightness));
     s_brightness = TUN(brightness);
+#ifdef BOARD_CYD
     touch::begin();
+#endif
     sim::init(TFT_WIDTH, TFT_HEIGHT);
 
     render::Overlay ov;
@@ -105,6 +164,9 @@ void loop() {
     render::frame(ov);
 
     pollInput();
+#ifdef BOARD_RGB_LED
+    updateWinnerLed();
+#endif
     net::loop();
 
     net::State st = net::state();

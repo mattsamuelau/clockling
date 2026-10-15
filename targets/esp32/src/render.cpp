@@ -87,7 +87,9 @@ void begin() {
     tft.setRotation(0);
     tft.setSwapBytes(false);
     tft.fillScreen(TFT_BLACK);
+#ifndef NO_DMA
     tft.initDMA();
+#endif
     for (int i = 0; i < 2; i++) {
         s_buf[i] = (uint16_t*)heap_caps_malloc(W * BAND_H * 2, MALLOC_CAP_DMA);
         if (!s_buf[i]) Serial.println("render: band buffer alloc failed");
@@ -217,10 +219,16 @@ void frame(const Overlay& ov) {
         uint32_t n = b.W * b.h;
         uint16_t* p = b.px;
         for (uint32_t i = 0; i < n; i++) p[i] = (p[i] >> 8) | (p[i] << 8);
+#ifdef NO_DMA
+        tft.pushImage(0, y, W, b.h, b.px);
+#else
         /* waits for the previous band's DMA, then starts this one */
         tft.pushImageDMA(0, y, W, b.h, b.px);
+#endif
     }
+#ifndef NO_DMA
     tft.dmaWait();
+#endif
     tft.endWrite();
 }
 
