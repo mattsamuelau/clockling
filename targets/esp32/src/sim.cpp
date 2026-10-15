@@ -560,6 +560,21 @@ void killNear(float x, float y, float r) {
     }
 }
 
+/* BOOT short press: splat around a randomly chosen live unit, so it always lands */
+void splatRandom(float r) {
+    int idx[MAX_UNITS], n = 0;
+    for (int i = 0; i < nUnits; i++)
+        if (!units[i].dead && units[i].kind != K_EGG) idx[n++] = i;
+    if (!n) return;
+    const Unit& c = units[idx[min(n - 1, (int)(random01() * n))]];
+    killNear(c.x, c.y, r);
+}
+
+/* BOOT long press: drop one marine at a random spot on screen */
+void spawnMarine() {
+    if (countKind(K_MARINE) < MAX_MARINES) make(K_MARINE);
+}
+
 void update(float dt) {
     applyUnitScale();  /* settings can change live from the web page */
 

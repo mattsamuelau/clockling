@@ -45,6 +45,8 @@ void init(int w, int h);
 void setCount(int n);             /* restart the battle with n lings */
 void update(float dt);            /* one sim tick (logic + splat/corpse aging) */
 void killNear(float x, float y, float r);
+void splatRandom(float r);
+void spawnMarine();
 int countKind(Kind k);
 
 /* Shared with the renderer so corpses/units pick identical frames/orientation. */

@@ -19,7 +19,9 @@ static uint32_t s_lastUs;
 static uint32_t s_infoUntil = 0;
 static bool s_wasTouched = false;
 static uint32_t s_touchStart = 0;
+#ifdef BOARD_CYD
 static uint32_t s_bootDown = 0;
+#endif
 static float s_brightness = -1;
 static net::State s_lastNet = net::CONNECTING;
 
@@ -109,6 +111,7 @@ static void pollInput() {
     s_wasTouched = down;
 #endif
 
+#ifdef BOARD_CYD
     if (digitalRead(PIN_BOOT) == LOW) {
         if (!s_bootDown) s_bootDown = now;
         if (now - s_bootDown > 2000) {
@@ -118,6 +121,33 @@ static void pollInput() {
     } else {
         s_bootDown = 0;
     }
+#else
+    /* No touch: BOOT is the only input.
+     *   short press  = splat around a random unit
+     *   double press = show the settings address for 10 s
+     *   hold 2 s     = spawn one marine at a random spot
+     * (WiFi setup: the hotspot starts by itself when no WiFi is saved, or use
+     * "Forget WiFi" on the settings page.) */
+    static bool down = false, longFired = false;
+    static uint32_t downAt = 0, upAt = 0;
+    static int taps = 0;
+    bool pressed = digitalRead(PIN_BOOT) == LOW;
+    if (pressed && !down && now - upAt > 30) {
+        down = true; downAt = now; longFired = false;
+    } else if (pressed && down && !longFired && now - downAt >= 2000) {
+        longFired = true;
+        taps = 0;
+        sim::spawnMarine();
+    } else if (!pressed && down) {
+        down = false; upAt = now;
+        if (!longFired) taps++;
+    }
+    if (!down && taps && now - upAt > 350) {
+        if (taps == 1) sim::splatRandom(45);
+        else s_infoUntil = now + 10000;
+        taps = 0;
+    }
+#endif
 }
 
 void setup() {
