@@ -45,14 +45,15 @@ void initBackground() {
 
 /* The gradient is baked 240 wide; narrower screens show its centre columns
  * (even offset keeps the 4-bit pairs byte-aligned). */
-static const int BG_W = 240;
+static const int BG_W = 240, BG_H = 320;
 
 void background(Band& b) {
     const uint8_t* bg = s_bg ? s_bg : BG_NIB;
     const int off = ((BG_W - b.W) / 2) & ~1;
+    const int yOff = (BG_H - TFT_HEIGHT) / 2;   /* shorter (square) panels show the gradient's middle rows */
     uint16_t* p = b.px;
     for (int y = b.y0; y < b.y0 + b.h; y++) {
-        const uint8_t* src = bg + (y * BG_W + off) / 2;
+        const uint8_t* src = bg + ((y + yOff) * BG_W + off) / 2;
         for (int n = b.W / 2; n > 0; n--) {
             uint8_t v = *src++;
             *p++ = s_pal[v & 15];

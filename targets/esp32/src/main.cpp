@@ -23,7 +23,9 @@ static uint32_t s_touchStart = 0;
 static uint32_t s_bootDown = 0;
 #endif
 static float s_brightness = -1;
+#ifndef NO_WIFI
 static net::State s_lastNet = net::CONNECTING;
+#endif
 
 static void setLine(render::Overlay& ov, int i, const char* s) {
     strlcpy(ov.lines[i], s, sizeof(ov.lines[i]));
@@ -31,6 +33,7 @@ static void setLine(render::Overlay& ov, int i, const char* s) {
 
 static void buildOverlay(render::Overlay& ov) {
     ov = render::Overlay();
+#ifndef NO_WIFI
     net::State st = net::state();
     if (st == net::PORTAL) {
         ov.show = true;
@@ -45,6 +48,7 @@ static void buildOverlay(render::Overlay& ov) {
         setLine(ov, 1, "http://clockling.local");
         setLine(ov, 2, ("or http://" + net::ip()).c_str());
     }
+#endif
 }
 
 #ifdef BOARD_RGB_LED
@@ -144,7 +148,11 @@ static void pollInput() {
     }
     if (!down && taps && now - upAt > 350) {
         if (taps == 1) sim::splatRandom(45);
+#ifndef NO_WIFI
         else s_infoUntil = now + 10000;
+#else
+        else sim::spawnMarine();   /* no settings page without WiFi: double press adds a marine */
+#endif
         taps = 0;
     }
 #endif
@@ -176,9 +184,11 @@ void setup() {
     setLine(ov, 1, "Connecting to WiFi...");
     render::frame(ov);
 
+#ifndef NO_WIFI
     net::begin();
     if (net::state() == net::ONLINE) s_infoUntil = millis() + 12000;
     s_lastNet = net::state();
+#endif
     s_lastUs = micros();
 }
 
@@ -197,11 +207,15 @@ void loop() {
 #ifdef BOARD_RGB_LED
     updateWinnerLed();
 #endif
+#ifndef NO_WIFI
     net::loop();
 
     net::State st = net::state();
     if (st == net::ONLINE && s_lastNet != net::ONLINE) s_infoUntil = millis() + 12000;
     s_lastNet = st;
+#else
+    const int st = 0;
+#endif
 
     if (TUN(brightness) != s_brightness) {
         s_brightness = TUN(brightness);

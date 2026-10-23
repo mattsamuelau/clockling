@@ -94,16 +94,22 @@ void begin() {
         s_buf[i] = (uint16_t*)heap_caps_malloc(W * BAND_H * 2, MALLOC_CAP_DMA);
         if (!s_buf[i]) Serial.println("render: band buffer alloc failed");
     }
+#if TFT_BL >= 0
     ledcSetup(BL_CH, 5000, 8);
     ledcAttachPin(TFT_BL, BL_CH);
+#endif
     gfx::initBackground();
     spritesToRam();
     layoutClock();
 }
 
 void setBrightness(float pct) {
+#if TFT_BL >= 0
     pct = constrain(pct, 1.0f, 100.0f);
     ledcWrite(BL_CH, (uint32_t)(pct * 2.55f));
+#else
+    (void)pct;   /* backlight hard-wired to 3V3 */
+#endif
 }
 
 static void buildDrawList() {
@@ -183,12 +189,15 @@ static void drawBand(Band& b, const Overlay& ov) {
     }
 
     /* clock on top of the battle (the #face overlay) */
+#ifndef NO_CLOCK
     if (TUNB(showClock)) {
         gfx::text(b, FONT_TIME, (W - gfx::textWidth(FONT_TIME, s_time)) / 2, s_timeBase, s_time, C_TIME, CLOCK_ALPHA);
         if (s_sec[0])
             gfx::text(b, FONT_SEC, (W - gfx::textWidth(FONT_SEC, s_sec)) / 2, s_secBase, s_sec, C_SEC, CLOCK_ALPHA);
         gfx::text(b, FONT_DATE, (W - gfx::textWidth(FONT_DATE, s_date)) / 2, s_dateBase, s_date, C_DATE, CLOCK_ALPHA);
     }
+
+#endif
 
     /* status panel (WiFi setup / settings address) */
     if (ov.show) {

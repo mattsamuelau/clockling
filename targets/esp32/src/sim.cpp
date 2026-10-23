@@ -58,6 +58,64 @@ static void applyUnitScale() {
 
 static float marineRange() { return TUN(marineW) * TUN(marineRangeMult); }
 
+/* Round panel (GC9A01): the play field is the circle inscribed in the W x H screen.
+ * Units bounce off a circle inset from the glass edge instead of the rectangle. */
+#ifdef ROUND_SCREEN
+static inline float circR() { return fminf(W, H) * 0.5f; }
+static inline float circDist(float x, float y) { return hypotf(x - W * 0.5f, y - H * 0.5f); }
+
+/* Pull (x,y) back inside radius circR()-inset. Returns true and the outward normal when it moved. */
+static bool circClamp(float* x, float* y, float inset, float* nx, float* ny) {
+    float dx = *x - W * 0.5f, dy = *y - H * 0.5f;
+    float r = sqrtf(dx * dx + dy * dy), lim = circR() - inset;
+    if (r <= lim || r < 0.001f) return false;
+    *nx = dx / r; *ny = dy / r;
+    *x = W * 0.5f + *nx * lim;
+    *y = H * 0.5f + *ny * lim;
+    return true;
+}
+
+/* Place a unit just outside the rim toward the (sx,sy) diagonal corner. */
+static void roundSpawn(Unit* c, int sx, int sy, float inset) {
+    float rim = circR() + inset, k = 0.70710678f;
+    c->x = W * 0.5f + sx * k * rim;
+    c->y = H * 0.5f + sy * k * rim;
+}
+#endif
+
+/* Reflect off the screen edge (inset px in), but only when heading outward, so marines can walk in from off-screen. */
+static void wallBounce(Unit* c, float inset) {
+#ifdef ROUND_SCREEN
+    float x = c->x, y = c->y, nx, ny;
+    float dx = x - W * 0.5f, dy = y - H * 0.5f;
+    float r = sqrtf(dx * dx + dy * dy);
+    if (r < 0.001f || r <= circR() - inset) return;
+    nx = dx / r; ny = dy / r;
+    float hx = cosf(c->heading), hy = sinf(c->heading);
+    float dot = hx * nx + hy * ny;
+    if (dot <= 0) return;
+    circClamp(&c->x, &c->y, inset, &nx, &ny);
+    c->heading = atan2f(hy - 2 * dot * ny, hx - 2 * dot * nx);
+#else
+    if (c->x < inset && cosf(c->heading) < 0) { c->x = inset; c->heading = PI_F - c->heading; }
+    if (c->x > W - inset && cosf(c->heading) > 0) { c->x = W - inset; c->heading = PI_F - c->heading; }
+    if (c->y < inset && sinf(c->heading) < 0) { c->y = inset; c->heading = -c->heading; }
+    if (c->y > H - inset && sinf(c->heading) > 0) { c->y = H - inset; c->heading = -c->heading; }
+#endif
+}
+
+/* Random point on the playfield, at least margin px from the edge. */
+static void randomSpot(float* x, float* y, float margin) {
+#ifdef ROUND_SCREEN
+    float r = sqrtf(frand(0, 1)) * (circR() - margin), a = frand(0, PI_F * 2);
+    *x = W * 0.5f + cosf(a) * r;
+    *y = H * 0.5f + sinf(a) * r;
+#else
+    *x = frand(margin, W - margin);
+    *y = frand(margin, H - margin);
+#endif
+}
+
 static Unit* push() {
     if (nUnits >= MAX_UNITS) return nullptr;
     Unit* c = &units[nUnits++];
@@ -70,8 +128,7 @@ static Unit* make(Kind kind, Kind hatchKind = K_NONE) {
     Unit* c = push();
     if (!c) return nullptr;
     c->kind = kind;
-    c->x = frand(24, W - 24);
-    c->y = frand(24, H - 24);
+    randomSpot(&c->x, &c->y, 24);
     c->heading = frand(0, PI_F * 2);
     c->frameTimer = frand(0, 0.12f);
     c->hp = 100;
@@ -234,6 +291,14 @@ static void placeEggOpposite(Unit* egg) {
     int pick = min(n - 1, (int)(random01() * n));
     egg->x = frand(ox[pick] * W / 2.0f + 16, ox[pick] * W / 2.0f + W / 2.0f - 16);
     egg->y = frand(oy[pick] * H / 2.0f + 16, oy[pick] * H / 2.0f + H / 2.0f - 16);
+#ifdef ROUND_SCREEN
+    /* quadrant corners poke outside the circle: retry, then pull in */
+    for (int tries = 0; tries < 12 && circDist(egg->x, egg->y) > circR() - 16; tries++) {
+        egg->x = frand(ox[pick] * W / 2.0f + 16, ox[pick] * W / 2.0f + W / 2.0f - 16);
+        egg->y = frand(oy[pick] * H / 2.0f + 16, oy[pick] * H / 2.0f + H / 2.0f - 16);
+    }
+    { float cnx, cny; circClamp(&egg->x, &egg->y, 16, &cnx, &cny); }
+#endif
 }
 
 static int pendingLings() {
@@ -379,7 +444,11 @@ static void step(Unit* c, float dt) {
 
     if (c->kind == K_MARINE) {
         /* only start steering once fully on-screen */
+#ifdef ROUND_SCREEN
+        if (!c->entered && circDist(c->x, c->y) <= circR()) c->entered = true;
+#else
         if (!c->entered && c->x >= 0 && c->x <= W && c->y >= 0 && c->y <= H) c->entered = true;
+#endif
         if (c->flashT > 0) c->flashT -= dt;
         c->retarget -= dt;
         if (c->retarget <= 0) {
@@ -393,10 +462,7 @@ static void step(Unit* c, float dt) {
         c->x += cosf(c->heading) * v;
         c->y += sinf(c->heading) * v;
         /* reflect only when moving outward, so marines can walk in from off-screen */
-        if (c->x < 18 && cosf(c->heading) < 0) { c->x = 18; c->heading = PI_F - c->heading; }
-        if (c->x > W - 18 && cosf(c->heading) > 0) { c->x = W - 18; c->heading = PI_F - c->heading; }
-        if (c->y < 18 && sinf(c->heading) < 0) { c->y = 18; c->heading = -c->heading; }
-        if (c->y > H - 18 && sinf(c->heading) > 0) { c->y = H - 18; c->heading = -c->heading; }
+        wallBounce(c, 18);
         /* re-aim at the closest zerg, but only every aimInterval (anti-jitter) */
         c->aimT -= dt;
         if (c->aimT <= 0) {
@@ -458,10 +524,7 @@ static void step(Unit* c, float dt) {
         float v = c->speed * TUN(zergSpeed) * unitSpeed * dt;
         c->x += cosf(c->heading) * v;
         c->y += sinf(c->heading) * v;
-        if (c->x < 18) { c->x = 18; c->heading = PI_F - c->heading; }
-        if (c->x > W - 18) { c->x = W - 18; c->heading = PI_F - c->heading; }
-        if (c->y < 18) { c->y = 18; c->heading = -c->heading; }
-        if (c->y > H - 18) { c->y = H - 18; c->heading = -c->heading; }
+        wallBounce(c, 18);
     }
 
     /* horizontal facing with hysteresis */
@@ -621,8 +684,12 @@ void update(float dt) {
                     if (waveIsRespawn) {
                         /* respawn: reinforce from the edge of the marine home quadrant */
                         Home home = marineHome();
+#ifdef ROUND_SCREEN
+                        roundSpawn(mm, home.qx == 0 ? -1 : 1, home.qy == 0 ? -1 : 1, inset);
+#else
                         mm->x = (home.qx == 0) ? -inset : W + inset;
                         mm->y = (home.qy == 0) ? -inset : H + inset;
+#endif
                     } else {
                         /* wave: farthest corner (diagonally opposite the lings), just off-screen */
                         float lx = 0, ly = 0; int ln = 0;
@@ -631,15 +698,28 @@ void update(float dt) {
                             if (lc.kind == K_LING && !lc.dead) { lx += lc.x; ly += lc.y; ln++; }
                         }
                         if (ln > 0) { lx /= ln; ly /= ln; } else { lx = W / 2.0f; ly = H / 2.0f; }
+#ifdef ROUND_SCREEN
+                        roundSpawn(mm, lx < W / 2.0f ? 1 : -1, ly < H / 2.0f ? 1 : -1, inset);
+#else
                         mm->x = (lx < W / 2.0f) ? W + inset : -inset;
                         mm->y = (ly < H / 2.0f) ? H + inset : -inset;
+#endif
                     }
                     waveChainDir = (mm->x < 0) ? 1 : -1;
                     waveFirst = false;
                 } else {
                     /* chain along the border, 1.1x marine width apart */
+#ifdef ROUND_SCREEN
+                    /* chain around the rim, just outside the glass */
+                    float ang = atan2f(waveSpawnY - H * 0.5f, waveSpawnX - W * 0.5f);
+                    float rim = circR() + inset;
+                    ang += waveChainDir * off / rim;
+                    mm->x = W * 0.5f + cosf(ang) * rim;
+                    mm->y = H * 0.5f + sinf(ang) * rim;
+#else
                     mm->x = waveSpawnX + waveChainDir * off;
                     mm->y = waveSpawnY;
+#endif
                 }
                 waveSpawnX = mm->x;
                 waveSpawnY = mm->y;
@@ -812,8 +892,12 @@ void update(float dt) {
                 float zd = sqrtf(zx * zx + zy * zy); if (zd == 0) zd = 1;
                 zerg->x += zx / zd * overlap * 0.5f;
                 zerg->y += zy / zd * overlap * 0.5f;
+#ifdef ROUND_SCREEN
+                { float cnx, cny; circClamp(&zerg->x, &zerg->y, 12, &cnx, &cny); }
+#else
                 zerg->x = constrain(zerg->x, 12.0f, W - 12.0f);
                 zerg->y = constrain(zerg->y, 12.0f, H - 12.0f);
+#endif
             } else {
                 float push = overlap / 2;
                 a2->x -= nx * push; a2->y -= ny * push;

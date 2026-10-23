@@ -43,3 +43,26 @@ A full-flash backup of the original NerdMiner firmware is at
 `python -m esptool --port COM7 write_flash 0 nerdminer_fnk0114b_backup.bin`.
 
 Fonts: Roboto (Apache 2.0), in `fonts/`.
+
+## ESP32-S3 Super Mini + round GC9A01 (`s3-supermini-gc9a01`)
+
+WiFi-less build for the ESP32-S3 Super Mini (HW-747) driving a 1.28" 240x240 round GC9A01.
+The clock, NTP and settings page are compiled out (`NO_WIFI`, `NO_CLOCK`); lings and terrans
+bounce off a circle inside the glass (`ROUND_SCREEN`), and marines walk in from the rim.
+
+| Super Mini | GC9A01 |
+|---|---|
+| GPIO1 | RST |
+| GPIO2 | CS |
+| GPIO3 | DC |
+| GPIO4 | SDA (MOSI) |
+| GPIO5 | SCL (SCLK) |
+| 3V3 | VCC, BL |
+| GND | GND |
+
+```bash
+pio run -e s3-supermini-gc9a01 -t upload   # hold BOOT while plugging in if it won't enter the bootloader
+```
+
+Input is the BOOT button: tap = splat, double tap or hold 2 s = spawn a marine.
+If red and blue look swapped, change `TFT_RGB_ORDER` to `TFT_RGB` in the env.
